@@ -1,0 +1,93 @@
+import React, { useState } from 'react';
+import { StyleSheet, Text, TextInput, View, Pressable } from 'react-native';
+import { theme } from '../../theme';
+import { Eye, EyeOff } from 'lucide-react-native';
+
+interface InputProps {
+  label?: string;
+  value: string;
+  onChangeText: (text: string) => void;
+  placeholder?: string;
+  secureTextEntry?: boolean;
+  keyboardType?: 'default' | 'email-address' | 'phone-pad';
+  error?: string;
+  accessibilityLabel?: string;
+}
+
+export const Input: React.FC<InputProps> = ({
+  label,
+  value,
+  onChangeText,
+  placeholder,
+  secureTextEntry = false,
+  keyboardType = 'default',
+  error,
+  accessibilityLabel,
+}) => {
+  const [visible, setVisible] = useState(!secureTextEntry);
+  return (
+    <View style={styles.root}>
+      {label ? <Text style={styles.label}>{label}</Text> : null}
+      <View style={[styles.inputWrapper, error ? styles.inputError : null]}>
+        <TextInput
+          value={value}
+          onChangeText={onChangeText}
+          placeholder={placeholder}
+          placeholderTextColor={theme.colors.muted}
+          secureTextEntry={secureTextEntry && !visible}
+          keyboardType={keyboardType}
+          style={styles.input}
+          accessibilityLabel={accessibilityLabel}
+        />
+        {secureTextEntry ? (
+          <Pressable
+            onPress={() => setVisible(v => !v)}
+            accessibilityRole="button"
+            accessibilityLabel={visible ? 'Hide password' : 'Show password'}
+            style={styles.eyeButton}
+          >
+            {visible ? <Eye color={theme.colors.muted} size={18} /> : <EyeOff color={theme.colors.muted} size={18} />}
+          </Pressable>
+        ) : null}
+      </View>
+      {error ? <Text style={styles.error}>{error}</Text> : null}
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  root: {
+    marginBottom: theme.spacing.md,
+  },
+  label: {
+    marginBottom: theme.spacing.xs,
+    color: theme.colors.ink,
+    fontSize: theme.typography.small.fontSize,
+  },
+  inputWrapper: {
+    backgroundColor: theme.colors.white,
+    borderRadius: theme.radii.md,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: theme.spacing.md,
+  },
+  input: {
+    flex: 1,
+    paddingVertical: theme.spacing.md,
+    color: theme.colors.ink,
+    fontSize: theme.typography.body.fontSize,
+  },
+  eyeButton: {
+    padding: theme.spacing.sm,
+  },
+  inputError: {
+    borderColor: theme.colors.error,
+  },
+  error: {
+    marginTop: theme.spacing.xs,
+    color: theme.colors.error,
+    fontSize: theme.typography.small.fontSize,
+  },
+});
