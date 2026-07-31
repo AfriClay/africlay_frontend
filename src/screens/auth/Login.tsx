@@ -70,7 +70,7 @@ export const Login: React.FC = () => {
       {errorMessage ? <Text style={styles.error}>{errorMessage}</Text> : null}
       <Text style={styles.forgot} onPress={() => navigation.navigate(ROUTES.ForgotPassword)}>Forgot Password?</Text>
       <Button onPress={handleSubmit(onSubmit)} loading={auth.loading} accessibilityLabel="Log In">Log In</Button>
-      <Text style={styles.footer}>Don’t have an account? <Text style={styles.link} onPress={() => navigation.navigate(ROUTES.Register)}>Create Account</Text></Text>
+      <Text style={styles.footer}>Donï¿½t have an account? <Text style={styles.link} onPress={() => navigation.navigate(ROUTES.Register)}>Create Account</Text></Text>
     </View>
   );
 };

@@ -7,16 +7,24 @@ import { useNavigation } from '@react-navigation/native';
 
 export const Notifications: React.FC = () => {
   const navigation = useNavigation<any>();
-  const { data: notifications = [] } = useQuery({ queryKey: ['notifications'], queryFn: () => notificationService.fetchNotifications() });
+  const { data: notifications = [], isLoading } = useQuery({ queryKey: ['notifications'], queryFn: () => notificationService.fetchNotifications() });
   return (
     <SafeAreaView style={styles.container}>
       <Text style={styles.title}>Notifications</Text>
-      <FlatList data={notifications} keyExtractor={item => item.id} renderItem={({ item }) => (
-        <View style={styles.item}>
-          <Text style={styles.itemTitle}>{item.title}</Text>
-          <Text style={styles.itemBody}>{item.body}</Text>
+      {isLoading ? (
+        <View style={styles.list}>
+          {Array.from({ length: 5 }).map((_, i) => (
+            <View key={i} style={styles.itemPlaceholder} />
+          ))}
         </View>
-      )} contentContainerStyle={styles.list} />
+      ) : (
+        <FlatList data={notifications} keyExtractor={item => item.id} renderItem={({ item }) => (
+          <View style={styles.item}>
+            <Text style={styles.itemTitle}>{item.title}</Text>
+            <Text style={styles.itemBody}>{item.body}</Text>
+          </View>
+        )} contentContainerStyle={styles.list} />
+      )}
     </SafeAreaView>
   );
 };
@@ -28,4 +36,5 @@ const styles = StyleSheet.create({
   item: { backgroundColor: theme.colors.white, borderRadius: theme.radii.lg, padding: theme.spacing.md, marginBottom: theme.spacing.sm, ...theme.shadows.sm },
   itemTitle: { color: theme.colors.ink, fontWeight: '700' },
   itemBody: { color: theme.colors.muted },
+  itemPlaceholder: { height: 72, backgroundColor: theme.colors.border, borderRadius: theme.radii.md, marginBottom: theme.spacing.sm },
 });

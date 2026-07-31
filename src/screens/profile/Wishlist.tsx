@@ -12,7 +12,7 @@ import { Button } from '../../components/ui/Button';
 export const Wishlist: React.FC = () => {
   const navigation = useNavigation<any>();
   const auth = useAuth();
-  const { data: products = [] } = useQuery({ queryKey: ['products'], queryFn: () => productService.fetchProducts() });
+  const { data: products = [], isLoading } = useQuery({ queryKey: ['products'], queryFn: () => productService.fetchProducts() });
   // For demo, assume wishlist contains first two products
   const wishlist = products.slice(0, 2);
   const [authSheet, setAuthSheet] = React.useState(false);
@@ -31,7 +31,18 @@ export const Wishlist: React.FC = () => {
   }
 
   if (!wishlist.length) return (
-    <SafeAreaView style={styles.container}><Text style={styles.emptyTitle}>Nothing saved yet</Text><Text style={styles.emptyText}>Tap the heart on any product to add it here</Text></SafeAreaView>
+    <SafeAreaView style={styles.container}>{isLoading ? (
+      <View>
+        {Array.from({ length: 4 }).map((_, i) => (
+          <View key={i} style={{ height: 220, backgroundColor: theme.colors.border, borderRadius: theme.radii.md, marginBottom: theme.spacing.md }} />
+        ))}
+      </View>
+    ) : (
+      <View>
+        <Text style={styles.emptyTitle}>Nothing saved yet</Text>
+        <Text style={styles.emptyText}>Tap the heart on any product to add it here</Text>
+      </View>
+    )}</SafeAreaView>
   );
 
   return (

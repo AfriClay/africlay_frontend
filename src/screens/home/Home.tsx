@@ -15,8 +15,8 @@ import { useAuth } from '../../hooks/useAuth';
 export const Home: React.FC = () => {
   const navigation = useNavigation<any>();
   const auth = useAuth();
-  const { data: categories = [] } = useQuery({ queryKey: ['categories'], queryFn: () => productService.fetchCategories() });
-  const { data: products = [] } = useQuery({ queryKey: ['products'], queryFn: () => productService.fetchProducts() });
+  const { data: categories = [], isLoading: categoriesLoading } = useQuery({ queryKey: ['categories'], queryFn: () => productService.fetchCategories() });
+  const { data: products = [], isLoading: productsLoading } = useQuery({ queryKey: ['products'], queryFn: () => productService.fetchProducts() });
   const cart = useCart();
   const [search, setSearch] = useState('');
 
@@ -45,15 +45,30 @@ export const Home: React.FC = () => {
         </View>
         <Text style={styles.sectionTitle}>Shop by Category</Text>
         <View style={styles.categoryGrid}>
-          {categories.map(category => (
-            <CategoryCard key={category.id} label={category.label} icon={category.icon} onPress={() => navigation.navigate('ProductListing', { categoryId: category.id })} />
-          ))}
+          {categoriesLoading ? (
+            Array.from({ length: 6 }).map((_, i) => (
+              <View key={i} style={{ width: '30%', marginBottom: theme.spacing.md, backgroundColor: theme.colors.border, borderRadius: theme.radii.md, height: 80 }} />
+            ))
+          ) : (
+            categories.map(category => (
+              <CategoryCard key={category.id} label={category.label} icon={category.icon} onPress={() => navigation.navigate('ProductListing', { categoryId: category.id })} />
+            ))
+          )}
         </View>
+
         <View style={styles.featuredHeader}>
           <Text style={styles.sectionTitle}>Featured Products</Text>
           <Text style={styles.link} onPress={() => navigation.navigate(ROUTES.ProductListing)}>See all</Text>
         </View>
-        <FlatList data={featured} horizontal showsHorizontalScrollIndicator={false} keyExtractor={item => item.id} renderItem={({ item }) => <ProductCard product={item} onPress={() => navigation.navigate('ProductDetails', { productId: item.id })} />} contentContainerStyle={styles.featuredList} />
+        {productsLoading ? (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.featuredList}>
+            {Array.from({ length: 4 }).map((_, i) => (
+              <View key={i} style={{ width: 180, height: 220, marginRight: theme.spacing.md, backgroundColor: theme.colors.border, borderRadius: theme.radii.md }} />
+            ))}
+          </ScrollView>
+        ) : (
+          <FlatList data={featured} horizontal showsHorizontalScrollIndicator={false} keyExtractor={item => item.id} renderItem={({ item }) => <ProductCard product={item} onPress={() => navigation.navigate('ProductDetails', { productId: item.id })} />} contentContainerStyle={styles.featuredList} />
+        )}
       </ScrollView>
       {cart.itemCount > 0 ? <MiniCartBar count={cart.itemCount} subtotal={cart.subtotal} onPress={() => navigation.navigate('Cart')} /> : null}
     </View>

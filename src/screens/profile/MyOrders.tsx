@@ -8,18 +8,26 @@ import { useNavigation } from '@react-navigation/native';
 
 export const MyOrders: React.FC = () => {
   const navigation = useNavigation<any>();
-  const { data: orders = [] } = useQuery({ queryKey: ['orders'], queryFn: () => orderService.fetchOrders() });
+  const { data: orders = [], isLoading } = useQuery({ queryKey: ['orders'], queryFn: () => orderService.fetchOrders() });
 
   const openOrder = (orderId: string) => navigation.navigate('OrderDetails', { orderId });
 
   return (
     <SafeAreaView style={styles.container}>
       <Text style={styles.title}>My Orders</Text>
-      <FlatList data={orders} keyExtractor={item => item.id} renderItem={({ item }) => (
-        <Pressable onPress={() => openOrder(item.id)}>
-          <OrderCard order={item} onPress={() => openOrder(item.id)} />
-        </Pressable>
-      )} contentContainerStyle={styles.list} />
+      {isLoading ? (
+        <View style={styles.list}>
+          {Array.from({ length: 3 }).map((_, i) => (
+            <View key={i} style={{ height: 90, backgroundColor: theme.colors.border, borderRadius: theme.radii.md, marginBottom: theme.spacing.md }} />
+          ))}
+        </View>
+      ) : (
+        <FlatList data={orders} keyExtractor={item => item.id} renderItem={({ item }) => (
+          <Pressable onPress={() => openOrder(item.id)} accessibilityRole="button" accessibilityLabel={`Open order ${item.id}`}>
+            <OrderCard order={item} onPress={() => openOrder(item.id)} />
+          </Pressable>
+        )} contentContainerStyle={styles.list} />
+      )}
     </SafeAreaView>
   );
 };

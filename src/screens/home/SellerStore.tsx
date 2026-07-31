@@ -15,15 +15,20 @@ const tabs = ['Shop', 'Services', 'About', 'Reviews'] as const;
 
 export const SellerStore: React.FC = () => {
   const navigation = useNavigation<any>();
-  const route = useRoute<any>();
-  const { sellerId } = route.params;
+  const route = useRoute();
+  const routeParams = (route.params || {}) as any;
+  const { sellerId } = routeParams;
   const [activeTab, setActiveTab] = useState<'Shop' | 'Services' | 'About' | 'Reviews'>('Shop');
-  const { data: seller } = useQuery<Seller | undefined>({ queryKey: ['seller', sellerId], queryFn: () => productService.fetchSeller(sellerId) });
-  const { data: products = [] } = useQuery<Product[]>({ queryKey: ['sellerProducts', sellerId], queryFn: () => productService.fetchProductsBySeller(sellerId), enabled: Boolean(sellerId) });
-  const { data: reviews = [] } = useQuery({ queryKey: ['reviews'], queryFn: () => reviewService.fetchReviews() });
+  const { data: seller, isLoading: sellerLoading } = useQuery<Seller | undefined>({ queryKey: ['seller', sellerId], queryFn: () => productService.fetchSeller(sellerId) });
+  const { data: products = [], isLoading: productsLoading } = useQuery<Product[]>({ queryKey: ['sellerProducts', sellerId], queryFn: () => productService.fetchProductsBySeller(sellerId), enabled: Boolean(sellerId) });
+  const { data: reviews = [], isLoading: reviewsLoading } = useQuery({ queryKey: ['reviews'], queryFn: () => reviewService.fetchReviews() });
+
+  if (sellerLoading) {
+    return <View style={styles.loading}><Text>Loading seller...</Text></View>;
+  }
 
   if (!seller) {
-    return <View style={styles.loading}><Text>Loading seller...</Text></View>;
+    return <View style={styles.loading}><Text>Seller not found</Text></View>;
   }
 
   return (
@@ -44,24 +49,40 @@ export const SellerStore: React.FC = () => {
         ))}
       </View>
       {activeTab === 'Shop' ? (
-        <FlatList
-          data={products}
-          keyExtractor={item => item.id}
-          numColumns={2}
-          renderItem={({ item }) => (
-            <View style={styles.cardWrapper}>
-              <ProductCard product={item} onPress={() => navigation.navigate('ProductDetails', { productId: item.id })} />
-            </View>
-          )}
-          contentContainerStyle={styles.list}
-          columnWrapperStyle={styles.column}
-        />
+        productsLoading ? (
+          <View style={styles.list}>
+            {Array.from({ length: 6 }).map((_, i) => (
+              <View key={i} style={{ width: '48%', height: 260, backgroundColor: theme.colors.border, borderRadius: theme.radii.md, marginBottom: theme.spacing.md }} />
+            ))}
+          </View>
+        ) : (
+          <FlatList
+            data={products}
+            keyExtractor={item => item.id}
+            numColumns={2}
+            renderItem={({ item }) => (
+              <View style={styles.cardWrapper}>
+                <ProductCard product={item} onPress={() => navigation.navigate('ProductDetails', { productId: item.id })} />
+              </View>
+            )}
+            contentContainerStyle={styles.list}
+            columnWrapperStyle={styles.column}
+          />
+        )
       ) : activeTab === 'Services' ? (
         <View style={styles.content}><Text style={styles.description}>Service listings will be available soon.</Text></View>
       ) : activeTab === 'About' ? (
         <View style={styles.content}><Text style={styles.description}>{seller.bio}</Text></View>
       ) : (
-        <FlatList data={reviews} keyExtractor={item => item.id} renderItem={({ item }) => <ReviewCard review={item} />} contentContainerStyle={styles.list} />
+        reviewsLoading ? (
+          <View style={styles.list}>
+            {Array.from({ length: 4 }).map((_, i) => (
+              <View key={i} style={{ height: 88, backgroundColor: theme.colors.border, borderRadius: theme.radii.md, marginBottom: theme.spacing.md }} />
+            ))}
+          </View>
+        ) : (
+          <FlatList data={reviews} keyExtractor={item => item.id} renderItem={({ item }) => <ReviewCard review={item} />} contentContainerStyle={styles.list} />
+        )
       )}
     </SafeAreaView>
   );

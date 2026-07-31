@@ -27,7 +27,7 @@ export const Splash: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>AfriClay — Buy. Sell. Connect.</Text>
+      <Text style={styles.title}>AfriClay ï¿½ Buy. Sell. Connect.</Text>
       <Text style={styles.subtitle}>Empowering Africa one trade at a time.</Text>
     </View>
   );

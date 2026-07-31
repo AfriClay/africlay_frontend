@@ -40,7 +40,7 @@ export const RoleSelection: React.FC = () => {
         visible={sheetVisible}
         onClose={() => setSheetVisible(false)}
         title="Seller onboarding is coming soon"
-        description="Seller onboarding is coming in a future update — continue as a buyer for now?"
+        description="Seller onboarding is coming in a future update ï¿½ continue as a buyer for now?"
         actionLabel="Continue as Buyer"
         onAction={() => {
           setSheetVisible(false);

@@ -10,10 +10,11 @@ import { ROUTES } from '../../constants/routes';
 
 export const ProductListing: React.FC = () => {
   const navigation = useNavigation<any>();
-  const route = useRoute<any>();
-  const { data: products = [] } = useQuery({ queryKey: ['products'], queryFn: () => productService.fetchProducts() });
+  const route = useRoute();
+  const { data: products = [], isLoading } = useQuery({ queryKey: ['products'], queryFn: () => productService.fetchProducts() });
   const [query, setQuery] = useState('');
-  const [activeCategory, setActiveCategory] = useState(route.params?.categoryId);
+  const routeParams = (route.params || {}) as any;
+  const [activeCategory, setActiveCategory] = useState<string | undefined>(routeParams?.categoryId);
 
   const filtered = useMemo(() => products.filter(product => {
     const matchesCategory = activeCategory ? product.category.toLowerCase().includes(activeCategory.toLowerCase()) : true;
@@ -34,19 +35,27 @@ export const ProductListing: React.FC = () => {
           </Pressable>
         ))}
       </View>
-      <FlatList
-        data={filtered}
-        numColumns={2}
-        keyExtractor={item => item.id}
-        renderItem={({ item }) => (
-          <View style={styles.cardWrapper}>
-            <ProductCard product={item} onPress={() => navigation.navigate('ProductDetails', { productId: item.id })} />
-          </View>
-        )}
-        ListEmptyComponent={<EmptyState title="No products found" description="Try another search or choose a different category." />}
-        contentContainerStyle={filtered.length === 0 ? styles.emptyList : styles.list}
-        columnWrapperStyle={styles.column}
-      />
+      {isLoading ? (
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' }}>
+          {Array.from({ length: 6 }).map((_, i) => (
+            <View key={i} style={{ width: '48%', height: 260, backgroundColor: theme.colors.border, borderRadius: theme.radii.md, marginBottom: theme.spacing.md }} />
+          ))}
+        </View>
+      ) : (
+        <FlatList
+          data={filtered}
+          numColumns={2}
+          keyExtractor={item => item.id}
+          renderItem={({ item }) => (
+            <View style={styles.cardWrapper}>
+              <ProductCard product={item} onPress={() => navigation.navigate('ProductDetails', { productId: item.id })} />
+            </View>
+          )}
+          ListEmptyComponent={<EmptyState title="No products found" description="Try another search or choose a different category." />}
+          contentContainerStyle={filtered.length === 0 ? styles.emptyList : styles.list}
+          columnWrapperStyle={styles.column}
+        />
+      )}
     </View>
   );
 };
