@@ -1,10 +1,11 @@
 {
   "expo": {
-    "name": "app_front_end",
-    "slug": "app_front_end",
+    "name": "AfriClay",
+    "slug": "africlay",
+    "scheme": "africlay",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/africlay-brand-v1.png",
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true
@@ -12,21 +13,34 @@
     "android": {
       "package": "com.africlay.appfront",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
+        "backgroundColor": "#17532F",
+        "foregroundImage": "./assets/africlay-brand-v1.png"
       },
       "predictiveBackGestureEnabled": false
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/africlay-brand-v1.png"
     },
     "plugins": [
       "expo-image",
       "expo-font",
-      "expo-splash-screen",
-      "expo-dev-client"
+      "expo-secure-store",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#17532F",
+          "image": "./assets/africlay-brand-v1.png",
+          "imageWidth": 220,
+          "resizeMode": "contain"
+        }
+      ],
+      "expo-dev-client",
+      [
+        "expo-web-browser",
+        {
+          "experimentalLauncherActivity": false
+        }
+      ]
     ]
   }
 }

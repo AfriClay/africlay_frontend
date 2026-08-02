@@ -14,6 +14,7 @@ const WishlistContext = createContext<WishlistContextValue | undefined>(undefine
 
 export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [ids, setIds] = useState<string[]>([]);
+  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -22,15 +23,18 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         try {
           setIds(JSON.parse(saved));
         } catch {
-          AsyncStorage.removeItem(WISHLIST_STORAGE_KEY);
+          await AsyncStorage.removeItem(WISHLIST_STORAGE_KEY);
         }
       }
+      setHydrated(true);
     })();
   }, []);
 
   useEffect(() => {
-    AsyncStorage.setItem(WISHLIST_STORAGE_KEY, JSON.stringify(ids));
-  }, [ids]);
+    if (hydrated) {
+      AsyncStorage.setItem(WISHLIST_STORAGE_KEY, JSON.stringify(ids));
+    }
+  }, [hydrated, ids]);
 
   const has = useCallback((productId: string) => ids.includes(productId), [ids]);
   const toggle = useCallback((productId: string) => {

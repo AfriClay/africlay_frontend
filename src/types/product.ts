@@ -1,5 +1,3 @@
-import { Seller } from './seller';
-
 export type ProductCategory =
   | 'Agriculture'
   | 'Fashion'

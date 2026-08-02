@@ -1,33 +1,14 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
 import { theme } from '../../theme';
-import { useAuth } from '../../hooks/useAuth';
-import { ROUTES } from '../../constants/routes';
+import { Image } from 'expo-image';
 
 export const Splash: React.FC = () => {
-  const navigation = useNavigation<any>();
-  const auth = useAuth();
-
-  useEffect(() => {
-    if (auth.loading) {
-      return;
-    }
-
-    const timeout = setTimeout(() => {
-      if (auth.user || auth.isGuest) {
-        navigation.reset({ index: 0, routes: [{ name: 'AppTabs' }] });
-      } else {
-        navigation.reset({ index: 0, routes: [{ name: ROUTES.GetStarted }] });
-      }
-    }, 1500);
-
-    return () => clearTimeout(timeout);
-  }, [auth.loading, auth.user, auth.isGuest, navigation]);
-
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>AfriClay � Buy. Sell. Connect.</Text>
+      <Image source={require('../../../assets/africlay-brand-v1.png')} style={styles.mark} contentFit="cover" />
+      <Text style={styles.title}>AfriClay</Text>
+      <Text style={styles.tagline}>Buy. Sell. Connect.</Text>
       <Text style={styles.subtitle}>Empowering Africa one trade at a time.</Text>
     </View>
   );
@@ -46,11 +27,23 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.h1.fontSize,
     fontWeight: '800',
     textAlign: 'center',
+    marginTop: theme.spacing.lg,
+  },
+  tagline: {
+    color: theme.colors.secondary.DEFAULT,
+    fontSize: theme.typography.h3.fontSize,
+    fontWeight: '700',
+    marginTop: theme.spacing.xs,
     marginBottom: theme.spacing.sm,
   },
   subtitle: {
     color: theme.colors.white,
     fontSize: theme.typography.body.fontSize,
     textAlign: 'center',
+  },
+  mark: {
+    width: 164,
+    height: 164,
+    borderRadius: 36,
   },
 });

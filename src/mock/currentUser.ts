@@ -5,6 +5,7 @@ export const currentUser: User = {
   name: 'Wanjiku M.',
   location: 'Nairobi, Kenya',
   verified: true,
+  onboardingCompleted: true,
   role: 'buyer',
   stats: {
     orders: 12,

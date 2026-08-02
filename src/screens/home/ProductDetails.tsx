@@ -1,44 +1,79 @@
-import React, { useMemo, useState } from 'react';
-import { FlatList, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
-import { useRoute, useNavigation } from '@react-navigation/native';
+import { CompositeNavigationProp, NavigationProp, RouteProp, useRoute, useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { productService } from '../../services/productService';
 import { theme } from '../../theme';
 import { formatCurrency } from '../../utils/formatCurrency';
-import { StatusPill } from '../../components/ui/StatusPill';
 import { RatingBadge } from '../../components/ui/RatingBadge';
 import { useCart } from '../../hooks/useCart';
 import { useWishlist } from '../../hooks/useWishlist';
 import { useAuth } from '../../hooks/useAuth';
-import { ROUTES } from '../../constants/routes';
 import { Heart, MessageCircle, Share2, ShoppingCart } from 'lucide-react-native';
 import { Image } from 'expo-image';
+import { GuestAuthSheet } from '../../components/ui/GuestAuthSheet';
+import { HomeStackParamList } from '../../navigation/HomeStack';
+import { RootStackParamList } from '../../navigation/RootNavigator';
+
+type ProductDetailsRoute = RouteProp<HomeStackParamList, 'ProductDetails'>;
+type ProductDetailsNavigation = CompositeNavigationProp<
+  NativeStackNavigationProp<HomeStackParamList, 'ProductDetails'>,
+  NativeStackNavigationProp<RootStackParamList>
+>;
 
 export const ProductDetails: React.FC = () => {
-  const route = useRoute<any>();
-  const navigation = useNavigation<any>();
+  const route = useRoute<ProductDetailsRoute>();
+  const navigation = useNavigation<ProductDetailsNavigation>();
   const { productId } = route.params;
   const { data: product } = useQuery({ queryKey: ['product', productId], queryFn: () => productService.fetchProductById(productId) });
   const { data: seller } = useQuery({ queryKey: ['seller', product?.sellerId], queryFn: () => product?.sellerId ? productService.fetchSeller(product.sellerId) : Promise.resolve(undefined), enabled: Boolean(product) });
   const cart = useCart();
   const wishlist = useWishlist();
   const auth = useAuth();
-  const [added, setAdded] = useState(false);
+  const [authSheetVisible, setAuthSheetVisible] = useState(false);
 
   const isWishlisted = product ? wishlist.has(product.id) : false;
 
   const handleAddToCart = () => {
     if (product) {
       cart.addItem({ id: product.id, productId: product.id, name: product.name, quantity: 1, price: product.price, sellerId: product.sellerId, thumbnailUrl: product.images[0] });
-      setAdded(true);
     }
   };
 
   const buyNow = () => {
+    if (auth.isGuest) {
+      setAuthSheetVisible(true);
+      return;
+    }
     if (product) {
       cart.addItem({ id: product.id, productId: product.id, name: product.name, quantity: 1, price: product.price, sellerId: product.sellerId, thumbnailUrl: product.images[0] });
       navigation.navigate('Checkout');
     }
+  };
+
+  const toggleWishlist = () => {
+    if (!product) return;
+    if (auth.isGuest) {
+      setAuthSheetVisible(true);
+      return;
+    }
+    wishlist.toggle(product.id);
+  };
+
+  const chatSeller = () => {
+    if (auth.isGuest) {
+      setAuthSheetVisible(true);
+      return;
+    }
+    const tabNavigation = navigation.getParent() as NavigationProp<{
+      Messages: { screen: 'ConversationThread'; params: { conversationId: string; name: string } };
+    }>;
+    tabNavigation.navigate('Messages', {
+      screen: 'ConversationThread',
+      params: { conversationId: 'conv-zuri', name: seller?.name ?? 'Seller' },
+    });
   };
 
   if (!product) {
@@ -51,7 +86,7 @@ export const ProductDetails: React.FC = () => {
         <View style={styles.imageContainer}>
           <Image source={{ uri: product.images[0] }} style={styles.image} contentFit="cover" />
           <View style={styles.iconRow}>
-            <Pressable onPress={() => wishlist.toggle(product.id)} style={styles.iconButton} accessibilityRole="button" accessibilityLabel="Toggle wishlist">
+            <Pressable onPress={toggleWishlist} style={styles.iconButton} accessibilityRole="button" accessibilityLabel="Toggle wishlist">
               <Heart color={isWishlisted ? theme.colors.secondary.DEFAULT : theme.colors.white} fill={isWishlisted ? theme.colors.secondary.DEFAULT : 'transparent'} size={22} />
             </Pressable>
             <Pressable onPress={() => {}} style={styles.iconButton} accessibilityRole="button" accessibilityLabel="Share product"><Share2 color={theme.colors.white} size={22} /></Pressable>
@@ -72,7 +107,7 @@ export const ProductDetails: React.FC = () => {
         <Text style={styles.meta}>Delivery estimate: {product.deliveryEstimate}</Text>
       </ScrollView>
       <View style={styles.actions}> 
-        <Pressable style={styles.chatButton} onPress={() => auth.isGuest ? navigation.navigate('Login') : navigation.navigate('ConversationThread', { conversationId: 'conv-zuri', name: seller?.name })} accessibilityRole="button">
+        <Pressable style={styles.chatButton} onPress={chatSeller} accessibilityRole="button">
           <MessageCircle color={theme.colors.primary.DEFAULT} size={20} />
           <Text style={styles.chatLabel}>Chat Seller</Text>
         </Pressable>
@@ -84,6 +119,7 @@ export const ProductDetails: React.FC = () => {
           <Pressable style={styles.primaryButton} onPress={buyNow} accessibilityRole="button"><Text style={styles.primaryText}>Buy Now</Text></Pressable>
         </View>
       </View>
+      <GuestAuthSheet visible={authSheetVisible} onClose={() => setAuthSheetVisible(false)} description="Register or log in to save items, message sellers, and complete your purchase." />
     </SafeAreaView>
   );
 };

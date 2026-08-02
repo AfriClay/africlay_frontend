@@ -4,31 +4,37 @@ import { Image } from 'expo-image';
 import { theme } from '../../theme';
 import { RatingBadge } from '../ui/RatingBadge';
 import { Product } from '../../types/product';
+import { formatCurrency } from '../../utils/formatCurrency';
 
 interface ProductCardProps {
   product: Product;
   onPress: () => void;
+  layout?: 'horizontal' | 'grid';
 }
 
-export const ProductCard: React.FC<ProductCardProps> = ({ product, onPress }) => (
-  <Pressable style={styles.root} onPress={onPress} accessibilityRole="button" accessibilityLabel={`View ${product.name}`}>
+export const ProductCard: React.FC<ProductCardProps> = React.memo(({ product, onPress, layout = 'horizontal' }) => (
+  <Pressable style={[styles.root, layout === 'grid' ? styles.gridRoot : null]} onPress={onPress} accessibilityRole="button" accessibilityLabel={`View ${product.name}`}>
     <Image source={{ uri: product.images[0] }} style={styles.image} contentFit="cover" />
     <View style={styles.content}>
       <Text style={styles.name}>{product.name}</Text>
-      <Text style={styles.price}>{`KSh ${product.price.toLocaleString()}`}</Text>
+      <Text style={styles.price}>{formatCurrency(product.price)}</Text>
       <RatingBadge rating={product.rating} reviewCount={product.reviewCount} />
     </View>
   </Pressable>
-);
+));
 
 const styles = StyleSheet.create({
   root: {
-    width: 180,
+    width: 168,
     borderRadius: theme.radii.lg,
     backgroundColor: theme.colors.white,
     overflow: 'hidden',
     ...theme.shadows.sm,
     marginRight: theme.spacing.md,
+  },
+  gridRoot: {
+    width: '100%',
+    marginRight: 0,
   },
   image: {
     width: '100%',

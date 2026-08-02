@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, TextInput, View, Pressable } from 'react-native';
+import { StyleSheet, Text, TextInput, TextInputProps, View, Pressable } from 'react-native';
 import { theme } from '../../theme';
 import { Eye, EyeOff } from 'lucide-react-native';
 
@@ -10,6 +10,9 @@ interface InputProps {
   placeholder?: string;
   secureTextEntry?: boolean;
   keyboardType?: 'default' | 'email-address' | 'phone-pad';
+  autoCapitalize?: TextInputProps['autoCapitalize'];
+  autoComplete?: TextInputProps['autoComplete'];
+  autoCorrect?: boolean;
   error?: string;
   accessibilityLabel?: string;
 }
@@ -21,6 +24,9 @@ export const Input: React.FC<InputProps> = ({
   placeholder,
   secureTextEntry = false,
   keyboardType = 'default',
+  autoCapitalize,
+  autoComplete,
+  autoCorrect,
   error,
   accessibilityLabel,
 }) => {
@@ -36,6 +42,9 @@ export const Input: React.FC<InputProps> = ({
           placeholderTextColor={theme.colors.muted}
           secureTextEntry={secureTextEntry && !visible}
           keyboardType={keyboardType}
+          autoCapitalize={autoCapitalize}
+          autoComplete={autoComplete}
+          autoCorrect={autoCorrect}
           style={styles.input}
           accessibilityLabel={accessibilityLabel}
         />

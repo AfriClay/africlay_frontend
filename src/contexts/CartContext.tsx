@@ -11,6 +11,7 @@ interface CartContextValue {
   clearCart: () => void;
   itemCount: number;
   subtotal: number;
+  sellerSubtotals: Record<string, number>;
 }
 
 const CartContext = createContext<CartContextValue | undefined>(undefined);
@@ -42,10 +43,14 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const itemCount = useMemo(() => items.reduce((sum, item) => sum + item.quantity, 0), [items]);
   const subtotal = useMemo(() => items.reduce((sum, item) => sum + item.price * item.quantity, 0), [items]);
+  const sellerSubtotals = useMemo(() => items.reduce<Record<string, number>>((subtotals, item) => {
+    subtotals[item.sellerId] = (subtotals[item.sellerId] ?? 0) + item.price * item.quantity;
+    return subtotals;
+  }, {}), [items]);
 
   const value = useMemo(
-    () => ({ items, addItem, removeItem, updateQuantity, clearCart, itemCount, subtotal }),
-    [items, addItem, removeItem, updateQuantity, clearCart, itemCount, subtotal],
+    () => ({ items, addItem, removeItem, updateQuantity, clearCart, itemCount, subtotal, sellerSubtotals }),
+    [items, addItem, removeItem, updateQuantity, clearCart, itemCount, subtotal, sellerSubtotals],
   );
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;

@@ -1,5 +1,3 @@
-import { Product } from './product';
-
 export type OrderStatus = 'Processing' | 'Shipped' | 'Delivered' | 'Cancelled';
 
 export interface OrderItem {

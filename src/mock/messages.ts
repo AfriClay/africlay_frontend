@@ -1,10 +1,10 @@
-import { Conversation, Message } from '../types/message';
+﻿import { Conversation, Message } from '../types/message';
 
 export const conversations: Conversation[] = [
   {
     id: 'conv-zuri',
     name: 'Zuri Crafts',
-    lastMessage: 'Thank you! Your order will be�',
+    lastMessage: 'Thank you! Your order will be…',
     timestamp: '09:34',
     unreadCount: 1,
     recipientId: 'seller-zuri',
@@ -28,7 +28,7 @@ export const conversations: Conversation[] = [
   {
     id: 'conv-grace',
     name: 'Grace W.',
-    lastMessage: 'Okay, thank you ??',
+    lastMessage: 'Okay, thank you 🙏',
     timestamp: '2d',
     unreadCount: 0,
     recipientId: 'grace-w',

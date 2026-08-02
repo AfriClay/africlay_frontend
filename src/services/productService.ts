@@ -20,6 +20,9 @@ export const productService = {
   fetchServices: async (): Promise<Service[]> => {
     return simulateNetwork(services);
   },
+  fetchServicesBySeller: async (sellerId: string): Promise<Service[]> => {
+    return simulateNetwork(services.filter(service => service.providerId === sellerId));
+  },
   fetchServiceById: async (id: string): Promise<Service | undefined> => {
     const item = services.find(service => service.id === id);
     return simulateNetwork(item);
@@ -30,5 +33,8 @@ export const productService = {
   fetchSeller: async (id: string): Promise<Seller | undefined> => {
     const seller = sellers.find(item => item.id === id);
     return simulateNetwork(seller);
+  },
+  fetchSellers: async (): Promise<Seller[]> => {
+    return simulateNetwork(sellers);
   },
 };

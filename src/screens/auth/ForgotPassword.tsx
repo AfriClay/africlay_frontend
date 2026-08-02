@@ -6,29 +6,39 @@ import { theme } from '../../theme';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { passwordResetSchema } from '../../validation/authSchemas';
-import { authService } from '../../services/authService';
+import { authService, getAuthErrorMessage } from '../../services/authService';
 
 type ResetForm = {
-  identifier: string;
+  email: string;
 };
 
 export const ForgotPassword: React.FC = () => {
   const [sent, setSent] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const { control, handleSubmit } = useForm<ResetForm>({
     resolver: zodResolver(passwordResetSchema),
-    defaultValues: { identifier: '' },
+    defaultValues: { email: '' },
   });
 
   const onSubmit = async (data: ResetForm) => {
-    await authService.sendPasswordReset(data.identifier);
-    setSent(true);
+    setLoading(true);
+    setSubmitError(null);
+    try {
+      await authService.sendPasswordReset(data.email);
+      setSent(true);
+    } catch (error) {
+      setSubmitError(getAuthErrorMessage(error, 'Unable to send the reset email.'));
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (sent) {
     return (
       <View style={styles.container}>
         <Text style={styles.title}>Reset Link Sent</Text>
-        <Text style={styles.copy}>If an account exists for that email/phone, we&apos;ve sent a reset link.</Text>
+        <Text style={styles.copy}>If an account exists for that email, we&apos;ve sent a reset link.</Text>
       </View>
     );
   }
@@ -38,12 +48,24 @@ export const ForgotPassword: React.FC = () => {
       <Text style={styles.title}>Forgot Password</Text>
       <Controller
         control={control}
-        name="identifier"
+        name="email"
         render={({ field: { onChange, value }, fieldState }) => (
-          <Input label="Email or phone" value={value} onChangeText={onChange} placeholder="you@example.com" error={fieldState.error?.message} accessibilityLabel="Email or phone" />
+          <Input
+            label="Email"
+            value={value}
+            onChangeText={onChange}
+            placeholder="you@example.com"
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoComplete="email"
+            autoCorrect={false}
+            error={fieldState.error?.message}
+            accessibilityLabel="Email"
+          />
         )}
       />
-      <Button onPress={handleSubmit(onSubmit)} accessibilityLabel="Send reset link">Send Reset Link</Button>
+      {submitError ? <Text style={styles.error}>{submitError}</Text> : null}
+      <Button onPress={handleSubmit(onSubmit)} loading={loading} accessibilityLabel="Send reset link">Send Reset Link</Button>
     </View>
   );
 };
@@ -64,5 +86,9 @@ const styles = StyleSheet.create({
   copy: {
     color: theme.colors.muted,
     fontSize: theme.typography.body.fontSize,
+  },
+  error: {
+    color: theme.colors.error,
+    marginBottom: theme.spacing.sm,
   },
 });

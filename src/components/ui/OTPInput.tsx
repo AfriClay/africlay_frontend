@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { Keyboard, StyleSheet, TextInput, View, Text } from 'react-native';
 import { theme } from '../../theme';
 
