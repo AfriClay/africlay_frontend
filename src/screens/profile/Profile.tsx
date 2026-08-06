@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -35,6 +35,13 @@ export const Profile: React.FC = () => {
       return;
     }
     navigation.navigate({ name: route, params: undefined });
+  };
+
+  const confirmLogout = () => {
+    Alert.alert('Log out?', 'You will need to sign in again to access your account.', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Log Out', style: 'destructive', onPress: () => void auth.logout() },
+    ]);
   };
 
   return (
@@ -74,7 +81,7 @@ export const Profile: React.FC = () => {
             );
           })}
           {auth.user ? (
-            <Pressable style={styles.menuRow} onPress={auth.logout} accessibilityRole="button">
+            <Pressable style={styles.menuRow} onPress={confirmLogout} accessibilityRole="button">
               <View style={styles.menuIcon}><LogOut color={theme.colors.error} size={20} /></View>
               <Text style={styles.logoutLabel}>Logout</Text>
             </Pressable>

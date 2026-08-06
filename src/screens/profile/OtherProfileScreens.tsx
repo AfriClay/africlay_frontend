@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { FlatList, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
-import { ChevronDown, ChevronUp, CreditCard, MapPin, Plus, ShieldCheck, Smartphone, WalletCards } from 'lucide-react-native';
+import { ArrowDownToLine, ChevronDown, ChevronUp, CreditCard, MapPin, Plus, ShieldCheck, Smartphone, WalletCards } from 'lucide-react-native';
 import { ReviewCard } from '../../components/domain/ReviewCard';
 import { BottomSheet } from '../../components/ui/BottomSheet';
 import { Button } from '../../components/ui/Button';
@@ -13,6 +13,7 @@ import { formatCurrency } from '../../utils/formatCurrency';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ProfileStackParamList } from '../../navigation/ProfileStack';
+import { useAuth } from '../../hooks/useAuth';
 
 const addresses = [
   { id: 'address-home', label: 'Home', lines: 'Westlands, Nairobi\nKenya', isDefault: true },
@@ -41,8 +42,10 @@ export const MyAddresses: React.FC = () => {
 };
 
 export const PaymentMethodsWallet: React.FC = () => {
-  const [sheetVisible, setSheetVisible] = useState(false);
+  const auth = useAuth();
+  const [sheet, setSheet] = useState<'topup' | 'withdrawal' | null>(null);
   const { data: wallet, isLoading } = useQuery({ queryKey: ['wallet'], queryFn: walletService.fetchBalance });
+  const isApprovedSeller = (auth.role === 'seller' || auth.role === 'both') && auth.verificationStatus === 'approved';
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
       <ScrollView contentContainerStyle={styles.list}>
@@ -50,14 +53,29 @@ export const PaymentMethodsWallet: React.FC = () => {
           <View style={styles.walletHeading}><WalletCards color={theme.colors.white} size={24} /><Text style={styles.walletLabel}>Available Balance</Text></View>
           <Text style={styles.walletBalance}>{isLoading ? 'Loading…' : formatCurrency(wallet?.balance ?? 0)}</Text>
           <Text style={styles.walletPending}>Pending in escrow: {formatCurrency(wallet?.pending ?? 0)}</Text>
-          <Pressable style={styles.topUpButton} onPress={() => setSheetVisible(true)} accessibilityRole="button"><Plus color={theme.colors.ink} size={18} /><Text style={styles.topUpText}>Top Up Wallet</Text></Pressable>
+          <Pressable style={styles.topUpButton} onPress={() => setSheet('topup')} accessibilityRole="button"><Plus color={theme.colors.ink} size={18} /><Text style={styles.topUpText}>Top Up Wallet</Text></Pressable>
         </View>
+        {isApprovedSeller ? (
+          <View style={styles.earningsCard}>
+            <View style={styles.walletHeading}><WalletCards color={theme.colors.primary.DEFAULT} size={23} /><Text style={styles.earningsTitle}>Seller earnings</Text></View>
+            <View style={styles.earningsRow}><Text style={styles.note}>Available to withdraw</Text><Text style={styles.earningsValue}>{formatCurrency(wallet?.balance ?? 0)}</Text></View>
+            <View style={styles.earningsRow}><Text style={styles.note}>Pending in escrow</Text><Text style={styles.earningsValue}>{formatCurrency(wallet?.pending ?? 0)}</Text></View>
+            <Pressable style={styles.withdrawButton} onPress={() => setSheet('withdrawal')} accessibilityRole="button"><ArrowDownToLine color={theme.colors.white} size={18} /><Text style={styles.withdrawText}>Request Withdrawal</Text></Pressable>
+          </View>
+        ) : null}
         <Text style={styles.sectionTitle}>Payment Methods</Text>
         <View style={styles.paymentCard}><View style={styles.roundIcon}><Smartphone color={theme.colors.primary.DEFAULT} size={20} /></View><View style={styles.cardCopy}><Text style={styles.cardTitle}>M-Pesa</Text><Text style={styles.note}>+254 ••• ••• 678</Text></View><Text style={styles.defaultBadge}>Primary</Text></View>
         <View style={styles.paymentCard}><View style={styles.roundIcon}><CreditCard color={theme.colors.primary.DEFAULT} size={20} /></View><View style={styles.cardCopy}><Text style={styles.cardTitle}>Visa</Text><Text style={styles.note}>•••• 4242</Text></View></View>
         <View style={styles.securityNote}><ShieldCheck color={theme.colors.success} size={19} /><Text style={styles.securityText}>Payments are encrypted and protected by AfriClay escrow.</Text></View>
       </ScrollView>
-      <BottomSheet visible={sheetVisible} onClose={() => setSheetVisible(false)} title="Top up with M-Pesa" description="A secure M-Pesa prompt would be sent to your registered phone number." actionLabel="Send Demo Prompt" onAction={() => setSheetVisible(false)} />
+      <BottomSheet
+        visible={sheet !== null}
+        onClose={() => setSheet(null)}
+        title={sheet === 'withdrawal' ? 'Request withdrawal' : 'Top up with M-Pesa'}
+        description={sheet === 'withdrawal' ? 'Your available seller earnings would be sent to your primary M-Pesa number after confirmation.' : 'A secure M-Pesa prompt would be sent to your registered phone number.'}
+        actionLabel={sheet === 'withdrawal' ? 'Confirm Demo Withdrawal' : 'Send Demo Prompt'}
+        onAction={() => setSheet(null)}
+      />
     </SafeAreaView>
   );
 };
@@ -133,6 +151,12 @@ const styles = StyleSheet.create({
   walletLabel: { color: theme.colors.white, marginLeft: theme.spacing.sm, fontWeight: '700' },
   walletBalance: { color: theme.colors.white, fontSize: 32, fontWeight: '800', marginTop: theme.spacing.lg },
   walletPending: { color: theme.colors.white, opacity: 0.78, marginTop: theme.spacing.xs },
+  earningsCard: { borderRadius: theme.radii.lg, padding: theme.spacing.lg, backgroundColor: theme.colors.white, marginBottom: theme.spacing.md, ...theme.shadows.sm },
+  earningsTitle: { color: theme.colors.ink, marginLeft: theme.spacing.sm, fontWeight: '800', fontSize: theme.typography.h3.fontSize },
+  earningsRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: theme.spacing.md },
+  earningsValue: { color: theme.colors.ink, fontWeight: '800' },
+  withdrawButton: { minHeight: 44, marginTop: theme.spacing.lg, borderRadius: theme.radii.md, backgroundColor: theme.colors.primary.DEFAULT, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
+  withdrawText: { color: theme.colors.white, fontWeight: '800', marginLeft: theme.spacing.xs },
   topUpButton: { minHeight: 44, marginTop: theme.spacing.lg, borderRadius: theme.radii.md, backgroundColor: theme.colors.secondary.DEFAULT, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
   topUpText: { color: theme.colors.ink, fontWeight: '800', marginLeft: theme.spacing.xs },
   sectionTitle: { color: theme.colors.ink, fontSize: theme.typography.h3.fontSize, fontWeight: '800', marginTop: theme.spacing.md, marginBottom: theme.spacing.xs },

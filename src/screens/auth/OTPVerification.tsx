@@ -34,8 +34,10 @@ export const OTPVerification: React.FC = () => {
     setVerifying(true);
     setError(undefined);
     try {
-      await verifyEmail(code);
-      navigation.navigate('RoleSelection');
+      const result = await verifyEmail(code);
+      if (result === 'onboarding') {
+        navigation.navigate('RoleSelection');
+      }
     } catch (verificationError) {
       setError(getAuthErrorMessage(verificationError, 'Unable to verify this code.'));
       setCode('');

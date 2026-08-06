@@ -13,7 +13,7 @@ import { StatusBar } from 'expo-status-bar';
 
 export type RootStackParamList = {
   AuthStack: undefined;
-  AppTabs: { screen?: 'Home' | 'Search' | 'Messages' | 'Profile'; params?: { screen?: string; params?: object } } | undefined;
+  AppTabs: { screen?: 'Home' | 'Search' | 'Sell' | 'Messages' | 'Profile'; params?: { screen?: string; params?: object } } | undefined;
   Cart: undefined;
   Checkout: { orderId?: string } | undefined;
   Notifications: undefined;

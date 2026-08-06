@@ -9,18 +9,19 @@ interface CategoryCardProps {
   onPress: () => void;
 }
 
+export const categoryIconMap: Record<string, LucideIcon> = {
+  Droplet,
+  Home,
+  Leaf,
+  MoreHorizontal,
+  Scissors,
+  Smartphone,
+  Sparkles,
+  Tool: Wrench,
+};
+
 export const CategoryCard: React.FC<CategoryCardProps> = ({ label, icon, onPress }) => {
-  const iconMap: Record<string, LucideIcon> = {
-    Droplet,
-    Home,
-    Leaf,
-    MoreHorizontal,
-    Scissors,
-    Smartphone,
-    Sparkles,
-    Tool: Wrench,
-  };
-  const Icon = iconMap[icon] ?? Tag;
+  const Icon = categoryIconMap[icon] ?? Tag;
   return (
     <Pressable style={styles.root} onPress={onPress} accessibilityRole="button" accessibilityLabel={`Browse ${label}`}>
       <View style={styles.iconBox}>

@@ -96,6 +96,7 @@ export const Register: React.FC = () => {
         <View style={[styles.checkbox, acceptTerms ? styles.checkboxChecked : null]}>{acceptTerms ? <Text style={styles.checkmark}>?</Text> : null}</View>
         <Text style={styles.checkboxLabel}>I agree to the Terms</Text>
       </Pressable>
+      <View nativeID="clerk-captcha" style={styles.captcha} />
       {submitError ? <Text style={styles.error}>{submitError}</Text> : null}
       <Button onPress={handleSubmit(onSubmit)} disabled={!acceptTerms || auth.loading} loading={auth.loading} accessibilityLabel="Create Account">Create Account</Button>
       <Text style={styles.footer}>Already have an account? <Text style={styles.link} onPress={() => navigation.navigate(ROUTES.Login)}>Log In</Text></Text>
@@ -143,6 +144,9 @@ const styles = StyleSheet.create({
   checkmark: {
     color: theme.colors.white,
     fontWeight: '700',
+  },
+  captcha: {
+    marginBottom: theme.spacing.sm,
   },
   footer: {
     marginTop: theme.spacing.lg,

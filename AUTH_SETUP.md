@@ -1,80 +1,71 @@
-# AfriClay authentication setup
+# AfriClay Clerk authentication setup
 
-The app code is wired to Supabase Auth for email/password accounts, six-digit email verification, password-reset email delivery, securely persisted native sessions, and Google OAuth. The app intentionally shows a configuration error until the two Supabase environment variables are supplied.
+AfriClay now uses Clerk for email/password accounts, six-digit email verification, secure native session persistence, Google OAuth, Client Trust email challenges, and password reset codes. The supplied Clerk development publishable key is already stored in the ignored local `.env` file.
 
-## 1. Create and connect Supabase
+## 1. Configure email/password and verification
 
-1. Create a project at https://database.new.
-2. In the project dashboard, open **Connect** and copy the Project URL and Publishable key.
-3. Copy `.env.example` to `.env` and set:
+In the Clerk Dashboard for the application that owns the publishable key:
 
-   ```dotenv
-   EXPO_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
-   EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_YOUR_KEY
-   ```
+1. Open **User & authentication > Email, phone, username**.
+2. Enable **Email address** and require it for sign-up.
+3. Enable **Password** as a sign-in method.
+4. Require email verification at sign-up and enable the **Email verification code** strategy. The app expects the six-digit code strategy, not an email-link-only flow.
+5. Keep first and last name optional. AfriClay stores the single full-name field in Clerk user metadata.
+6. Review **Customization > Emails** and customize the verification and password-reset templates with the AfriClay name and support details.
 
-Only use the publishable key in the mobile app. Never add the service-role key or Google client secret to `.env` or any `EXPO_PUBLIC_` variable.
+Clerk sends the real verification and reset emails. The development instance is suitable for testing, but Clerk caps development-instance delivery at 100 emails per calendar month. Production email is sent from your configured domain, so complete Clerk's domain/DNS setup before public release.
 
-For EAS builds, create the same two `EXPO_PUBLIC_` environment variables in the EAS project/environment used by the build.
+The current development instance already exposes email/password, email-code verification, Google, and bot protection as enabled. The registration screen includes Clerk's CAPTCHA mount point for web; Clerk skips the browser CAPTCHA widget on native Android and iOS.
 
-## 2. Turn on real email verification
+## 2. Enable Google login
 
-1. In Supabase, open **Authentication > Sign In / Providers > Email**.
-2. Enable Email and enable **Confirm email**. Do not enable automatic confirmation.
-3. Open **Authentication > Email Templates > Confirm signup**.
-4. Use `{{ .Token }}` in the template so Supabase sends the six-digit code expected by the app. A minimal template is:
-
-   ```html
-   <h2>Verify your AfriClay email</h2>
-   <p>Enter this code in the AfriClay app:</p>
-   <p style="font-size: 28px; font-weight: 700; letter-spacing: 6px;">{{ .Token }}</p>
-   <p>This code expires soon. If you did not create an account, you can ignore this email.</p>
-   ```
-
-5. Open **Authentication > Emails > SMTP Settings**, enable custom SMTP, and enter the SMTP host, port, username, password, sender email, and sender name supplied by your transactional-email provider. Resend, Postmark, AWS SES, SendGrid, Brevo, and similar SMTP services work.
-6. Verify your sending domain with that provider and add its SPF and DKIM DNS records. Add DMARC before production.
-7. In **Authentication > Rate Limits**, set email limits appropriate for expected signup/reset traffic. The initial custom-SMTP limit is low.
-
-Supabase's built-in mailer is only useful for limited team testing. A custom SMTP provider is required to deliver verification emails reliably to real customers.
-
-## 3. Enable Google login
-
-1. Create or select a project in Google Cloud, then open **Google Auth Platform**.
-2. Configure Branding, Audience, and Data Access. The app only needs `openid`, email, and profile scopes.
-3. While the OAuth app is in testing mode, add every Google account that will test it as a test user. Publish it when ready for public use.
-4. Create an OAuth client with application type **Web application**.
-5. In Google, add this Authorized redirect URI, using the exact callback shown on Supabase's Google provider page:
-
-   ```text
-   https://YOUR_PROJECT_REF.supabase.co/auth/v1/callback
-   ```
-
-6. Copy the Google Client ID and Client Secret into **Supabase > Authentication > Sign In / Providers > Google**, then enable the provider. The secret stays in Supabase and must never be placed in the app.
-7. In **Supabase > Authentication > URL Configuration**, add this redirect URL:
+1. Open **User & authentication > SSO connections** in Clerk.
+2. Add or enable the **Google** social connection.
+3. For development, use Clerk's development connection if the Dashboard offers it. For production, choose custom Google credentials and create a Google OAuth **Web application** client.
+4. When using custom credentials, copy the Google Client ID and Client Secret into Clerk only. Never place the Google client secret in this app or an `EXPO_PUBLIC_` variable.
+5. In Clerk's native/mobile redirect allowlist, add:
 
    ```text
    africlay://auth/callback
    ```
 
-   `africlay://**` is also suitable if more authentication deep links are added later.
+6. In Google Cloud, use the authorized redirect URI shown by Clerk for the Google connection. Copy it exactly; it is a Clerk HTTPS callback, not the `africlay://` app link.
+7. If the Google consent screen is still in testing, add each tester's Google account under **Test users**.
 
-## 4. Rebuild and test
+The implementation uses Clerk's browser-based Expo SSO flow. It does not require native Android or iOS Google SDK client IDs.
 
-The custom `africlay` scheme is native configuration, so rebuild the development client after changing `app.json`:
+## 3. Environment variables and builds
+
+Expo reads public app variables with the `EXPO_PUBLIC_` prefix. `VITE_CLERK_PUBLISHABLE_KEY` is a Vite web convention and is not read by this Expo app. The required variable is:
+
+```dotenv
+EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_your_publishable_key
+```
+
+For EAS development, preview, and production builds, add this same variable to the matching EAS environment. Replace the current `pk_test_...` value with the production instance's `pk_live_...` key before a store release.
+
+Because the `africlay` URL scheme is native configuration, rebuild the development client when necessary:
 
 ```powershell
 npx expo prebuild
 npx expo run:android
 ```
 
-Use `npx expo run:ios` on macOS for iOS. Google OAuth should be tested in a development/preview build rather than relying on Expo Go.
+On macOS, use `npx expo run:ios` for iOS.
 
-Test these cases before release:
+After changing `.env`, fully stop and restart Expo with a cleared bundle cache:
 
-- A new email receives a six-digit code, a wrong code is rejected, resend works after the cooldown, and the correct code completes onboarding.
-- An unverified email cannot log in with a password.
-- Google login succeeds, cancellation returns cleanly to the login screen, and logout removes the session.
-- Closing and reopening the app restores a valid session.
-- Verification and reset emails reach Gmail and at least one non-Gmail provider without landing in spam.
+```powershell
+npx expo start --clear
+```
 
-The app's mobile OAuth callback is exported by `authService.redirectUri`; it should resolve to `africlay://auth/callback` in development and production native builds.
+## 4. Release checks
+
+- A new address receives a six-digit code, wrong/expired codes are rejected, resend works, and the correct code starts onboarding.
+- Password login succeeds, including the email challenge shown by Clerk Client Trust on a new device.
+- Google login succeeds and cancellation returns cleanly to the login screen.
+- Password-reset codes allow the user to choose a new password.
+- Closing and reopening the app restores the Clerk session from encrypted native storage.
+- Logout removes the active Clerk session.
+
+The `role`, `location`, and onboarding fields are currently stored in Clerk `unsafeMetadata` because users may edit their own profile. Do not use those client-editable values as backend authorization. Enforce seller/admin privileges with server-controlled Clerk metadata and backend checks when the API is added.

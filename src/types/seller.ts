@@ -8,3 +8,10 @@ export interface Seller {
   bio: string;
   bannerUrl?: string;
 }
+
+export type VerificationStatus = 'none' | 'pending' | 'approved' | 'rejected';
+
+export interface StorefrontProfile {
+  name: string;
+  logoUrl?: string;
+}

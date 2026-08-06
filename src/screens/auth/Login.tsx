@@ -31,8 +31,10 @@ export const Login: React.FC = () => {
   const onSubmit = async (data: LoginForm) => {
     setErrorMessage(null);
     try {
-      const needsOnboarding = await auth.login(data.email, data.password);
-      if (needsOnboarding) {
+      const result = await auth.login(data.email, data.password);
+      if (result === 'verification') {
+        navigation.navigate(ROUTES.OTPVerification);
+      } else if (result === 'onboarding') {
         navigation.navigate(ROUTES.RoleSelection);
       }
     } catch (error) {

@@ -7,6 +7,9 @@ import { OTPVerification } from '../screens/auth/OTPVerification';
 import { RoleSelection } from '../screens/auth/RoleSelection';
 import { ProfileCompletion } from '../screens/auth/ProfileCompletion';
 import { ForgotPassword } from '../screens/auth/ForgotPassword';
+import { KYCUpload } from '../screens/auth/KYCUpload';
+import { VerificationPending } from '../screens/auth/VerificationPending';
+import { StorefrontSetup } from '../screens/auth/StorefrontSetup';
 import { useAuth } from '../hooks/useAuth';
 
 export type AuthStackParamList = {
@@ -16,6 +19,9 @@ export type AuthStackParamList = {
   Register: undefined;
   OTPVerification: undefined;
   RoleSelection: undefined;
+  KYCUpload: undefined;
+  VerificationPending: undefined;
+  StorefrontSetup: undefined;
   ProfileCompletion: undefined;
   ForgotPassword: undefined;
 };
@@ -23,11 +29,17 @@ export type AuthStackParamList = {
 const Stack = createNativeStackNavigator<AuthStackParamList>();
 
 export const AuthStack = () => {
-  const { pendingToken, pendingUser } = useAuth();
+  const { pendingEmail, pendingToken, pendingUser, pendingVerification } = useAuth();
+
+  const initialRouteName = pendingVerification && pendingEmail
+    ? 'OTPVerification'
+    : pendingToken && pendingUser
+      ? 'RoleSelection'
+      : 'GetStarted';
 
   return (
     <Stack.Navigator
-      initialRouteName={pendingToken && pendingUser ? 'RoleSelection' : 'GetStarted'}
+      initialRouteName={initialRouteName}
       screenOptions={{ headerShown: false }}
     >
       <Stack.Screen name="Splash" component={Splash} />
@@ -36,6 +48,9 @@ export const AuthStack = () => {
       <Stack.Screen name="Register" component={Register} />
       <Stack.Screen name="OTPVerification" component={OTPVerification} />
       <Stack.Screen name="RoleSelection" component={RoleSelection} />
+      <Stack.Screen name="KYCUpload" component={KYCUpload} />
+      <Stack.Screen name="VerificationPending" component={VerificationPending} />
+      <Stack.Screen name="StorefrontSetup" component={StorefrontSetup} />
       <Stack.Screen name="ProfileCompletion" component={ProfileCompletion} />
       <Stack.Screen name="ForgotPassword" component={ForgotPassword} />
     </Stack.Navigator>

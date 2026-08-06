@@ -6,7 +6,9 @@ import { theme } from '../../theme';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { passwordResetSchema } from '../../validation/authSchemas';
-import { authService, getAuthErrorMessage } from '../../services/authService';
+import { getAuthErrorMessage } from '../../services/authService';
+import { OTPInput } from '../../components/ui/OTPInput';
+import { useAuth } from '../../hooks/useAuth';
 
 type ResetForm = {
   email: string;
@@ -16,6 +18,10 @@ export const ForgotPassword: React.FC = () => {
   const [sent, setSent] = useState(false);
   const [loading, setLoading] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [code, setCode] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const auth = useAuth();
   const { control, handleSubmit } = useForm<ResetForm>({
     resolver: zodResolver(passwordResetSchema),
     defaultValues: { email: '' },
@@ -25,7 +31,7 @@ export const ForgotPassword: React.FC = () => {
     setLoading(true);
     setSubmitError(null);
     try {
-      await authService.sendPasswordReset(data.email);
+      await auth.sendPasswordReset(data.email);
       setSent(true);
     } catch (error) {
       setSubmitError(getAuthErrorMessage(error, 'Unable to send the reset email.'));
@@ -34,11 +40,41 @@ export const ForgotPassword: React.FC = () => {
     }
   };
 
+  const handleReset = async () => {
+    setSubmitError(null);
+    if (code.length !== 6) {
+      setSubmitError('Enter the 6-digit code from your email.');
+      return;
+    }
+    if (password.length < 6) {
+      setSubmitError('Password must be at least 6 characters.');
+      return;
+    }
+    if (password !== confirmPassword) {
+      setSubmitError('Passwords do not match.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await auth.resetPassword(code, password);
+    } catch (error) {
+      setSubmitError(getAuthErrorMessage(error, 'Unable to reset your password.'));
+      setCode('');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (sent) {
     return (
       <View style={styles.container}>
-        <Text style={styles.title}>Reset Link Sent</Text>
-        <Text style={styles.copy}>If an account exists for that email, we&apos;ve sent a reset link.</Text>
+        <Text style={styles.title}>Enter Reset Code</Text>
+        <Text style={styles.copy}>We sent a 6-digit code to your email. Enter it below and choose a new password.</Text>
+        <OTPInput value={code} onChange={setCode} onComplete={() => undefined} error={submitError ?? undefined} accessibilityLabel="Password reset code" />
+        <Input label="New password" value={password} onChangeText={setPassword} secureTextEntry placeholder="New password" accessibilityLabel="New password" />
+        <Input label="Confirm password" value={confirmPassword} onChangeText={setConfirmPassword} secureTextEntry placeholder="Repeat new password" accessibilityLabel="Confirm new password" />
+        <Button onPress={handleReset} loading={loading} disabled={loading} accessibilityLabel="Reset password">Reset Password</Button>
       </View>
     );
   }

@@ -9,13 +9,13 @@ import { formatCurrency } from '../../utils/formatCurrency';
 interface ProductCardProps {
   product: Product;
   onPress: () => void;
-  layout?: 'horizontal' | 'grid';
+  layout?: 'horizontal' | 'grid' | 'compact';
 }
 
 export const ProductCard: React.FC<ProductCardProps> = React.memo(({ product, onPress, layout = 'horizontal' }) => (
-  <Pressable style={[styles.root, layout === 'grid' ? styles.gridRoot : null]} onPress={onPress} accessibilityRole="button" accessibilityLabel={`View ${product.name}`}>
-    <Image source={{ uri: product.images[0] }} style={styles.image} contentFit="cover" />
-    <View style={styles.content}>
+  <Pressable style={[styles.root, layout === 'grid' ? styles.gridRoot : null, layout === 'compact' ? styles.compactRoot : null]} onPress={onPress} accessibilityRole="button" accessibilityLabel={`View ${product.name}`}>
+    <Image source={{ uri: product.images[0] }} style={[styles.image, layout === 'compact' ? styles.compactImage : null]} contentFit="cover" />
+    <View style={[styles.content, layout === 'compact' ? styles.compactContent : null]}>
       <Text style={styles.name}>{product.name}</Text>
       <Text style={styles.price}>{formatCurrency(product.price)}</Text>
       <RatingBadge rating={product.rating} reviewCount={product.reviewCount} />
@@ -36,12 +36,26 @@ const styles = StyleSheet.create({
     width: '100%',
     marginRight: 0,
   },
+  compactRoot: {
+    width: '100%',
+    minHeight: 96,
+    marginRight: 0,
+    flexDirection: 'row',
+  },
   image: {
     width: '100%',
     height: 140,
   },
+  compactImage: {
+    width: 96,
+    height: 96,
+  },
   content: {
     padding: theme.spacing.md,
+  },
+  compactContent: {
+    flex: 1,
+    justifyContent: 'center',
   },
   name: {
     color: theme.colors.ink,

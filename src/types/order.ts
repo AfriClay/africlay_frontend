@@ -1,4 +1,4 @@
-export type OrderStatus = 'Processing' | 'Shipped' | 'Delivered' | 'Cancelled';
+export type OrderStatus = 'New' | 'Accepted' | 'Packed' | 'Processing' | 'Shipped' | 'Completed' | 'Delivered' | 'Cancelled';
 
 export interface OrderItem {
   id: string;
@@ -19,4 +19,6 @@ export interface Order {
   sellerId: string;
   deliveryAddress: string;
   deliveryFee: number;
+  customerName?: string;
+  acceptanceDeadline?: string;
 }

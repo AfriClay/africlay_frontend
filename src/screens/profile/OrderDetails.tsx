@@ -21,7 +21,13 @@ export const OrderDetails: React.FC = () => {
 
   if (isLoading || !order) return <SafeAreaView style={styles.container}><Text style={styles.loading}>Loading order…</Text></SafeAreaView>;
 
-  const completedSteps = order.status === 'Delivered' ? 5 : order.status === 'Shipped' ? 3 : order.status === 'Processing' ? 2 : 0;
+  const completedSteps = order.status === 'Delivered' || order.status === 'Completed'
+    ? 5
+    : order.status === 'Shipped'
+      ? 3
+      : order.status === 'Packed' || order.status === 'Accepted' || order.status === 'Processing'
+        ? 2
+        : 0;
 
   return (
     <SafeAreaView style={styles.container}>

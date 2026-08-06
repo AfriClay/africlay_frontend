@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { FlatList, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CompositeNavigationProp, useNavigation } from '@react-navigation/native';
@@ -11,9 +11,9 @@ import { ProductCard } from '../../components/domain/ProductCard';
 import { SellerCard } from '../../components/domain/SellerCard';
 import { ServiceCard } from '../../components/domain/ServiceCard';
 import { MiniCartBar } from '../../components/ui/MiniCartBar';
-import { BottomSheet } from '../../components/ui/BottomSheet';
 import { useCart } from '../../hooks/useCart';
 import { useReducedMotionSafe } from '../../hooks/useReducedMotionSafe';
+import { useSideMenu } from '../../contexts/SideMenuContext';
 import { HomeStackParamList } from '../../navigation/HomeStack';
 import { RootStackParamList } from '../../navigation/RootNavigator';
 import { productService } from '../../services/productService';
@@ -26,13 +26,13 @@ type HomeNavigation = CompositeNavigationProp<
 
 export const Home: React.FC = () => {
   const navigation = useNavigation<HomeNavigation>();
+  const { open: openSideMenu } = useSideMenu();
   const reduceMotion = useReducedMotionSafe();
   const { data: categories = [], isLoading: categoriesLoading } = useQuery({ queryKey: ['categories'], queryFn: productService.fetchCategories });
   const { data: products = [], isLoading: productsLoading } = useQuery({ queryKey: ['products'], queryFn: productService.fetchProducts });
   const { data: services = [] } = useQuery({ queryKey: ['services'], queryFn: productService.fetchServices });
   const { data: sellers = [] } = useQuery({ queryKey: ['sellers'], queryFn: productService.fetchSellers });
   const cart = useCart();
-  const [sellSheetVisible, setSellSheetVisible] = useState(false);
   const featured = useMemo(() => products.slice(0, 4), [products]);
   const recommendedServices = useMemo(() => services.filter(service => service.id === 'svc-web-design' || service.id === 'svc-house-cleaning'), [services]);
 
@@ -47,7 +47,7 @@ export const Home: React.FC = () => {
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.topArea}>
         <View style={styles.topRow}>
-          <Pressable accessibilityRole="button" accessibilityLabel="Open menu" style={styles.iconButton}><Menu color={theme.colors.ink} size={23} /></Pressable>
+          <Pressable accessibilityRole="button" accessibilityLabel="Open menu" onPress={openSideMenu} style={styles.iconButton}><Menu color={theme.colors.ink} size={23} /></Pressable>
           <Text style={styles.brand}>AfriClay</Text>
           <Pressable accessibilityRole="button" accessibilityLabel="Notifications" onPress={() => navigation.navigate('Notifications')} style={styles.iconButton}>
             <Bell color={theme.colors.ink} size={22} />
@@ -139,20 +139,12 @@ export const Home: React.FC = () => {
         <View style={styles.sellBanner}>
           <Text style={styles.sellTitle}>Sell on AfriClay</Text>
           <Text style={styles.sellText}>Grow your business. Reach more buyers. It&apos;s easy and free!</Text>
-          <Pressable style={styles.sellCta} accessibilityRole="button" onPress={() => setSellSheetVisible(true)}>
+          <Pressable style={styles.sellCta} accessibilityRole="button" onPress={() => (navigation.getParent() as any)?.navigate('Sell')}>
             <Text style={styles.sellCtaText}>Start Selling</Text>
           </Pressable>
         </View>
       </ScrollView>
       {cart.itemCount > 0 ? <MiniCartBar count={cart.itemCount} subtotal={cart.subtotal} onPress={() => navigation.navigate('Cart')} /> : null}
-      <BottomSheet
-        visible={sellSheetVisible}
-        onClose={() => setSellSheetVisible(false)}
-        title="Seller onboarding is coming soon"
-        description="Seller onboarding is coming in a future update — continue shopping as a buyer for now?"
-        actionLabel="Continue as Buyer"
-        onAction={() => setSellSheetVisible(false)}
-      />
     </SafeAreaView>
   );
 };
