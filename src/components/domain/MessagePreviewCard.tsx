@@ -2,6 +2,7 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { theme } from '../../theme';
 import { Conversation } from '../../types/message';
+import { Avatar } from '../ui/Avatar';
 
 interface MessagePreviewCardProps {
   conversation: Conversation;
@@ -10,7 +11,8 @@ interface MessagePreviewCardProps {
 
 export const MessagePreviewCard: React.FC<MessagePreviewCardProps> = ({ conversation, onPress }) => (
   <Pressable style={styles.root} onPress={onPress} accessibilityRole="button" accessibilityLabel={`Open conversation with ${conversation.name}`}>
-    <View>
+    <Avatar name={conversation.name} imageUrl={conversation.avatarUrl} />
+    <View style={styles.copy}>
       <Text style={styles.name}>{conversation.name}</Text>
       <Text style={styles.message}>{conversation.lastMessage}</Text>
     </View>
@@ -36,6 +38,10 @@ const styles = StyleSheet.create({
     color: theme.colors.ink,
     fontWeight: '700',
     marginBottom: theme.spacing.xs,
+  },
+  copy: {
+    flex: 1,
+    marginLeft: theme.spacing.sm,
   },
   message: {
     color: theme.colors.muted,

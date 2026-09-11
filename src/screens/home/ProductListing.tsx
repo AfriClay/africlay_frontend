@@ -5,16 +5,16 @@ import { productService } from '../../services/productService';
 import { ProductCard } from '../../components/domain/ProductCard';
 import { theme } from '../../theme';
 import { EmptyState } from '../../components/ui/EmptyState';
-import { useNavigation, useRoute } from '@react-navigation/native';
-import { ROUTES } from '../../constants/routes';
+import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { HomeStackParamList } from '../../navigation/HomeStack';
 
 export const ProductListing: React.FC = () => {
-  const navigation = useNavigation<any>();
-  const route = useRoute();
+  const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList, 'ProductListing'>>();
+  const route = useRoute<RouteProp<HomeStackParamList, 'ProductListing'>>();
   const { data: products = [], isLoading } = useQuery({ queryKey: ['products'], queryFn: () => productService.fetchProducts() });
   const [query, setQuery] = useState('');
-  const routeParams = (route.params || {}) as any;
-  const [activeCategory, setActiveCategory] = useState<string | undefined>(routeParams?.categoryId);
+  const [activeCategory, setActiveCategory] = useState<string | undefined>(route.params?.categoryId);
 
   const filtered = useMemo(() => products.filter(product => {
     const matchesCategory = activeCategory ? product.category.toLowerCase().includes(activeCategory.toLowerCase()) : true;
@@ -36,9 +36,9 @@ export const ProductListing: React.FC = () => {
         ))}
       </View>
       {isLoading ? (
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' }}>
+        <View style={styles.skeletonGrid}>
           {Array.from({ length: 6 }).map((_, i) => (
-            <View key={i} style={{ width: '48%', height: 260, backgroundColor: theme.colors.border, borderRadius: theme.radii.md, marginBottom: theme.spacing.md }} />
+            <View key={i} style={styles.skeletonCard} />
           ))}
         </View>
       ) : (
@@ -48,7 +48,7 @@ export const ProductListing: React.FC = () => {
           keyExtractor={item => item.id}
           renderItem={({ item }) => (
             <View style={styles.cardWrapper}>
-              <ProductCard product={item} onPress={() => navigation.navigate('ProductDetails', { productId: item.id })} />
+              <ProductCard layout="grid" product={item} onPress={() => navigation.navigate('ProductDetails', { productId: item.id })} />
             </View>
           )}
           ListEmptyComponent={<EmptyState title="No products found" description="Try another search or choose a different category." />}
@@ -119,7 +119,9 @@ const styles = StyleSheet.create({
   },
   cardWrapper: {
     flex: 1,
+    maxWidth: '48%',
     marginBottom: theme.spacing.md,
-    marginRight: theme.spacing.sm,
   },
+  skeletonGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
+  skeletonCard: { width: '48%', height: 260, backgroundColor: theme.colors.border, borderRadius: theme.radii.md, marginBottom: theme.spacing.md },
 });

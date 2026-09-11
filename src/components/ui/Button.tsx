@@ -1,5 +1,5 @@
 import React from 'react';
-import { ActivityIndicator, StyleSheet, Text, Pressable, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, Pressable } from 'react-native';
 import { theme } from '../../theme';
 
 type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'ghost';

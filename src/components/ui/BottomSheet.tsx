@@ -9,9 +9,20 @@ interface BottomSheetProps {
   description: string;
   actionLabel: string;
   onAction: () => void;
+  secondaryActionLabel?: string;
+  onSecondaryAction?: () => void;
 }
 
-export const BottomSheet: React.FC<BottomSheetProps> = ({ visible, onClose, title, description, actionLabel, onAction }) => (
+export const BottomSheet: React.FC<BottomSheetProps> = ({
+  visible,
+  onClose,
+  title,
+  description,
+  actionLabel,
+  onAction,
+  secondaryActionLabel,
+  onSecondaryAction,
+}) => (
   <RNModal transparent animationType="slide" visible={visible} onRequestClose={onClose}>
     <Pressable style={styles.backdrop} onPress={onClose} accessibilityRole="button" />
     <View style={styles.sheet}>
@@ -21,6 +32,11 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({ visible, onClose, titl
       <Pressable onPress={onAction} style={styles.button} accessibilityRole="button">
         <Text style={styles.buttonText}>{actionLabel}</Text>
       </Pressable>
+      {secondaryActionLabel && onSecondaryAction ? (
+        <Pressable onPress={onSecondaryAction} style={styles.secondaryButton} accessibilityRole="button">
+          <Text style={styles.secondaryButtonText}>{secondaryActionLabel}</Text>
+        </Pressable>
+      ) : null}
     </View>
   </RNModal>
 );
@@ -63,6 +79,17 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: theme.colors.white,
+    fontWeight: '700',
+    fontSize: theme.typography.body.fontSize,
+  },
+  secondaryButton: {
+    minHeight: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: theme.spacing.sm,
+  },
+  secondaryButtonText: {
+    color: theme.colors.primary.DEFAULT,
     fontWeight: '700',
     fontSize: theme.typography.body.fontSize,
   },

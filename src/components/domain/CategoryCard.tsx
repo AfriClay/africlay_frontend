@@ -1,7 +1,7 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { theme } from '../../theme';
-import * as Icons from 'lucide-react-native';
+import { Droplet, Home, Leaf, MoreHorizontal, Scissors, Smartphone, Sparkles, Tag, Wrench, type LucideIcon } from 'lucide-react-native';
 
 interface CategoryCardProps {
   label: string;
@@ -9,8 +9,19 @@ interface CategoryCardProps {
   onPress: () => void;
 }
 
+export const categoryIconMap: Record<string, LucideIcon> = {
+  Droplet,
+  Home,
+  Leaf,
+  MoreHorizontal,
+  Scissors,
+  Smartphone,
+  Sparkles,
+  Tool: Wrench,
+};
+
 export const CategoryCard: React.FC<CategoryCardProps> = ({ label, icon, onPress }) => {
-  const Icon = (Icons as any)[icon] ?? Icons.Tag;
+  const Icon = categoryIconMap[icon] ?? Tag;
   return (
     <Pressable style={styles.root} onPress={onPress} accessibilityRole="button" accessibilityLabel={`Browse ${label}`}>
       <View style={styles.iconBox}>
@@ -23,8 +34,8 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({ label, icon, onPress
 
 const styles = StyleSheet.create({
   root: {
-    width: 90,
-    height: 110,
+    width: '23%',
+    minHeight: 96,
     borderRadius: theme.radii.lg,
     backgroundColor: theme.colors.white,
     alignItems: 'center',

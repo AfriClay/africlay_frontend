@@ -1,5 +1,3 @@
-import { Seller } from './seller';
-
 export type ProductCategory =
   | 'Agriculture'
   | 'Fashion'
@@ -23,6 +21,8 @@ export interface Product {
   images: string[];
   deliveryEstimate: string;
   availableQuantity: number;
+  weight?: string;
+  dimensions?: string;
   tags?: string[];
 }
 

@@ -27,4 +27,4 @@ export const ROUTES = {
   Cart: 'Cart',
   Checkout: 'Checkout',
   Notifications: 'Notifications',
-};
+} as const;

@@ -3,9 +3,13 @@ import { StyleSheet, Text, View } from 'react-native';
 import { theme } from '../../theme';
 
 const STATUS_CONFIG = {
+  New: { backgroundColor: theme.colors.secondary.DEFAULT, color: theme.colors.ink },
+  Accepted: { backgroundColor: theme.colors.primary.tint, color: theme.colors.primary.dark },
+  Packed: { backgroundColor: theme.colors.secondary.tint, color: theme.colors.ink },
   Processing: { backgroundColor: theme.colors.secondary.tint, color: theme.colors.ink },
   Shipped: { backgroundColor: theme.colors.primary.DEFAULT, color: theme.colors.white },
   Delivered: { backgroundColor: theme.colors.success, color: theme.colors.white },
+  Completed: { backgroundColor: theme.colors.success, color: theme.colors.white },
   Cancelled: { backgroundColor: theme.colors.error, color: theme.colors.white },
 } as const;
 

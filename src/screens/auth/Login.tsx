@@ -9,29 +9,47 @@ import { loginSchema } from '../../validation/authSchemas';
 import { useAuth } from '../../hooks/useAuth';
 import { useNavigation } from '@react-navigation/native';
 import { ROUTES } from '../../constants/routes';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { AuthStackParamList } from '../../navigation/AuthStack';
+import { AuthFlowCancelledError, getAuthErrorMessage } from '../../services/authService';
 
 type LoginForm = {
-  identifier: string;
+  email: string;
   password: string;
 };
 
 export const Login: React.FC = () => {
-  const navigation = useNavigation<any>();
+  const navigation = useNavigation<NativeStackNavigationProp<AuthStackParamList, 'Login'>>();
   const auth = useAuth();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const { control, handleSubmit } = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
-    defaultValues: { identifier: '', password: '' },
+    defaultValues: { email: '', password: '' },
   });
 
   const onSubmit = async (data: LoginForm) => {
     setErrorMessage(null);
     try {
-      await auth.login(data.identifier, data.password);
-      navigation.reset({ index: 0, routes: [{ name: 'AppTabs' }] });
+      const result = await auth.login(data.email, data.password);
+      if (result === 'verification') {
+        navigation.navigate(ROUTES.OTPVerification);
+      } else if (result === 'onboarding') {
+        navigation.navigate(ROUTES.RoleSelection);
+      }
     } catch (error) {
-      setErrorMessage('Invalid email or password.');
+      setErrorMessage(getAuthErrorMessage(error, 'Unable to log in.'));
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    setErrorMessage(null);
+    try {
+      await auth.loginWithGoogle();
+    } catch (error) {
+      if (!(error instanceof AuthFlowCancelledError)) {
+        setErrorMessage(getAuthErrorMessage(error, 'Unable to continue with Google.'));
+      }
     }
   };
 
@@ -40,15 +58,19 @@ export const Login: React.FC = () => {
       <Text style={styles.title}>Log In</Text>
       <Controller
         control={control}
-        name="identifier"
+        name="email"
         render={({ field: { onChange, value }, fieldState }) => (
           <Input
-            label="Email or phone"
+            label="Email"
             value={value}
             onChangeText={onChange}
             placeholder="you@example.com"
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoComplete="email"
+            autoCorrect={false}
             error={fieldState.error?.message}
-            accessibilityLabel="Email or phone"
+            accessibilityLabel="Email"
           />
         )}
       />
@@ -70,7 +92,13 @@ export const Login: React.FC = () => {
       {errorMessage ? <Text style={styles.error}>{errorMessage}</Text> : null}
       <Text style={styles.forgot} onPress={() => navigation.navigate(ROUTES.ForgotPassword)}>Forgot Password?</Text>
       <Button onPress={handleSubmit(onSubmit)} loading={auth.loading} accessibilityLabel="Log In">Log In</Button>
-      <Text style={styles.footer}>Don�t have an account? <Text style={styles.link} onPress={() => navigation.navigate(ROUTES.Register)}>Create Account</Text></Text>
+      <View style={styles.dividerRow} accessible={false}>
+        <View style={styles.divider} />
+        <Text style={styles.dividerText}>or</Text>
+        <View style={styles.divider} />
+      </View>
+      <Button variant="outline" onPress={handleGoogleLogin} disabled={auth.loading} accessibilityLabel="Continue with Google">Continue with Google</Button>
+      <Text style={styles.footer}>Don&apos;t have an account? <Text style={styles.link} onPress={() => navigation.navigate(ROUTES.Register)}>Create Account</Text></Text>
     </View>
   );
 };
@@ -105,5 +133,19 @@ const styles = StyleSheet.create({
   error: {
     color: theme.colors.error,
     marginBottom: theme.spacing.sm,
+  },
+  dividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: theme.spacing.md,
+  },
+  divider: {
+    flex: 1,
+    height: 1,
+    backgroundColor: theme.colors.border,
+  },
+  dividerText: {
+    marginHorizontal: theme.spacing.md,
+    color: theme.colors.muted,
   },
 });

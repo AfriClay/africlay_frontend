@@ -9,32 +9,35 @@ import { registerSchema } from '../../validation/authSchemas';
 import { useAuth } from '../../hooks/useAuth';
 import { useNavigation } from '@react-navigation/native';
 import { ROUTES } from '../../constants/routes';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { AuthStackParamList } from '../../navigation/AuthStack';
+import { getAuthErrorMessage } from '../../services/authService';
 
 type RegisterForm = {
   name: string;
-  identifier: string;
+  email: string;
   password: string;
   confirmPassword: string;
   acceptTerms: boolean;
 };
 
 export const Register: React.FC = () => {
-  const navigation = useNavigation<any>();
+  const navigation = useNavigation<NativeStackNavigationProp<AuthStackParamList, 'Register'>>();
   const auth = useAuth();
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const { control, handleSubmit, formState } = useForm<RegisterForm>({
+  const { control, handleSubmit, setValue } = useForm<RegisterForm>({
     resolver: zodResolver(registerSchema),
-    defaultValues: { name: '', identifier: '', password: '', confirmPassword: '', acceptTerms: false },
+    defaultValues: { name: '', email: '', password: '', confirmPassword: '', acceptTerms: false },
   });
 
   const onSubmit = async (data: RegisterForm) => {
     setSubmitError(null);
     try {
-      await auth.register(data.name, data.identifier, data.password);
+      await auth.register(data.name, data.email, data.password);
       navigation.navigate(ROUTES.OTPVerification);
     } catch (error) {
-      setSubmitError('Unable to create account.');
+      setSubmitError(getAuthErrorMessage(error, 'Unable to create account.'));
     }
   };
 
@@ -50,9 +53,20 @@ export const Register: React.FC = () => {
       />
       <Controller
         control={control}
-        name="identifier"
+        name="email"
         render={({ field: { onChange, value }, fieldState }) => (
-          <Input label="Email or phone" value={value} onChangeText={onChange} placeholder="you@example.com" error={fieldState.error?.message} accessibilityLabel="Email or phone" />
+          <Input
+            label="Email"
+            value={value}
+            onChangeText={onChange}
+            placeholder="you@example.com"
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoComplete="email"
+            autoCorrect={false}
+            error={fieldState.error?.message}
+            accessibilityLabel="Email"
+          />
         )}
       />
       <Controller
@@ -69,10 +83,20 @@ export const Register: React.FC = () => {
           <Input label="Confirm password" value={value} onChangeText={onChange} placeholder="Repeat your password" secureTextEntry error={fieldState.error?.message} accessibilityLabel="Confirm password" />
         )}
       />
-      <Pressable onPress={() => setAcceptTerms(current => !current)} style={styles.checkboxRow} accessibilityRole="checkbox" accessibilityState={{ checked: acceptTerms }}>
+      <Pressable
+        onPress={() => {
+          const nextValue = !acceptTerms;
+          setAcceptTerms(nextValue);
+          setValue('acceptTerms', nextValue, { shouldValidate: true });
+        }}
+        style={styles.checkboxRow}
+        accessibilityRole="checkbox"
+        accessibilityState={{ checked: acceptTerms }}
+      >
         <View style={[styles.checkbox, acceptTerms ? styles.checkboxChecked : null]}>{acceptTerms ? <Text style={styles.checkmark}>?</Text> : null}</View>
         <Text style={styles.checkboxLabel}>I agree to the Terms</Text>
       </Pressable>
+      <View nativeID="clerk-captcha" style={styles.captcha} />
       {submitError ? <Text style={styles.error}>{submitError}</Text> : null}
       <Button onPress={handleSubmit(onSubmit)} disabled={!acceptTerms || auth.loading} loading={auth.loading} accessibilityLabel="Create Account">Create Account</Button>
       <Text style={styles.footer}>Already have an account? <Text style={styles.link} onPress={() => navigation.navigate(ROUTES.Login)}>Log In</Text></Text>
@@ -120,6 +144,9 @@ const styles = StyleSheet.create({
   checkmark: {
     color: theme.colors.white,
     fontWeight: '700',
+  },
+  captcha: {
+    marginBottom: theme.spacing.sm,
   },
   footer: {
     marginTop: theme.spacing.lg,

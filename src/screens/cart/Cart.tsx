@@ -1,15 +1,20 @@
 import React from 'react';
-import { FlatList, Pressable, SafeAreaView, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useCart } from '../../hooks/useCart';
 import { theme } from '../../theme';
 import { formatCurrency } from '../../utils/formatCurrency';
 import { Button } from '../../components/ui/Button';
 import { useNavigation } from '@react-navigation/native';
-import { BottomSheet } from '../../components/ui/BottomSheet';
+import { GuestAuthSheet } from '../../components/ui/GuestAuthSheet';
 import { useAuth } from '../../hooks/useAuth';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../../navigation/RootNavigator';
+import { Image } from 'expo-image';
+import { Trash2, X } from 'lucide-react-native';
 
 export const Cart: React.FC = () => {
-  const navigation = useNavigation<any>();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList, 'Cart'>>();
   const cart = useCart();
   const auth = useAuth();
   const [authSheet, setAuthSheet] = React.useState(false);
@@ -17,8 +22,8 @@ export const Cart: React.FC = () => {
   if (auth.isGuest) {
     return (
       <SafeAreaView style={styles.container}>
-        <BottomSheet visible={authSheet} onClose={() => setAuthSheet(false)} title="Create a free account to continue" description="Register or log in to proceed to checkout and access your cart." actionLabel="Create Account" onAction={() => { setAuthSheet(false); navigation.navigate('Register'); }} />
-        <View style={{ padding: theme.spacing.lg }}>
+        <GuestAuthSheet visible={authSheet} onClose={() => setAuthSheet(false)} description="Register or log in to access your cart and proceed to checkout." />
+        <View style={styles.guestContent}>
           <Text style={styles.title}>Cart</Text>
           <View style={styles.empty}><Text style={styles.emptyText}>Create a free account to access your cart and proceed to checkout.</Text></View>
           <Button onPress={() => setAuthSheet(true)} accessibilityLabel="Create account">Create Account</Button>
@@ -29,12 +34,13 @@ export const Cart: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <Text style={styles.title}>Cart</Text>
+      <View style={styles.header}><Text style={styles.title}>Cart</Text><Pressable style={styles.closeButton} onPress={() => navigation.goBack()} accessibilityRole="button" accessibilityLabel="Close cart"><X color={theme.colors.ink} size={22} /></Pressable></View>
       {cart.itemCount === 0 ? (
         <View style={styles.empty}><Text style={styles.emptyText}>Your cart is empty. Add items to continue.</Text></View>
       ) : (
         <FlatList data={cart.items} keyExtractor={item => item.id} renderItem={({ item }) => (
           <View style={styles.itemRow}>
+            {item.thumbnailUrl ? <Image source={{ uri: item.thumbnailUrl }} style={styles.thumbnail} contentFit="cover" /> : null}
             <View style={styles.itemInfo}>
               <Text style={styles.itemName}>{item.name}</Text>
               <Text style={styles.itemPrice}>{formatCurrency(item.price)}</Text>
@@ -43,6 +49,7 @@ export const Cart: React.FC = () => {
               <Pressable onPress={() => cart.updateQuantity(item.id, Math.max(1, item.quantity - 1))} style={styles.quantityButton} accessibilityRole="button"><Text style={styles.quantityLabel}>-</Text></Pressable>
               <Text style={styles.quantityValue}>{item.quantity}</Text>
               <Pressable onPress={() => cart.updateQuantity(item.id, item.quantity + 1)} style={styles.quantityButton} accessibilityRole="button"><Text style={styles.quantityLabel}>+</Text></Pressable>
+              <Pressable onPress={() => cart.removeItem(item.id)} style={styles.removeButton} accessibilityRole="button" accessibilityLabel={`Remove ${item.name}`}><Trash2 color={theme.colors.error} size={18} /></Pressable>
             </View>
           </View>
         )} contentContainerStyle={styles.list} />
@@ -63,11 +70,32 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.cream,
   },
+  guestContent: {
+    flex: 1,
+    padding: theme.spacing.lg,
+  },
   title: {
     fontSize: theme.typography.h2.fontSize,
     fontWeight: '800',
     color: theme.colors.ink,
-    margin: theme.spacing.lg,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: theme.spacing.lg,
+  },
+  closeButton: {
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  thumbnail: {
+    width: 70,
+    height: 70,
+    borderRadius: theme.radii.md,
+    marginRight: theme.spacing.sm,
   },
   empty: {
     flex: 1,
@@ -107,6 +135,13 @@ const styles = StyleSheet.create({
   quantityRow: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  removeButton: {
+    minWidth: 40,
+    minHeight: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: theme.spacing.xs,
   },
   quantityButton: {
     backgroundColor: theme.colors.primary.tint,

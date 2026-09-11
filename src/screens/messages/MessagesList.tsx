@@ -1,18 +1,25 @@
-import React from 'react';
-import { FlatList, Pressable, SafeAreaView, StyleSheet, Text, View } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { FlatList, StyleSheet, Text, TextInput, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
 import { messageService } from '../../services/messageService';
 import { MessagePreviewCard } from '../../components/domain/MessagePreviewCard';
 import { theme } from '../../theme';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../hooks/useAuth';
-import { BottomSheet } from '../../components/ui/BottomSheet';
+import { GuestAuthSheet } from '../../components/ui/GuestAuthSheet';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { MessagesStackParamList } from '../../navigation/MessagesStack';
+import { Search } from 'lucide-react-native';
+import { EmptyState } from '../../components/ui/EmptyState';
 
 export const MessagesList: React.FC = () => {
-  const navigation = useNavigation<any>();
+  const navigation = useNavigation<NativeStackNavigationProp<MessagesStackParamList, 'Messages'>>();
   const auth = useAuth();
   const { data: conversations = [], isLoading } = useQuery({ queryKey: ['conversations'], queryFn: () => messageService.fetchConversations() });
-  const [authSheet, setAuthSheet] = React.useState(false);
+  const [authSheet, setAuthSheet] = useState(false);
+  const [query, setQuery] = useState('');
+  const filteredConversations = useMemo(() => conversations.filter(conversation => `${conversation.name} ${conversation.lastMessage}`.toLowerCase().includes(query.toLowerCase())), [conversations, query]);
 
   const openConversation = (convId: string, name: string) => {
     if (auth.isGuest) {
@@ -25,29 +32,28 @@ export const MessagesList: React.FC = () => {
   return (
     <SafeAreaView style={styles.container}>
       <Text style={styles.title}>Messages</Text>
+      <View style={styles.searchBar}><Search color={theme.colors.muted} size={18} /><TextInput value={query} onChangeText={setQuery} placeholder="Search messages…" placeholderTextColor={theme.colors.muted} style={styles.searchInput} accessibilityLabel="Search messages" /></View>
       {isLoading ? (
         <View style={styles.list}>
           {Array.from({ length: 6 }).map((_, i) => (
-            <View key={i} style={{ marginBottom: theme.spacing.md }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: theme.colors.border }} />
-                <View style={{ marginLeft: theme.spacing.sm, flex: 1 }}>
-                  <View style={{ height: 14, width: '40%', backgroundColor: theme.colors.border, borderRadius: theme.radii.sm }} />
-                  <View style={{ height: 12, width: '60%', backgroundColor: theme.colors.border, borderRadius: theme.radii.sm, marginTop: 8 }} />
+            <View key={i} style={styles.skeletonRoot}>
+              <View style={styles.skeletonRow}>
+                <View style={styles.skeletonAvatar} />
+                <View style={styles.skeletonCopy}>
+                  <View style={styles.skeletonTitle} />
+                  <View style={styles.skeletonText} />
                 </View>
               </View>
             </View>
           ))}
         </View>
       ) : (
-        <FlatList data={conversations} keyExtractor={item => item.id} renderItem={({ item }) => (
-          <Pressable onPress={() => openConversation(item.id, item.name)} accessibilityRole="button" accessibilityLabel={`Open conversation with ${item.name}`}>
-            <MessagePreviewCard conversation={item} onPress={() => openConversation(item.id, item.name)} />
-          </Pressable>
-        )} contentContainerStyle={styles.list} />
+        <FlatList data={filteredConversations} keyExtractor={item => item.id} renderItem={({ item }) => (
+          <MessagePreviewCard conversation={item} onPress={() => openConversation(item.id, item.name)} />
+        )} ListEmptyComponent={<EmptyState title="No conversations found" description="Try another name or message." />} contentContainerStyle={filteredConversations.length ? styles.list : styles.emptyList} />
       )}
 
-      <BottomSheet visible={authSheet} onClose={() => setAuthSheet(false)} title="Create a free account to continue" description="Register or log in to message sellers and support." actionLabel="Create Account" onAction={() => { setAuthSheet(false); navigation.navigate('Register'); }} />
+      <GuestAuthSheet visible={authSheet} onClose={() => setAuthSheet(false)} description="Register or log in to message sellers and support." />
     </SafeAreaView>
   );
 };
@@ -55,5 +61,14 @@ export const MessagesList: React.FC = () => {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.cream },
   title: { fontSize: theme.typography.h2.fontSize, fontWeight: '800', color: theme.colors.ink, margin: theme.spacing.lg },
+  searchBar: { minHeight: 48, marginHorizontal: theme.spacing.lg, marginBottom: theme.spacing.md, paddingHorizontal: theme.spacing.md, borderRadius: theme.radii.lg, backgroundColor: theme.colors.white, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: theme.colors.border },
+  searchInput: { flex: 1, marginLeft: theme.spacing.sm, color: theme.colors.ink, fontSize: theme.typography.body.fontSize },
   list: { paddingHorizontal: theme.spacing.lg },
+  emptyList: { flexGrow: 1, paddingHorizontal: theme.spacing.lg },
+  skeletonRoot: { marginBottom: theme.spacing.md },
+  skeletonRow: { flexDirection: 'row', alignItems: 'center' },
+  skeletonAvatar: { width: 48, height: 48, borderRadius: 24, backgroundColor: theme.colors.border },
+  skeletonCopy: { marginLeft: theme.spacing.sm, flex: 1 },
+  skeletonTitle: { height: 14, width: '40%', backgroundColor: theme.colors.border, borderRadius: theme.radii.sm },
+  skeletonText: { height: 12, width: '60%', backgroundColor: theme.colors.border, borderRadius: theme.radii.sm, marginTop: theme.spacing.sm },
 });

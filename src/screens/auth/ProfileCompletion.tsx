@@ -3,8 +3,6 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { theme } from '../../theme';
 import { Button } from '../../components/ui/Button';
 import { useAuth } from '../../hooks/useAuth';
-import { useNavigation } from '@react-navigation/native';
-import { ROUTES } from '../../constants/routes';
 import { Input } from '../../components/ui/Input';
 
 export const ProfileCompletion: React.FC = () => {
@@ -13,11 +11,14 @@ export const ProfileCompletion: React.FC = () => {
   const [phone, setPhone] = useState('');
   const [name, setName] = useState('');
   const auth = useAuth();
-  const navigation = useNavigation<any>();
 
   const handleSave = async () => {
-    await auth.saveProfile({ name: name || auth.user?.name, location: city ? `${city}, Kenya` : auth.user?.location });
-    navigation.reset({ index: 0, routes: [{ name: 'AppTabs' }] });
+    const baseUser = auth.user ?? auth.pendingUser;
+    await auth.saveProfile({ name: name || baseUser?.name, location: city ? `${city}, Kenya` : baseUser?.location });
+  };
+
+  const handleSkip = async () => {
+    await auth.saveProfile({});
   };
 
   return (
@@ -32,7 +33,7 @@ export const ProfileCompletion: React.FC = () => {
       <Input label="Address" value={address} onChangeText={setAddress} placeholder="Delivery address" accessibilityLabel="Delivery address" />
       <Input label="City" value={city} onChangeText={setCity} placeholder="City" accessibilityLabel="City" />
       <Button onPress={handleSave} accessibilityLabel="Save and Continue">Save & Continue</Button>
-      <Pressable onPress={() => navigation.reset({ index: 0, routes: [{ name: 'AppTabs' }] })} accessibilityRole="button">
+      <Pressable onPress={handleSkip} accessibilityRole="button">
         <Text style={styles.skip}>Skip for now</Text>
       </Pressable>
     </ScrollView>

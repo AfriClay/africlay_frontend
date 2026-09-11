@@ -35,7 +35,7 @@ export const orders: Order[] = [
         productId: 'prod-avocado',
         name: 'Organic Avocados',
         quantity: 2,
-        price: 400,
+        price: 200,
         sellerId: 'seller-zuri',
         thumbnailUrl: 'https://images.unsplash.com/photo-1567306226416-28f0efdc88ce?auto=format&fit=crop&w=400&q=80',
       },

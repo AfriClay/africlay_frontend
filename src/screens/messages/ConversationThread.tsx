@@ -1,16 +1,18 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { FlatList, KeyboardAvoidingView, Platform, Pressable, SafeAreaView, StyleSheet, Text, TextInput, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { FlatList, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { messageService } from '../../services/messageService';
 import { ChatBubble } from '../../components/domain/ChatBubble';
 import { theme } from '../../theme';
-import { useRoute } from '@react-navigation/native';
+import { RouteProp, useRoute } from '@react-navigation/native';
 import { useAuth } from '../../hooks/useAuth';
-import { BottomSheet } from '../../components/ui/BottomSheet';
+import { GuestAuthSheet } from '../../components/ui/GuestAuthSheet';
+import { MessagesStackParamList } from '../../navigation/MessagesStack';
 
 export const ConversationThread: React.FC = () => {
-  const route = useRoute<any>();
-  const { conversationId, name } = route.params;
+  const route = useRoute<RouteProp<MessagesStackParamList, 'ConversationThread'>>();
+  const { conversationId } = route.params;
   const auth = useAuth();
   const queryClient = useQueryClient();
   const { data: messages = [] } = useQuery({ queryKey: ['messages', conversationId], queryFn: () => messageService.fetchMessages(conversationId) });
@@ -32,14 +34,13 @@ export const ConversationThread: React.FC = () => {
     // simulate auto-reply
     setTimeout(async () => {
     await messageService.sendAutoReply(conversationId, 'Thanks — we will get back to you shortly.');
-    queryClient.invalidateQueries(['messages', conversationId] as any);
+    await queryClient.invalidateQueries({ queryKey: ['messages', conversationId] });
     }, 1200);
-    queryClient.invalidateQueries(['messages', conversationId] as any);
+    await queryClient.invalidateQueries({ queryKey: ['messages', conversationId] });
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      <Text style={styles.title}>{name}</Text>
       <FlatList data={messages} keyExtractor={item => item.id} renderItem={({ item }) => <ChatBubble message={item} />} inverted contentContainerStyle={styles.list} />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={80}>
         <View style={styles.composer}>
@@ -47,14 +48,13 @@ export const ConversationThread: React.FC = () => {
           <Pressable onPress={send} style={styles.sendButton} accessibilityRole="button"><Text style={styles.sendText}>Send</Text></Pressable>
         </View>
       </KeyboardAvoidingView>
-      <BottomSheet visible={authSheet} onClose={() => setAuthSheet(false)} title="Create a free account to continue" description="Register or log in to message sellers and support." actionLabel="Log In" onAction={() => { setAuthSheet(false); }} />
+      <GuestAuthSheet visible={authSheet} onClose={() => setAuthSheet(false)} description="Register or log in to message sellers and support." />
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.cream },
-  title: { fontSize: theme.typography.h3.fontSize, fontWeight: '700', color: theme.colors.ink, margin: theme.spacing.lg },
   list: { paddingHorizontal: theme.spacing.lg },
   composer: { flexDirection: 'row', padding: theme.spacing.md, borderTopWidth: 1, borderTopColor: theme.colors.border, backgroundColor: theme.colors.white },
   input: { flex: 1, padding: theme.spacing.sm, backgroundColor: theme.colors.border, borderRadius: theme.radii.md, marginRight: theme.spacing.sm },

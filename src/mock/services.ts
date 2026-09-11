@@ -2,6 +2,28 @@ import { Service } from '../types/product';
 
 export const services: Service[] = [
   {
+    id: 'svc-web-design',
+    title: 'Web Design & Development',
+    description: 'Responsive websites and online stores built by verified African digital professionals.',
+    priceFrom: 10000,
+    rating: 4.7,
+    reviewCount: 54,
+    category: 'Business Services',
+    providerId: 'seller-zuri',
+    images: ['https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=800&q=80'],
+  },
+  {
+    id: 'svc-house-cleaning',
+    title: 'House Cleaning Services',
+    description: 'Trusted home cleaning professionals with flexible schedules and clear pricing.',
+    priceFrom: 2000,
+    rating: 4.6,
+    reviewCount: 76,
+    category: 'Cleaning Services',
+    providerId: 'seller-zuri',
+    images: ['https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&w=800&q=80'],
+  },
+  {
     id: 'svc-home-repair',
     title: 'Home Repair & Maintenance',
     description: 'Local handymen ready for repairs, installations, and maintenance.',

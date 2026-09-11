@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
-import { FlatList, Pressable, SafeAreaView, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
-import { useRoute, useNavigation } from '@react-navigation/native';
+import { RouteProp, useRoute, useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { productService } from '../../services/productService';
 import { Seller } from '../../types/seller';
 import { Product } from '../../types/product';
@@ -10,17 +12,21 @@ import { RatingBadge } from '../../components/ui/RatingBadge';
 import { ProductCard } from '../../components/domain/ProductCard';
 import { ReviewCard } from '../../components/domain/ReviewCard';
 import { reviewService } from '../../services/reviewService';
+import { ServiceCard } from '../../components/domain/ServiceCard';
+import { HomeStackParamList } from '../../navigation/HomeStack';
+import { Image } from 'expo-image';
+import { BadgeCheck, MapPin } from 'lucide-react-native';
 
 const tabs = ['Shop', 'Services', 'About', 'Reviews'] as const;
 
 export const SellerStore: React.FC = () => {
-  const navigation = useNavigation<any>();
-  const route = useRoute();
-  const routeParams = (route.params || {}) as any;
-  const { sellerId } = routeParams;
+  const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList, 'SellerStore'>>();
+  const route = useRoute<RouteProp<HomeStackParamList, 'SellerStore'>>();
+  const { sellerId } = route.params;
   const [activeTab, setActiveTab] = useState<'Shop' | 'Services' | 'About' | 'Reviews'>('Shop');
   const { data: seller, isLoading: sellerLoading } = useQuery<Seller | undefined>({ queryKey: ['seller', sellerId], queryFn: () => productService.fetchSeller(sellerId) });
   const { data: products = [], isLoading: productsLoading } = useQuery<Product[]>({ queryKey: ['sellerProducts', sellerId], queryFn: () => productService.fetchProductsBySeller(sellerId), enabled: Boolean(sellerId) });
+  const { data: services = [], isLoading: servicesLoading } = useQuery({ queryKey: ['sellerServices', sellerId], queryFn: () => productService.fetchServicesBySeller(sellerId), enabled: Boolean(sellerId) });
   const { data: reviews = [], isLoading: reviewsLoading } = useQuery({ queryKey: ['reviews'], queryFn: () => reviewService.fetchReviews() });
 
   if (sellerLoading) {
@@ -33,12 +39,12 @@ export const SellerStore: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.container}>
+      {seller.bannerUrl ? <Image source={{ uri: seller.bannerUrl }} style={styles.banner} contentFit="cover" /> : null}
       <View style={styles.header}>
-        <Text style={styles.name}>{seller.name}</Text>
-        <Text style={styles.meta}>{seller.location}</Text>
+        <View style={styles.storeIdentity}><View style={styles.logo}><Text style={styles.logoText}>ZURI</Text></View><View style={styles.storeCopy}><Text style={styles.name}>{seller.name}</Text><View style={styles.metaRow}><MapPin color={theme.colors.muted} size={14} /><Text style={styles.meta}>{seller.location}</Text></View></View><Pressable style={styles.followButton} accessibilityRole="button"><Text style={styles.followText}>Follow</Text></Pressable></View>
         <View style={styles.badgeRow}>
           <RatingBadge rating={seller.rating} reviewCount={seller.reviewCount} />
-          <Text style={styles.verified}>{seller.verified ? 'Verified Seller' : ''}</Text>
+          {seller.verified ? <View style={styles.verifiedRow}><BadgeCheck color={theme.colors.success} size={16} /><Text style={styles.verified}>Verified Seller</Text></View> : null}
         </View>
       </View>
       <View style={styles.tabBar}>
@@ -52,7 +58,7 @@ export const SellerStore: React.FC = () => {
         productsLoading ? (
           <View style={styles.list}>
             {Array.from({ length: 6 }).map((_, i) => (
-              <View key={i} style={{ width: '48%', height: 260, backgroundColor: theme.colors.border, borderRadius: theme.radii.md, marginBottom: theme.spacing.md }} />
+              <View key={i} style={styles.productSkeleton} />
             ))}
           </View>
         ) : (
@@ -62,7 +68,7 @@ export const SellerStore: React.FC = () => {
             numColumns={2}
             renderItem={({ item }) => (
               <View style={styles.cardWrapper}>
-                <ProductCard product={item} onPress={() => navigation.navigate('ProductDetails', { productId: item.id })} />
+                <ProductCard layout="grid" product={item} onPress={() => navigation.navigate('ProductDetails', { productId: item.id })} />
               </View>
             )}
             contentContainerStyle={styles.list}
@@ -70,14 +76,21 @@ export const SellerStore: React.FC = () => {
           />
         )
       ) : activeTab === 'Services' ? (
-        <View style={styles.content}><Text style={styles.description}>Service listings will be available soon.</Text></View>
+        servicesLoading ? <View style={styles.list}><View style={styles.serviceSkeleton} /></View> : (
+          <FlatList
+            data={services}
+            keyExtractor={item => item.id}
+            renderItem={({ item }) => <ServiceCard service={item} onPress={() => navigation.navigate('ServiceDetails', { serviceId: item.id })} />}
+            contentContainerStyle={styles.list}
+          />
+        )
       ) : activeTab === 'About' ? (
         <View style={styles.content}><Text style={styles.description}>{seller.bio}</Text></View>
       ) : (
         reviewsLoading ? (
           <View style={styles.list}>
             {Array.from({ length: 4 }).map((_, i) => (
-              <View key={i} style={{ height: 88, backgroundColor: theme.colors.border, borderRadius: theme.radii.md, marginBottom: theme.spacing.md }} />
+              <View key={i} style={styles.reviewSkeleton} />
             ))}
           </View>
         ) : (
@@ -101,6 +114,13 @@ const styles = StyleSheet.create({
   header: {
     padding: theme.spacing.lg,
   },
+  banner: { width: '100%', height: 150 },
+  storeIdentity: { flexDirection: 'row', alignItems: 'center' },
+  storeCopy: { flex: 1, marginLeft: theme.spacing.sm },
+  logo: { width: 58, height: 58, borderRadius: 29, backgroundColor: theme.colors.ink, borderWidth: 3, borderColor: theme.colors.white, alignItems: 'center', justifyContent: 'center', marginTop: -34 },
+  logoText: { color: theme.colors.white, fontSize: 11, fontWeight: '800' },
+  followButton: { minHeight: 40, paddingHorizontal: theme.spacing.md, borderRadius: theme.radii.md, borderWidth: 1, borderColor: theme.colors.primary.DEFAULT, alignItems: 'center', justifyContent: 'center' },
+  followText: { color: theme.colors.primary.DEFAULT, fontWeight: '700' },
   name: {
     color: theme.colors.ink,
     fontSize: theme.typography.h2.fontSize,
@@ -109,16 +129,18 @@ const styles = StyleSheet.create({
   },
   meta: {
     color: theme.colors.muted,
-    marginBottom: theme.spacing.sm,
+    marginLeft: theme.spacing.xs,
   },
+  metaRow: { flexDirection: 'row', alignItems: 'center', marginBottom: theme.spacing.sm },
   badgeRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: theme.spacing.sm,
   },
+  verifiedRow: { flexDirection: 'row', alignItems: 'center' },
   verified: {
     marginLeft: theme.spacing.sm,
-    color: theme.colors.secondary.DEFAULT,
+    color: theme.colors.success,
     fontWeight: '700',
   },
   tabBar: {
@@ -157,7 +179,14 @@ const styles = StyleSheet.create({
   },
   cardWrapper: {
     flex: 1,
+    maxWidth: '48%',
     marginBottom: theme.spacing.md,
-    marginRight: theme.spacing.sm,
   },
+  serviceSkeleton: {
+    height: 210,
+    borderRadius: theme.radii.lg,
+    backgroundColor: theme.colors.border,
+  },
+  productSkeleton: { width: '48%', height: 260, backgroundColor: theme.colors.border, borderRadius: theme.radii.md, marginBottom: theme.spacing.md },
+  reviewSkeleton: { height: 88, backgroundColor: theme.colors.border, borderRadius: theme.radii.md, marginBottom: theme.spacing.md },
 });

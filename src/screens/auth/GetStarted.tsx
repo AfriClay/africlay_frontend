@@ -5,9 +5,11 @@ import { Button } from '../../components/ui/Button';
 import { ROUTES } from '../../constants/routes';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../hooks/useAuth';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { AuthStackParamList } from '../../navigation/AuthStack';
 
 export const GetStarted: React.FC = () => {
-  const navigation = useNavigation<any>();
+  const navigation = useNavigation<NativeStackNavigationProp<AuthStackParamList, 'GetStarted'>>();
   const auth = useAuth();
 
   return (
@@ -18,7 +20,7 @@ export const GetStarted: React.FC = () => {
         <Button onPress={() => navigation.navigate(ROUTES.Login)} accessibilityLabel="Login">Login</Button>
         <Button variant="outline" onPress={() => navigation.navigate(ROUTES.Register)} accessibilityLabel="Create Account">Create Account</Button>
       </View>
-      <Pressable onPress={async () => { await auth.continueAsGuest(); navigation.reset({ index: 0, routes: [{ name: 'AppTabs' }] }); }} accessibilityRole="button">
+      <Pressable onPress={auth.continueAsGuest} accessibilityRole="button">
         <Text style={styles.guestLink}>Continue as Guest</Text>
       </Pressable>
     </View>

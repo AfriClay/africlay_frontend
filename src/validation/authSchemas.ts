@@ -1,13 +1,13 @@
 import { z } from 'zod';
 
 export const loginSchema = z.object({
-  identifier: z.string().min(1, 'Enter your email or phone'),
+  email: z.email('Enter a valid email address'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
 });
 
 export const registerSchema = z.object({
   name: z.string().min(1, 'Enter your name'),
-  identifier: z.string().min(1, 'Enter your email or phone'),
+  email: z.email('Enter a valid email address'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
   confirmPassword: z.string().min(6, 'Confirm your password'),
   acceptTerms: z.boolean().refine(v => v === true, {
@@ -19,5 +19,5 @@ export const registerSchema = z.object({
 });
 
 export const passwordResetSchema = z.object({
-  identifier: z.string().min(1, 'Enter your email or phone'),
+  email: z.email('Enter a valid email address'),
 });

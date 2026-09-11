@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { theme } from '../../theme';
 import { Review } from '../../types/review';
 import { RatingBadge } from '../ui/RatingBadge';
