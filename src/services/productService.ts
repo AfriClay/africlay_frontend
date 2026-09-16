@@ -1,17 +1,27 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { products } from '../mock/products';
-import { services } from '../mock/services';
-import { sellers } from '../mock/sellers';
+import { apiClient } from './api';
 import { Product, ProductCategory, Service } from '../types/product';
 import { Seller } from '../types/seller';
-import { simulateNetwork } from './api';
 
-const SELLER_CATALOG_KEY = 'africlay-seller-catalog-v1';
+type BackendProduct = {
+  id: string;
+  store: string;
+  name: string;
+  slug: string;
+  description: string;
+  price: string | number;
+  currency: string;
+  stock_quantity: number;
+  status: string;
+};
 
-interface SellerCatalogState {
-  initializedSellerIds: string[];
-  products: Product[];
-}
+type BackendStore = {
+  id: string;
+  owner: string;
+  name: string;
+  slug: string;
+  description: string;
+  status: string;
+};
 
 export interface SellerProductDraft {
   name: string;
@@ -24,130 +34,111 @@ export interface SellerProductDraft {
   dimensions?: string;
 }
 
-const emptyCatalog: SellerCatalogState = { initializedSellerIds: [], products: [] };
-
-const readCatalog = async (): Promise<SellerCatalogState> => {
-  const stored = await AsyncStorage.getItem(SELLER_CATALOG_KEY);
-  if (!stored) return emptyCatalog;
-  try {
-    const parsed = JSON.parse(stored) as SellerCatalogState;
-    return {
-      initializedSellerIds: Array.isArray(parsed.initializedSellerIds) ? parsed.initializedSellerIds : [],
-      products: Array.isArray(parsed.products) ? parsed.products : [],
-    };
-  } catch {
-    return emptyCatalog;
-  }
-};
-
-const writeCatalog = async (catalog: SellerCatalogState): Promise<void> => {
-  await AsyncStorage.setItem(SELLER_CATALOG_KEY, JSON.stringify(catalog));
-};
-
-const seedProducts = (sellerId: string): Product[] => [
-  {
-    id: `${sellerId}-kitenge-bundle`,
-    name: 'Kitenge Fabric Bundle',
-    description: 'A vibrant bundle of quality Kitenge fabric for clothing, accessories, and décor.',
-    price: 1800,
-    currency: 'KSh',
-    rating: 0,
-    reviewCount: 0,
-    category: 'Fashion',
-    sellerId,
-    images: ['https://images.unsplash.com/photo-1604514628550-37477afdf4e3?auto=format&fit=crop&w=900&q=80'],
-    deliveryEstimate: '2–4 days',
-    availableQuantity: 12,
-  },
-  {
-    id: `${sellerId}-sisal-rug`,
-    name: 'Handmade Sisal Rug',
-    description: 'A durable handwoven sisal rug made by Kenyan artisans for warm, natural interiors.',
-    price: 3200,
-    currency: 'KSh',
-    rating: 0,
-    reviewCount: 0,
-    category: 'Home & Living',
-    sellerId,
-    images: ['https://images.unsplash.com/photo-1600166898405-da9535204843?auto=format&fit=crop&w=900&q=80'],
-    deliveryEstimate: '3–5 days',
-    availableQuantity: 5,
-  },
-];
-
-const toProduct = (sellerId: string, draft: SellerProductDraft, id = `${sellerId}-${Date.now()}`): Product => ({
-  id,
-  ...draft,
+const asProduct = (item: BackendProduct): Product => ({
+  id: item.id,
+  name: item.name,
+  description: item.description,
+  price: Number(item.price),
   currency: 'KSh',
   rating: 0,
   reviewCount: 0,
-  sellerId,
-  deliveryEstimate: '2–5 days',
+  category: 'More',
+  sellerId: item.store,
+  images: [],
+  deliveryEstimate: 'Availability confirmed by seller',
+  availableQuantity: item.stock_quantity,
+});
+
+const asSeller = (item: BackendStore): Seller => ({
+  id: item.owner,
+  name: item.name,
+  location: 'Kenya',
+  bio: item.description,
+  rating: 0,
+  reviewCount: 0,
+  verified: item.status === 'active',
+});
+
+const slugify = (value: string): string =>
+  value.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || `product-${Date.now()}`;
+
+const toBackendDraft = (draft: SellerProductDraft) => ({
+  name: draft.name,
+  slug: `${slugify(draft.name)}-${Date.now()}`,
+  description: draft.description,
+  sku: `${slugify(draft.name).slice(0, 60)}-${Date.now()}`,
+  price: draft.price,
+  currency: 'KES',
+  stock_quantity: draft.availableQuantity,
+  status: 'published',
 });
 
 export const productService = {
-  initializeSellerCatalog: async (sellerId: string): Promise<Product[]> => {
-    const catalog = await readCatalog();
-    if (!catalog.initializedSellerIds.includes(sellerId)) {
-      catalog.initializedSellerIds.push(sellerId);
-      catalog.products.push(...seedProducts(sellerId));
-      await writeCatalog(catalog);
-    }
-    return simulateNetwork(catalog.products.filter(product => product.sellerId === sellerId));
+  fetchProducts: async (): Promise<Product[]> => {
+    const response = await apiClient<BackendProduct[]>('/products/', { auth: false });
+    return response.map(asProduct);
   },
 
-  fetchSellerProducts: async (sellerId: string): Promise<Product[]> => {
-    const catalog = await readCatalog();
-    return simulateNetwork(catalog.products.filter(product => product.sellerId === sellerId));
+  fetchProductById: async (id: string): Promise<Product | null> => {
+    const products = await productService.fetchProducts();
+    return products.find(product => product.id === id) ?? null;
   },
+
+  fetchProductsBySeller: async (sellerId: string): Promise<Product[]> => {
+    const [products, stores] = await Promise.all([
+      apiClient<BackendProduct[]>('/products/', { auth: false }),
+      apiClient<BackendStore[]>('/stores/', { auth: false }),
+    ]);
+    const storeIds = new Set(
+      stores.filter(store => store.owner === sellerId || store.id === sellerId).map(store => store.id),
+    );
+    return products.filter(product => storeIds.has(product.store)).map(asProduct);
+  },
+
+  initializeSellerCatalog: async (sellerId: string): Promise<Product[]> =>
+    productService.fetchSellerProducts(sellerId),
+
+  fetchSellerProducts: async (_sellerId: string): Promise<Product[]> =>
+    apiClient<BackendProduct[]>('/products/manage/').then(products => products.map(asProduct)),
 
   addSellerProduct: async (sellerId: string, draft: SellerProductDraft): Promise<Product> => {
-    const catalog = await readCatalog();
-    const product = toProduct(sellerId, draft);
-    catalog.products.unshift(product);
-    if (!catalog.initializedSellerIds.includes(sellerId)) catalog.initializedSellerIds.push(sellerId);
-    await writeCatalog(catalog);
-    return simulateNetwork(product);
+    const product = await apiClient<BackendProduct>('/products/manage/', {
+      method: 'POST',
+      body: toBackendDraft(draft),
+    });
+    return asProduct(product);
   },
 
-  updateSellerProduct: async (sellerId: string, productId: string, draft: SellerProductDraft): Promise<Product> => {
-    const catalog = await readCatalog();
-    const index = catalog.products.findIndex(product => product.id === productId && product.sellerId === sellerId);
-    if (index < 0) throw new Error('Product not found.');
-    const updated = { ...catalog.products[index], ...draft } as Product;
-    catalog.products[index] = updated;
-    await writeCatalog(catalog);
-    return simulateNetwork(updated);
+  updateSellerProduct: async (_sellerId: string, productId: string, draft: SellerProductDraft): Promise<Product> => {
+    const product = await apiClient<BackendProduct>(`/products/manage/${productId}/`, {
+      method: 'PATCH',
+      body: {
+        name: draft.name,
+        description: draft.description,
+        price: draft.price,
+        stock_quantity: draft.availableQuantity,
+      },
+    });
+    return asProduct(product);
   },
 
-  deleteSellerProduct: async (sellerId: string, productId: string): Promise<void> => {
-    const catalog = await readCatalog();
-    catalog.products = catalog.products.filter(product => !(product.id === productId && product.sellerId === sellerId));
-    await writeCatalog(catalog);
-    await simulateNetwork(undefined);
+  deleteSellerProduct: async (_sellerId: string, _productId: string): Promise<void> => {
+    throw new Error('The backend does not expose a product deletion endpoint.');
   },
 
-  fetchProducts: async (): Promise<Product[]> => {
-    const catalog = await readCatalog();
-    return simulateNetwork([...catalog.products, ...products]);
+  fetchCategories: async (): Promise<{ id: string; label: string; icon: string }[]> => [],
+  fetchServices: async (): Promise<Service[]> => [],
+  fetchServicesBySeller: async (_sellerId: string): Promise<Service[]> => [],
+  fetchServiceById: async (_id: string): Promise<Service | null> => null,
+
+  fetchSeller: async (id: string): Promise<Seller | null> => {
+    const stores = await apiClient<BackendStore[]>('/stores/', { auth: false });
+    const store = stores.find(item => item.owner === id || item.id === id);
+    return store ? asSeller(store) : null;
   },
-  fetchProductById: async (id: string): Promise<Product | undefined> => {
-    const catalog = await readCatalog();
-    const item = catalog.products.find(product => product.id === id) ?? products.find(product => product.id === id);
-    return simulateNetwork(item);
+
+  fetchSellers: async (): Promise<Seller[]> => {
+    const stores = await apiClient<BackendStore[]>('/stores/', { auth: false });
+    return stores.map(asSeller);
   },
-  fetchProductsBySeller: async (sellerId: string): Promise<Product[]> => {
-    const catalog = await readCatalog();
-    const items = [
-      ...catalog.products.filter(product => product.sellerId === sellerId),
-      ...products.filter(product => product.sellerId === sellerId),
-    ];
-    return simulateNetwork(items);
-  },
-  fetchServices: async (): Promise<Service[]> => simulateNetwork(services),
-  fetchServicesBySeller: async (sellerId: string): Promise<Service[]> => simulateNetwork(services.filter(service => service.providerId === sellerId)),
-  fetchServiceById: async (id: string): Promise<Service | undefined> => simulateNetwork(services.find(service => service.id === id)),
-  fetchCategories: async (): Promise<{ id: string; label: string; icon: string }[]> => simulateNetwork(await import('../mock/categories').then(module => module.categories)),
-  fetchSeller: async (id: string): Promise<Seller | undefined> => simulateNetwork(sellers.find(item => item.id === id)),
-  fetchSellers: async (): Promise<Seller[]> => simulateNetwork(sellers),
 };

@@ -1,4 +1,5 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useResponsiveLayout } from '../../contexts/ResponsiveLayoutContext';
 import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { productService } from '../../services/productService';
@@ -8,13 +9,17 @@ import { EmptyState } from '../../components/ui/EmptyState';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { HomeStackParamList } from '../../navigation/HomeStack';
+import { ErrorState } from '../../components/ui/ErrorState';
 
 export const ProductListing: React.FC = () => {
+  const { productColumns, isExpanded } = useResponsiveLayout();
   const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList, 'ProductListing'>>();
   const route = useRoute<RouteProp<HomeStackParamList, 'ProductListing'>>();
-  const { data: products = [], isLoading } = useQuery({ queryKey: ['products'], queryFn: () => productService.fetchProducts() });
+  const productsQuery = useQuery({ queryKey: ['products'], queryFn: () => productService.fetchProducts() });
+  const { data: products = [], isLoading } = productsQuery;
   const [query, setQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState<string | undefined>(route.params?.categoryId);
+  useEffect(() => setActiveCategory(route.params?.categoryId), [route.params?.categoryId]);
 
   const filtered = useMemo(() => products.filter(product => {
     const matchesCategory = activeCategory ? product.category.toLowerCase().includes(activeCategory.toLowerCase()) : true;
@@ -23,6 +28,8 @@ export const ProductListing: React.FC = () => {
   }), [products, activeCategory, query]);
 
   const categories = ['All', 'Agriculture', 'Fashion', 'Electronics', 'Handmade', 'Home & Living', 'Beauty'];
+
+  if (productsQuery.isError) return <ErrorState message="Unable to load products." onRetry={() => void productsQuery.refetch()} />;
 
   return (
     <View style={styles.container}>
@@ -44,10 +51,11 @@ export const ProductListing: React.FC = () => {
       ) : (
         <FlatList
           data={filtered}
-          numColumns={2}
+          key={productColumns}
+          numColumns={productColumns}
           keyExtractor={item => item.id}
           renderItem={({ item }) => (
-            <View style={styles.cardWrapper}>
+            <View style={[styles.cardWrapper, isExpanded && { maxWidth: `${100 / productColumns}%`, paddingHorizontal: theme.spacing.xs }]}>
               <ProductCard layout="grid" product={item} onPress={() => navigation.navigate('ProductDetails', { productId: item.id })} />
             </View>
           )}

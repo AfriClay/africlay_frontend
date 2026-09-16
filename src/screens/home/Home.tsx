@@ -1,86 +1,73 @@
 import React, { useMemo } from 'react';
 import { FlatList, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { CompositeNavigationProp, useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { CompositeNavigationProp, NavigationProp, useNavigation } from '@react-navigation/native';
 import { useQuery } from '@tanstack/react-query';
-import { Bell, ChevronRight, Menu, Mic, Search, ShieldCheck, Truck } from 'lucide-react-native';
+import { Bell, Menu, Search } from 'lucide-react-native';
 import { MotiView } from 'moti';
+import { PromotionalCarousel } from '../../components/domain/PromotionalCarousel';
 import { CategoryCard } from '../../components/domain/CategoryCard';
 import { ProductCard } from '../../components/domain/ProductCard';
 import { SellerCard } from '../../components/domain/SellerCard';
 import { ServiceCard } from '../../components/domain/ServiceCard';
-import { MiniCartBar } from '../../components/ui/MiniCartBar';
-import { useCart } from '../../hooks/useCart';
 import { useReducedMotionSafe } from '../../hooks/useReducedMotionSafe';
 import { useSideMenu } from '../../contexts/SideMenuContext';
 import { HomeStackParamList } from '../../navigation/HomeStack';
 import { RootStackParamList } from '../../navigation/RootNavigator';
 import { productService } from '../../services/productService';
 import { theme } from '../../theme';
+import { useResponsiveLayout } from '../../contexts/ResponsiveLayoutContext';
+import { ErrorState } from '../../components/ui/ErrorState';
 
 type HomeNavigation = CompositeNavigationProp<
-  NativeStackNavigationProp<HomeStackParamList, 'Home'>,
-  NativeStackNavigationProp<RootStackParamList>
+  NavigationProp<HomeStackParamList, 'HomeFeed'>,
+  NavigationProp<RootStackParamList>
 >;
 
 export const Home: React.FC = () => {
+  const { isCompact, isExpanded, isWeb, productColumns } = useResponsiveLayout();
   const navigation = useNavigation<HomeNavigation>();
   const { open: openSideMenu } = useSideMenu();
   const reduceMotion = useReducedMotionSafe();
   const { data: categories = [], isLoading: categoriesLoading } = useQuery({ queryKey: ['categories'], queryFn: productService.fetchCategories });
-  const { data: products = [], isLoading: productsLoading } = useQuery({ queryKey: ['products'], queryFn: productService.fetchProducts });
+  const productsQuery = useQuery({ queryKey: ['products'], queryFn: productService.fetchProducts });
+  const { data: products = [], isLoading: productsLoading } = productsQuery;
   const { data: services = [] } = useQuery({ queryKey: ['services'], queryFn: productService.fetchServices });
   const { data: sellers = [] } = useQuery({ queryKey: ['sellers'], queryFn: productService.fetchSellers });
-  const cart = useCart();
   const featured = useMemo(() => products.slice(0, 4), [products]);
   const recommendedServices = useMemo(() => services.filter(service => service.id === 'svc-web-design' || service.id === 'svc-house-cleaning'), [services]);
 
   const openCategory = (categoryId: string) => {
     if (categoryId === 'services') navigation.navigate('Services');
-    else navigation.navigate('ProductListing', { categoryId });
+    else navigation.navigate('ProductListing', categoryId === 'more' ? undefined : { categoryId });
   };
 
   const openSearch = () => navigation.getParent()?.navigate('Search');
 
+  if (productsQuery.isError) return <ErrorState message="Unable to load the catalog." onRetry={() => void productsQuery.refetch()} />;
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.topArea}>
+      {isCompact && <View style={styles.topArea}>
         <View style={styles.topRow}>
           <Pressable accessibilityRole="button" accessibilityLabel="Open menu" onPress={openSideMenu} style={styles.iconButton}><Menu color={theme.colors.ink} size={23} /></Pressable>
-          <Text style={styles.brand}>AfriClay</Text>
           <Pressable accessibilityRole="button" accessibilityLabel="Notifications" onPress={() => navigation.navigate('Notifications')} style={styles.iconButton}>
             <Bell color={theme.colors.ink} size={22} />
-            <View style={styles.badge}><Text style={styles.badgeText}>2</Text></View>
+
           </Pressable>
         </View>
-        <Pressable style={styles.searchBar} onPress={openSearch} accessibilityRole="search">
-          <Search color={theme.colors.muted} size={18} />
-          <Text style={styles.searchPlaceholder}>Search for products, services…</Text>
-          <Mic color={theme.colors.primary.DEFAULT} size={20} />
+        <Pressable style={styles.searchBar} onPress={openSearch} accessibilityRole="button" accessibilityLabel="Search products and services">
+          <Text style={styles.searchPlaceholder}>Search for products, servicesâ€¦</Text>
+          <View style={styles.searchAction}><Search color={theme.colors.white} size={20} strokeWidth={1.8} /></View>
         </Pressable>
-      </View>
+      </View>}
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <MotiView
-          from={reduceMotion ? undefined : { opacity: 0, translateY: 12 }}
-          animate={{ opacity: 1, translateY: 0 }}
-          transition={{ type: 'timing', duration: reduceMotion ? 0 : 350 }}
-          style={styles.hero}
-        >
-          <View style={styles.heroOrbLarge} />
-          <View style={styles.heroOrbSmall} />
-          <Text style={styles.heroEyebrow}>EVERYTHING AFRICA, IN ONE PLACE</Text>
-          <Text style={styles.heroTitle}>Support Local.{`\n`}Buy African.{`\n`}Grow Africa.</Text>
-          <Pressable onPress={() => navigation.navigate('ProductListing')} style={styles.heroButton} accessibilityRole="button">
-            <Text style={styles.heroButtonText}>Shop Now</Text>
-            <ChevronRight color={theme.colors.ink} size={17} />
-          </Pressable>
-        </MotiView>
+      <ScrollView contentContainerStyle={[styles.content, isExpanded && { maxWidth: 1440 }]} showsVerticalScrollIndicator={false}>
+        <PromotionalCarousel products={featured} loading={productsLoading} onProductPress={productId => navigation.navigate('ProductDetails', { productId })} />
 
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Shop by Category</Text>
-          <Text style={styles.seeAll} onPress={() => navigation.navigate('ProductListing')}>See all</Text>
+          <Text style={styles.sectionTitle}>Explore categories</Text>
+          <Text accessibilityRole="button" style={styles.seeAll} onPress={() => navigation.navigate('ProductListing')}>See all</Text>
         </View>
         <MotiView
           from={reduceMotion ? undefined : { opacity: 0, translateY: 10 }}
@@ -91,96 +78,89 @@ export const Home: React.FC = () => {
           {categoriesLoading
             ? Array.from({ length: 8 }).map((_, index) => <View key={index} style={styles.categorySkeleton} />)
             : categories.map(category => (
-              <CategoryCard key={category.id} label={category.label} icon={category.icon} onPress={() => openCategory(category.id)} />
+              <CategoryCard key={category.id} label={category.label} icon={category.icon} imageUri={products.find(product => product.category === category.label)?.images[0] ?? (category.id === 'services' ? services[0]?.images[0] : undefined)} onPress={() => openCategory(category.id)} />
             ))}
         </MotiView>
 
-        <View style={styles.trustBar}>
-          <View style={styles.trustItem}><ShieldCheck color={theme.colors.primary.DEFAULT} size={20} /><Text style={styles.trustText}>Verified sellers</Text></View>
-          <View style={styles.trustDivider} />
-          <View style={styles.trustItem}><Truck color={theme.colors.primary.DEFAULT} size={20} /><Text style={styles.trustText}>Fast delivery</Text></View>
-          <View style={styles.trustDivider} />
-          <View style={styles.trustItem}><ShieldCheck color={theme.colors.primary.DEFAULT} size={20} /><Text style={styles.trustText}>Secure pay</Text></View>
-        </View>
-
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Featured Products</Text>
-          <Text style={styles.seeAll} onPress={() => navigation.navigate('ProductListing')}>See all</Text>
+          <Text style={styles.sectionTitle}>Picked for your everyday</Text>
+          <Text accessibilityRole="button" style={styles.seeAll} onPress={() => navigation.navigate('ProductListing')}>See all</Text>
         </View>
-        {productsLoading ? <View style={styles.productSkeleton} /> : (
+        {productsLoading ? <View style={styles.productSkeleton} /> : isExpanded ? (
+          <View style={styles.desktopGrid}>{products.slice(0, 12).map(product => <View key={product.id} style={{ width: `${100 / productColumns}%`, padding: theme.spacing.sm }}>
+            <ProductCard marketplace layout="grid" product={product} onPress={() => navigation.navigate('ProductDetails', { productId: product.id })} />
+          </View>)}</View>
+        ) : (
           <FlatList
             data={featured}
             horizontal
             showsHorizontalScrollIndicator={false}
             keyExtractor={item => item.id}
-            renderItem={({ item }) => <ProductCard product={item} onPress={() => navigation.navigate('ProductDetails', { productId: item.id })} />}
+            renderItem={({ item }) => <ProductCard marketplace product={item} onPress={() => navigation.navigate('ProductDetails', { productId: item.id })} />}
             contentContainerStyle={styles.horizontalList}
           />
         )}
 
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Services for you</Text>
-          <Text style={styles.seeAll} onPress={() => navigation.navigate('Services')}>See all</Text>
+          <Text accessibilityRole="button" style={styles.seeAll} onPress={() => navigation.navigate('Services')}>See all</Text>
         </View>
-        <FlatList
+        {isExpanded ? <View style={styles.desktopGrid}>{recommendedServices.map(service => <ServiceCard key={service.id} marketplace service={service} onPress={() => navigation.navigate('ServiceDetails', { serviceId: service.id })} />)}</View> : <FlatList
           data={recommendedServices}
           horizontal
           showsHorizontalScrollIndicator={false}
           keyExtractor={item => item.id}
-          renderItem={({ item }) => <ServiceCard service={item} onPress={() => navigation.navigate('ServiceDetails', { serviceId: item.id })} />}
+          renderItem={({ item }) => <ServiceCard marketplace service={item} onPress={() => navigation.navigate('ServiceDetails', { serviceId: item.id })} />}
           contentContainerStyle={styles.horizontalList}
-        />
+        />}
 
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Verified Sellers</Text>
+          <Text style={styles.sectionTitle}>Meet the sellers</Text>
         </View>
-        {sellers.map(seller => <SellerCard key={seller.id} seller={seller} onPress={() => navigation.navigate('SellerStore', { sellerId: seller.id })} />)}
+        <View style={isExpanded && styles.desktopGrid}>{sellers.map(seller => <View key={seller.id} style={[styles.sellerSpacing, isExpanded && { width: '50%', padding: theme.spacing.sm }]}><SellerCard marketplace seller={seller} onPress={() => navigation.navigate('SellerStore', { sellerId: seller.id })} /></View>)}</View>
 
-        <View style={styles.sellBanner}>
+        {!isWeb && <View style={styles.sellBanner}>
           <Text style={styles.sellTitle}>Sell on AfriClay</Text>
-          <Text style={styles.sellText}>Grow your business. Reach more buyers. It&apos;s easy and free!</Text>
-          <Pressable style={styles.sellCta} accessibilityRole="button" onPress={() => (navigation.getParent() as any)?.navigate('Sell')}>
+          <Text style={styles.sellText}>Bring your products and services to the AfriClay community.</Text>
+          <Pressable style={[styles.sellCta, isExpanded && styles.desktopSellCta]} accessibilityRole="button" onPress={() => navigation.getParent()?.navigate('Sell')}>
             <Text style={styles.sellCtaText}>Start Selling</Text>
           </Pressable>
-        </View>
+        </View>}
       </ScrollView>
-      {cart.itemCount > 0 ? <MiniCartBar count={cart.itemCount} subtotal={cart.subtotal} onPress={() => navigation.navigate('Cart')} /> : null}
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
+  desktopSellBanner: { width: '100%', maxWidth: 560, alignSelf: 'center', padding: theme.spacing.md, marginTop: theme.spacing.md },
+  desktopSellCta: { alignSelf: 'flex-start', paddingHorizontal: theme.spacing.lg },
+  desktopGrid: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: theme.spacing.lg },
+  searchAction: { width: 44, height: 44, borderRadius: theme.radii.sm, backgroundColor: theme.colors.primary.DEFAULT, alignItems: 'center', justifyContent: 'center' },
+  sellerSpacing: { marginBottom: theme.spacing.sm },
   container: { flex: 1, backgroundColor: theme.colors.cream },
   topArea: { backgroundColor: theme.colors.white, paddingBottom: theme.spacing.md, borderBottomWidth: 1, borderBottomColor: theme.colors.border },
   topRow: { paddingHorizontal: theme.spacing.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   iconButton: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
-  brand: { color: theme.colors.primary.dark, fontSize: theme.typography.h2.fontSize, fontWeight: '800' },
-  badge: { position: 'absolute', top: 3, right: 2, minWidth: 18, height: 18, paddingHorizontal: 4, borderRadius: 9, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.error },
-  badgeText: { color: theme.colors.white, fontSize: 10, fontWeight: '800' },
-  searchBar: { marginHorizontal: theme.spacing.lg, marginTop: theme.spacing.sm, minHeight: 46, borderRadius: theme.radii.lg, backgroundColor: theme.colors.cream, paddingHorizontal: theme.spacing.md, flexDirection: 'row', alignItems: 'center' },
-  searchPlaceholder: { flex: 1, color: theme.colors.muted, marginHorizontal: theme.spacing.sm },
-  content: { padding: theme.spacing.lg, paddingBottom: 120 },
-  hero: { minHeight: 222, backgroundColor: theme.colors.primary.dark, borderRadius: theme.radii.lg, padding: theme.spacing.lg, marginBottom: theme.spacing.xl, overflow: 'hidden' },
-  heroOrbLarge: { position: 'absolute', width: 210, height: 210, borderRadius: 105, backgroundColor: theme.colors.primary.DEFAULT, right: -75, bottom: -65, opacity: 0.75 },
-  heroOrbSmall: { position: 'absolute', width: 92, height: 92, borderRadius: 46, backgroundColor: theme.colors.secondary.DEFAULT, right: 24, top: 26, opacity: 0.92 },
-  heroEyebrow: { color: theme.colors.secondary.DEFAULT, fontSize: 10, letterSpacing: 1.1, fontWeight: '800', marginBottom: theme.spacing.sm },
-  heroTitle: { color: theme.colors.white, fontSize: 27, lineHeight: 33, fontWeight: '800', maxWidth: '70%' },
-  heroButton: { marginTop: theme.spacing.lg, alignSelf: 'flex-start', minHeight: 42, borderRadius: theme.radii.sm, backgroundColor: theme.colors.secondary.DEFAULT, paddingHorizontal: theme.spacing.md, flexDirection: 'row', alignItems: 'center' },
-  heroButtonText: { color: theme.colors.ink, fontWeight: '800', marginRight: theme.spacing.xs },
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.md },
-  sectionTitle: { color: theme.colors.ink, fontSize: theme.typography.h3.fontSize, fontWeight: '800' },
-  seeAll: { color: theme.colors.primary.DEFAULT, fontWeight: '700', paddingVertical: theme.spacing.sm },
-  categoryGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: theme.spacing.md, marginBottom: theme.spacing.xl },
+  brandLockup: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm, paddingVertical: theme.spacing.sm },
+  brandMark: { width: 36, height: 40, borderRadius: theme.radii.md, borderTopRightRadius: theme.radii.sm, backgroundColor: theme.colors.primary.dark, alignItems: 'center', justifyContent: 'center' },
+  monogram: { ...theme.typography.marketplace.brand, color: theme.colors.white },
+  brandSeed: { position: 'absolute', width: 8, height: 8, borderRadius: 4, backgroundColor: theme.colors.secondary.DEFAULT, top: 5, right: 5 },
+  brandAccent: { color: theme.colors.primary.DEFAULT },
+  brandCaption: { ...theme.typography.marketplace.eyebrow, fontSize: 8, lineHeight: 12, letterSpacing: 1, color: theme.colors.muted },
+  brand: { color: theme.colors.primary.dark, ...theme.typography.marketplace.brand },
+  searchBar: { marginHorizontal: theme.spacing.md, marginTop: theme.spacing.sm, minHeight: 48, borderRadius: theme.radii.md, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.cream, paddingHorizontal: theme.spacing.md, flexDirection: 'row', alignItems: 'center' },
+  searchPlaceholder: { ...theme.typography.marketplace.body, flex: 1, color: theme.colors.muted, marginHorizontal: theme.spacing.sm },
+  content: { width: '100%', maxWidth: 640, alignSelf: 'center', padding: theme.spacing.md, paddingBottom: theme.spacing.xl },
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.sm },
+  sectionTitle: { flex: 1, color: theme.colors.ink, ...theme.typography.marketplace.heading },
+  seeAll: { color: theme.colors.primary.DEFAULT, ...theme.typography.marketplace.label, paddingVertical: theme.spacing.md },
+  categoryGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: theme.spacing.sm, marginBottom: theme.spacing.md },
   categorySkeleton: { width: '22%', height: 96, borderRadius: theme.radii.lg, backgroundColor: theme.colors.border },
-  trustBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: theme.colors.primary.tint, borderRadius: theme.radii.md, padding: theme.spacing.sm, marginBottom: theme.spacing.xl },
-  trustItem: { flex: 1, alignItems: 'center' },
-  trustText: { color: theme.colors.primary.dark, fontSize: 10, fontWeight: '700', textAlign: 'center', marginTop: 2 },
-  trustDivider: { width: 1, height: 34, backgroundColor: theme.colors.border },
   horizontalList: { paddingBottom: theme.spacing.xl },
   productSkeleton: { width: 180, height: 230, borderRadius: theme.radii.lg, backgroundColor: theme.colors.border, marginBottom: theme.spacing.xl },
   sellBanner: { marginTop: theme.spacing.xl, padding: theme.spacing.lg, borderRadius: theme.radii.lg, backgroundColor: theme.colors.secondary.tint, borderWidth: 1, borderColor: theme.colors.secondary.DEFAULT },
-  sellTitle: { color: theme.colors.ink, fontSize: theme.typography.h3.fontSize, fontWeight: '800' },
+  sellTitle: { color: theme.colors.ink, ...theme.typography.marketplace.heading },
   sellText: { color: theme.colors.muted, marginTop: theme.spacing.xs, marginBottom: theme.spacing.md },
   sellCta: { minHeight: 44, borderRadius: theme.radii.md, backgroundColor: theme.colors.primary.DEFAULT, alignItems: 'center', justifyContent: 'center' },
-  sellCtaText: { color: theme.colors.white, fontWeight: '800' },
+  sellCtaText: { color: theme.colors.white, fontFamily: 'Inter_600SemiBold' },
 });

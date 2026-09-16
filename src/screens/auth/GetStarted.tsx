@@ -1,6 +1,7 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { theme } from '../../theme';
+import { FormFrame } from '../../components/layout/FormFrame';
 import { Button } from '../../components/ui/Button';
 import { ROUTES } from '../../constants/routes';
 import { useNavigation } from '@react-navigation/native';
@@ -13,7 +14,7 @@ export const GetStarted: React.FC = () => {
   const auth = useAuth();
 
   return (
-    <View style={styles.container}>
+    <FormFrame style={styles.container}>
       <Text style={styles.title}>Support Local. Buy African. Grow Africa.</Text>
       <Text style={styles.copy}>A secure marketplace for authentic products, services, and trusted sellers across Africa.</Text>
       <View style={styles.actions}>
@@ -23,7 +24,7 @@ export const GetStarted: React.FC = () => {
       <Pressable onPress={auth.continueAsGuest} accessibilityRole="button">
         <Text style={styles.guestLink}>Continue as Guest</Text>
       </Pressable>
-    </View>
+    </FormFrame>
   );
 };
 

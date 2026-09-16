@@ -11,6 +11,8 @@ import { EmptyState } from '../../components/ui/EmptyState';
 import { useAuth } from '../../hooks/useAuth';
 import { SellerDashboardStackParamList } from '../../navigation/SellerDashboardStack';
 import { productService } from '../../services/productService';
+import { catalogKeys, invalidateCatalog } from '../../services/catalogQueries';
+import { ErrorState } from '../../components/ui/ErrorState';
 import { Product } from '../../types/product';
 import { theme } from '../../theme';
 
@@ -22,7 +24,9 @@ export const ProductManagement: React.FC = () => {
   const auth = useAuth();
   const sellerId = auth.user?.id ?? '';
   const queryClient = useQueryClient();
-  const { data: products = [], isLoading } = useQuery({ queryKey: ['seller-products', sellerId], queryFn: () => productService.initializeSellerCatalog(sellerId), enabled: Boolean(sellerId) });
+  const productsQuery = useQuery({ queryKey: catalogKeys.ownedProducts(sellerId), queryFn: () => productService.initializeSellerCatalog(sellerId), enabled: Boolean(sellerId) });
+  const { data: products = [], isLoading } = productsQuery;
+  const [deleteError, setDeleteError] = React.useState<string>();
 
   const confirmDelete = (product: Product) => {
     Alert.alert('Delete product?', `${product.name} will be removed from your store.`, [
@@ -31,15 +35,20 @@ export const ProductManagement: React.FC = () => {
         text: 'Delete',
         style: 'destructive',
         onPress: async () => {
-          await productService.deleteSellerProduct(sellerId, product.id);
-          await Promise.all([
-            queryClient.invalidateQueries({ queryKey: ['seller-products', sellerId] }),
-            queryClient.invalidateQueries({ queryKey: ['products'] }),
-          ]);
+          try {
+            await productService.deleteSellerProduct(sellerId, product.id);
+            queryClient.setQueryData(catalogKeys.product(product.id), null);
+            await invalidateCatalog(queryClient, sellerId, product.id);
+            setDeleteError(undefined);
+          } catch {
+            setDeleteError('Unable to delete this product. Please try again.');
+          }
         },
       },
     ]);
   };
+
+  if (productsQuery.isError) return <ErrorState message="Unable to load your products." onRetry={() => void productsQuery.refetch()} />;
 
   const renderProduct = ({ item }: { item: Product }) => {
     const lowStock = item.availableQuantity < LOW_STOCK_THRESHOLD;
@@ -59,6 +68,7 @@ export const ProductManagement: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
+      {deleteError && <Text accessibilityRole="alert" style={styles.delete}>{deleteError}</Text>}
       <View style={styles.header}>
         <Text style={styles.summary}>{products.length} listed product{products.length === 1 ? '' : 's'}</Text>
         <Pressable style={styles.addIcon} onPress={() => navigation.navigate('AddEditProduct')} accessibilityRole="button"><PackagePlus color={theme.colors.white} size={21} /></Pressable>

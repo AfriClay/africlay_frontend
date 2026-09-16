@@ -5,6 +5,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuth } from '../../hooks/useAuth';
 import { AuthStackParamList } from '../../navigation/AuthStack';
 import { theme } from '../../theme';
+import { FormFrame } from '../../components/layout/FormFrame';
 
 const roles: ReadonlyArray<{ id: 'buyer' | 'seller' | 'both'; title: string; description: string }> = [
   { id: 'buyer', title: 'Buyer', description: 'Browse and buy authentic African products and services.' },
@@ -22,7 +23,7 @@ export const RoleSelection: React.FC = () => {
   };
 
   return (
-    <View style={styles.container}>
+    <FormFrame style={styles.container}>
       <Text style={styles.title}>Choose your role</Text>
       <Text style={styles.copy}>Select the role that best matches how you want to use AfriClay.</Text>
       {roles.map(role => (
@@ -31,7 +32,7 @@ export const RoleSelection: React.FC = () => {
           <Text style={styles.cardDescription}>{role.description}</Text>
         </Pressable>
       ))}
-    </View>
+    </FormFrame>
   );
 };
 

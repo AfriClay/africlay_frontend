@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { FormFrame } from '../../components/layout/FormFrame';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { StyleSheet, Text, View } from 'react-native';
@@ -46,8 +47,8 @@ export const ForgotPassword: React.FC = () => {
       setSubmitError('Enter the 6-digit code from your email.');
       return;
     }
-    if (password.length < 6) {
-      setSubmitError('Password must be at least 6 characters.');
+    if (password.length < 8) {
+      setSubmitError('Password must be at least 8 characters.');
       return;
     }
     if (password !== confirmPassword) {
@@ -68,19 +69,19 @@ export const ForgotPassword: React.FC = () => {
 
   if (sent) {
     return (
-      <View style={styles.container}>
+      <FormFrame style={styles.container}>
         <Text style={styles.title}>Enter Reset Code</Text>
         <Text style={styles.copy}>We sent a 6-digit code to your email. Enter it below and choose a new password.</Text>
         <OTPInput value={code} onChange={setCode} onComplete={() => undefined} error={submitError ?? undefined} accessibilityLabel="Password reset code" />
         <Input label="New password" value={password} onChangeText={setPassword} secureTextEntry placeholder="New password" accessibilityLabel="New password" />
         <Input label="Confirm password" value={confirmPassword} onChangeText={setConfirmPassword} secureTextEntry placeholder="Repeat new password" accessibilityLabel="Confirm new password" />
         <Button onPress={handleReset} loading={loading} disabled={loading} accessibilityLabel="Reset password">Reset Password</Button>
-      </View>
+      </FormFrame>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <FormFrame style={styles.container}>
       <Text style={styles.title}>Forgot Password</Text>
       <Controller
         control={control}
@@ -102,7 +103,7 @@ export const ForgotPassword: React.FC = () => {
       />
       {submitError ? <Text style={styles.error}>{submitError}</Text> : null}
       <Button onPress={handleSubmit(onSubmit)} loading={loading} accessibilityLabel="Send reset link">Send Reset Link</Button>
-    </View>
+    </FormFrame>
   );
 };
 

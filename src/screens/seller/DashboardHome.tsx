@@ -12,6 +12,7 @@ import { SellerDashboardStackParamList } from '../../navigation/SellerDashboardS
 import { orderService } from '../../services/orderService';
 import { productService } from '../../services/productService';
 import { theme } from '../../theme';
+import { useResponsiveLayout } from '../../contexts/ResponsiveLayoutContext';
 
 type DashboardNavigation = NativeStackNavigationProp<SellerDashboardStackParamList, 'DashboardHome'>;
 
@@ -23,6 +24,7 @@ const actions = [
 ];
 
 export const DashboardHome: React.FC = () => {
+  const { isWide } = useResponsiveLayout();
   const navigation = useNavigation<DashboardNavigation>();
   const auth = useAuth();
   const sellerId = auth.user?.id ?? '';
@@ -59,7 +61,7 @@ export const DashboardHome: React.FC = () => {
           {actions.map(action => {
             const Icon = action.icon;
             return (
-              <Pressable key={action.label} style={styles.action} onPress={() => navigation.navigate(action.route as any)} accessibilityRole="button">
+              <Pressable key={action.label} style={[styles.action, isWide && { width: '23.5%' }]} onPress={() => navigation.navigate(action.route as any)} accessibilityRole="button">
                 <View style={styles.actionIcon}><Icon color={theme.colors.primary.DEFAULT} size={23} /></View>
                 <Text style={styles.actionLabel}>{action.label}</Text>
               </Pressable>

@@ -19,6 +19,8 @@ export interface Order {
   sellerId: string;
   deliveryAddress: string;
   deliveryFee: number;
+  shippingPostalCode?: string;
+  shippingCountry?: string;
   customerName?: string;
   acceptanceDeadline?: string;
 }

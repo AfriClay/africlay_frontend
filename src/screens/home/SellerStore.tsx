@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
@@ -16,25 +16,37 @@ import { ServiceCard } from '../../components/domain/ServiceCard';
 import { HomeStackParamList } from '../../navigation/HomeStack';
 import { Image } from 'expo-image';
 import { BadgeCheck, MapPin } from 'lucide-react-native';
+import { ErrorState } from '../../components/ui/ErrorState';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { recordId } from '../../services/catalogContract';
+import { catalogKeys } from '../../services/catalogQueries';
 
 const tabs = ['Shop', 'Services', 'About', 'Reviews'] as const;
 
 export const SellerStore: React.FC = () => {
   const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList, 'SellerStore'>>();
   const route = useRoute<RouteProp<HomeStackParamList, 'SellerStore'>>();
-  const { sellerId } = route.params;
+  const sellerId = recordId(route.params?.sellerId);
   const [activeTab, setActiveTab] = useState<'Shop' | 'Services' | 'About' | 'Reviews'>('Shop');
-  const { data: seller, isLoading: sellerLoading } = useQuery<Seller | undefined>({ queryKey: ['seller', sellerId], queryFn: () => productService.fetchSeller(sellerId) });
-  const { data: products = [], isLoading: productsLoading } = useQuery<Product[]>({ queryKey: ['sellerProducts', sellerId], queryFn: () => productService.fetchProductsBySeller(sellerId), enabled: Boolean(sellerId) });
-  const { data: services = [], isLoading: servicesLoading } = useQuery({ queryKey: ['sellerServices', sellerId], queryFn: () => productService.fetchServicesBySeller(sellerId), enabled: Boolean(sellerId) });
-  const { data: reviews = [], isLoading: reviewsLoading } = useQuery({ queryKey: ['reviews'], queryFn: () => reviewService.fetchReviews() });
+  useEffect(() => setActiveTab('Shop'), [sellerId]);
+  const sellerQuery = useQuery<Seller | null>({ queryKey: catalogKeys.seller(sellerId), queryFn: () => productService.fetchSeller(sellerId), enabled: Boolean(sellerId) });
+  const { data: seller, isLoading: sellerLoading } = sellerQuery;
+  const productsQuery = useQuery<Product[]>({ queryKey: catalogKeys.storeProducts(sellerId), queryFn: () => productService.fetchProductsBySeller(sellerId), enabled: Boolean(seller) });
+  const servicesQuery = useQuery({ queryKey: catalogKeys.storeServices(sellerId), queryFn: () => productService.fetchServicesBySeller(sellerId), enabled: Boolean(seller) });
+  const reviewsQuery = useQuery({ queryKey: ['reviews'], queryFn: () => reviewService.fetchReviews(), enabled: Boolean(seller) });
+  const { data: products = [], isLoading: productsLoading } = productsQuery;
+  const { data: services = [], isLoading: servicesLoading } = servicesQuery;
+  const { data: reviews = [], isLoading: reviewsLoading } = reviewsQuery;
+  const tabQuery = activeTab === 'Shop' ? productsQuery : activeTab === 'Services' ? servicesQuery : activeTab === 'Reviews' ? reviewsQuery : undefined;
+
+  if (sellerQuery.isError) return <ErrorState message="Unable to load this seller." onRetry={() => void sellerQuery.refetch()} />;
 
   if (sellerLoading) {
     return <View style={styles.loading}><Text>Loading seller...</Text></View>;
   }
 
   if (!seller) {
-    return <View style={styles.loading}><Text>Seller not found</Text></View>;
+    return <EmptyState title="Seller not found" description="This store is unavailable. Go back to browse another seller." />;
   }
 
   return (
@@ -54,7 +66,7 @@ export const SellerStore: React.FC = () => {
           </Pressable>
         ))}
       </View>
-      {activeTab === 'Shop' ? (
+      {tabQuery?.isError ? <ErrorState message="Unable to load this store section." onRetry={() => void tabQuery.refetch()} /> : activeTab === 'Shop' ? (
         productsLoading ? (
           <View style={styles.list}>
             {Array.from({ length: 6 }).map((_, i) => (
@@ -63,6 +75,8 @@ export const SellerStore: React.FC = () => {
           </View>
         ) : (
           <FlatList
+            key={`${sellerId}-shop`}
+            ListEmptyComponent={<EmptyState title="No products listed" description="This seller has no products available." />}
             data={products}
             keyExtractor={item => item.id}
             numColumns={2}
@@ -78,6 +92,8 @@ export const SellerStore: React.FC = () => {
       ) : activeTab === 'Services' ? (
         servicesLoading ? <View style={styles.list}><View style={styles.serviceSkeleton} /></View> : (
           <FlatList
+            key={`${sellerId}-services`}
+            ListEmptyComponent={<EmptyState title="No services listed" description="This seller has no services available." />}
             data={services}
             keyExtractor={item => item.id}
             renderItem={({ item }) => <ServiceCard service={item} onPress={() => navigation.navigate('ServiceDetails', { serviceId: item.id })} />}
@@ -85,7 +101,7 @@ export const SellerStore: React.FC = () => {
           />
         )
       ) : activeTab === 'About' ? (
-        <View style={styles.content}><Text style={styles.description}>{seller.bio}</Text></View>
+        <View style={styles.content}><Text style={styles.description}>{seller.bio || 'No store description available.'}</Text></View>
       ) : (
         reviewsLoading ? (
           <View style={styles.list}>
@@ -94,7 +110,7 @@ export const SellerStore: React.FC = () => {
             ))}
           </View>
         ) : (
-          <FlatList data={reviews} keyExtractor={item => item.id} renderItem={({ item }) => <ReviewCard review={item} />} contentContainerStyle={styles.list} />
+          <FlatList key={`${sellerId}-reviews`} data={reviews} keyExtractor={item => item.id} renderItem={({ item }) => <ReviewCard review={item} />} contentContainerStyle={styles.list} ListEmptyComponent={<EmptyState title="No reviews yet" description="There are no reviews available." />} />
         )
       )}
     </SafeAreaView>

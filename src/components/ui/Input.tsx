@@ -84,6 +84,7 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
+    minWidth: 0,
     paddingVertical: theme.spacing.md,
     color: theme.colors.ink,
     fontSize: theme.typography.body.fontSize,

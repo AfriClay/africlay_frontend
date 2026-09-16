@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Image } from 'expo-image';
+import { CatalogImage } from '../../components/ui/CatalogImage';
+import { ErrorState } from '../../components/ui/ErrorState';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { recordId } from '../../services/catalogContract';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useQuery } from '@tanstack/react-query';
@@ -24,7 +27,11 @@ export const ServiceDetails: React.FC = () => {
   const auth = useAuth();
   const [bookingVisible, setBookingVisible] = useState(false);
   const [authVisible, setAuthVisible] = useState(false);
-  const { data: service, isLoading } = useQuery({ queryKey: ['service', params.serviceId], queryFn: () => productService.fetchServiceById(params.serviceId) });
+  const serviceId = recordId(params?.serviceId);
+  const serviceQuery = useQuery({ queryKey: ['service', serviceId], queryFn: () => productService.fetchServiceById(serviceId), enabled: Boolean(serviceId) });
+  const { data: service, isLoading } = serviceQuery;
+  if (serviceQuery.isError) return <ErrorState message="Unable to load this service." onRetry={() => void serviceQuery.refetch()} />;
+  if (!isLoading && !service) return <EmptyState title="Service not found" description="This service is unavailable. Go back to browse other services." />;
 
   if (isLoading || !service) {
     return <SafeAreaView style={styles.container}><Text style={styles.loading}>Loading service…</Text></SafeAreaView>;
@@ -38,7 +45,7 @@ export const ServiceDetails: React.FC = () => {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.content}>
-        <Image source={{ uri: service.images[0] }} style={styles.image} contentFit="cover" transition={180} />
+        <CatalogImage uri={service.images[0]} label={service.title} style={styles.image} />
         <Text style={styles.title}>{service.title}</Text>
         <Text style={styles.price}>From {formatCurrency(service.priceFrom)}</Text>
         <RatingBadge rating={service.rating} reviewCount={service.reviewCount} />

@@ -9,7 +9,7 @@ import { ProductDetails } from '../screens/home/ProductDetails';
 import { SellerStore } from '../screens/home/SellerStore';
 
 export type ProfileStackParamList = {
-  Profile: undefined;
+  ProfileOverview: undefined;
   MyOrders: undefined;
   OrderDetails: { orderId: string };
   MyAddresses: undefined;
@@ -26,7 +26,7 @@ const Stack = createNativeStackNavigator<ProfileStackParamList>();
 
 export const ProfileStack = () => (
   <Stack.Navigator screenOptions={{ headerShadowVisible: false, headerStyle: { backgroundColor: theme.colors.cream }, headerTintColor: theme.colors.ink, headerBackButtonDisplayMode: 'minimal' }}>
-    <Stack.Screen name="Profile" component={Profile} options={{ headerShown: false }} />
+    <Stack.Screen name="ProfileOverview" component={Profile} options={{ headerShown: false }} />
     <Stack.Screen name="MyOrders" component={MyOrders} options={{ title: 'My Orders' }} />
     <Stack.Screen name="OrderDetails" component={OrderDetails} options={{ title: 'Order Details' }} />
     <Stack.Screen name="MyAddresses" component={MyAddresses} options={{ title: 'My Addresses' }} />

@@ -1,71 +1,156 @@
-# AfriClay Clerk authentication setup
+# AfriClay Django JWT authentication setup
 
-AfriClay now uses Clerk for email/password accounts, six-digit email verification, secure native session persistence, Google OAuth, Client Trust email challenges, and password reset codes. The supplied Clerk development publishable key is already stored in the ignored local `.env` file.
+AfriClay uses the Django REST API under `/api/auth/` for email/password accounts, six-digit email verification, password reset codes, JWT session persistence, token refresh, and logout.
 
-## 1. Configure email/password and verification
+## Web Compatibility And Layout
 
-In the Clerk Dashboard for the application that owns the publishable key:
+React Navigation native-stack 7 resolves its web-safe view in browsers and
+its native view on Android/iOS. Keep its major version aligned with the other
+React Navigation packages; native-stack 5 has no web support.
 
-1. Open **User & authentication > Email, phone, username**.
-2. Enable **Email address** and require it for sign-up.
-3. Enable **Password** as a sign-in method.
-4. Require email verification at sign-up and enable the **Email verification code** strategy. The app expects the six-digit code strategy, not an email-link-only flow.
-5. Keep first and last name optional. AfriClay stores the single full-name field in Clerk user metadata.
-6. Review **Customization > Emails** and customize the verification and password-reset templates with the AfriClay name and support details.
+`AppFrame.web.tsx` owns browser layout: width follows the window up to 600px,
+centered on larger displays, with desktop gutters using existing spacing
+tokens. Short windows scroll vertically around a minimum 720px app surface
+so centered forms remain reachable. Native uses `AppFrame.tsx`, retaining
+the original flex layout. Existing cards, colors, type, navigation, and auth
+screens are shared; there is no desktop theme.
 
-Clerk sends the real verification and reset emails. The development instance is suitable for testing, but Clerk caps development-instance delivery at 100 emails per calendar month. Production email is sent from your configured domain, so complete Clerk's domain/DNS setup before public release.
+For a manual browser smoke test, check 360px, 768px, and 1440px widths plus a
+short landscape window. Check login, registration, guest tabs, the menu,
+keyboard focus, and session restoration after reloading. HttpOnly cookie
+sessions require the same API hostname before and after reloading.
 
-The current development instance already exposes email/password, email-code verification, Google, and bot protection as enabled. The registration screen includes Clerk's CAPTCHA mount point for web; Clerk skips the browser CAPTCHA widget on native Android and iOS.
+## Auth Transport
 
-## 2. Enable Google login
+Native clients receive the existing JSON token pair and store it using
+`expo-secure-store`. Web clients use `credentials: include` and
+`X-Auth-Transport: cookie`. Django also detects browser Origin/Fetch Metadata,
+so a browser cannot request JSON tokens by changing that header.
 
-1. Open **User & authentication > SSO connections** in Clerk.
-2. Add or enable the **Google** social connection.
-3. For development, use Clerk's development connection if the Dashboard offers it. For production, choose custom Google credentials and create a Google OAuth **Web application** client.
-4. When using custom credentials, copy the Google Client ID and Client Secret into Clerk only. Never place the Google client secret in this app or an `EXPO_PUBLIC_` variable.
-5. In Clerk's native/mobile redirect allowlist, add:
+Web login and OTP verification set host-only HttpOnly cookies on `/api/`.
+Refresh rotates cookies without returning JWTs in JSON. Browser JavaScript
+never reads or stores these JWTs. `/auth/csrf/` returns a CSRF token (not a JWT)
+for `X-CSRFToken` on every unsafe browser request, including login and logout.
+CSRF protection uses Django's middleware; CORS uses `django-cors-headers`.
+Access tokens last five minutes; refresh tokens last seven days and are
+single-use through the existing revocation table. No schema changes are needed.
 
-   ```text
-   africlay://auth/callback
-   ```
+Startup calls `/auth/me/` on web even though JavaScript cannot read cookies.
+Concurrent refreshes within a client share one request; browsers supporting
+Web Locks also serialize refresh across tabs. Logout must reach the backend
+to clear HttpOnly cookies; a network failure is reported rather than claiming
+the browser session was revoked.
 
-6. In Google Cloud, use the authorized redirect URI shown by Clerk for the Google connection. Copy it exactly; it is a Clerk HTTPS callback, not the `africlay://` app link.
-7. If the Google consent screen is still in testing, add each tester's Google account under **Test users**.
+## Production Configuration
 
-The implementation uses Clerk's browser-based Expo SSO flow. It does not require native Android or iOS Google SDK client IDs.
+Deploy the app and API on HTTPS within the same site, for example
+`https://app.example.com` and `https://api.example.com`, or proxy `/api/`
+through the app's origin. SameSite=Lax intentionally does not support
+unrelated-site app/API hosting. Do not mix `localhost` and `127.0.0.1` in web
+development. Local HTTP cookies are allowed only with `DEBUG=True`.
 
-## 3. Environment variables and builds
-
-Expo reads public app variables with the `EXPO_PUBLIC_` prefix. `VITE_CLERK_PUBLISHABLE_KEY` is a Vite web convention and is not read by this Expo app. The required variable is:
+Set these backend environment variables on the deployment:
 
 ```dotenv
-EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_your_publishable_key
+DEBUG=False
+ALLOWED_HOSTS=api.example.com
+WEB_ORIGINS=https://app.example.com
 ```
 
-For EAS development, preview, and production builds, add this same variable to the matching EAS environment. Replace the current `pk_test_...` value with the production instance's `pk_live_...` key before a store release.
+Supply a randomly generated SECRET_KEY of at least 50 characters through the
+server's secret manager. Production enables Secure cookies, HTTPS redirects,
+and HSTS. `WEB_ORIGINS` is an exact allowlist used for CORS and CSRF; do not
+use wildcards. Set `TRUST_PROXY_HTTPS=true` only behind a trusted reverse proxy
+that strips client-supplied X-Forwarded-Proto and sets it itself. Use a
+production Django application server rather than the development Compose
+runserver command. Configure real email delivery and edge rate limits before
+public deployment. Existing day-long access tokens issued before this change
+retain their original expiry; new access tokens last five minutes.
 
-Because the `africlay` URL scheme is native configuration, rebuild the development client when necessary:
+Set frontend `EXPO_PUBLIC_API_URL=https://api.example.com/api` before building.
+This is public configuration; never place signing keys or SMTP credentials
+in frontend environment variables. Rebuild the backend image to install the
+new locked CORS dependency. Keep the database volume intact.
+
+Validation commands:
 
 ```powershell
-npx expo prebuild
-npx expo run:android
+# From back_end/Africlay-server
+docker compose exec -T backend python manage.py test authapp --noinput
+docker compose exec -T backend python manage.py makemigrations --check --dry-run
+# From front_end
+node --test scripts/test-auth-transport.cjs
+npx tsc --noEmit
+npx expo export --platform web
 ```
 
-On macOS, use `npx expo run:ios` for iOS.
+## Environment
 
-After changing `.env`, fully stop and restart Expo with a cleared bundle cache:
+Expo reads public app variables with the `EXPO_PUBLIC_` prefix. Set `EXPO_PUBLIC_API_URL` to the API root, including `/api`.
+
+```dotenv
+EXPO_PUBLIC_API_URL=http://localhost:8000/api
+```
+
+Use the host that is reachable from the device running the app:
+
+- Web browser: `http://localhost:8000/api`
+- Android emulator: `http://10.0.2.2:8000/api`
+- Physical device: `http://<computer-lan-ip>:8000/api`
+
+For an Android phone connected over USB, keep `http://localhost:8000/api`
+and forward the API port from the phone to this computer:
 
 ```powershell
-npx expo start --clear
+& "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe" reverse tcp:8000 tcp:8000
 ```
 
-## 4. Release checks
+Repeat this after reconnecting or restarting the device. Alternatively,
+restore it from `front_end` with `npm run android:connect`. This command
+checks the local Django endpoint and restores port 8000 for connected devices.
+USB forwarding is temporary; it is not an always-on backend connection.
 
-- A new address receives a six-digit code, wrong/expired codes are rejected, resend works, and the correct code starts onboarding.
-- Password login succeeds, including the email challenge shown by Clerk Client Trust on a new device.
-- Google login succeeds and cancellation returns cleanly to the login screen.
-- Password-reset codes allow the user to choose a new password.
-- Closing and reopening the app restores the Clerk session from encrypted native storage.
-- Logout removes the active Clerk session.
+Without forwarding,
+`localhost` refers to the phone, not the computer. For Wi-Fi access, use the
+computer's LAN IP, add that IP to Django's `ALLOWED_HOSTS`, and allow port 8000
+through the local firewall. Restart Expo with `npx expo start --clear` after
+changing `EXPO_PUBLIC_API_URL`.
 
-The `role`, `location`, and onboarding fields are currently stored in Clerk `unsafeMetadata` because users may edit their own profile. Do not use those client-editable values as backend authorization. Enforce seller/admin privileges with server-controlled Clerk metadata and backend checks when the API is added.
+Do not use Docker service names such as `http://backend:8000` in the mobile app. Those names only work inside Docker networking.
+
+## Backend
+
+Keep the Django backend in Docker. From `back_end/Africlay-server`, run:
+
+```powershell
+docker compose up -d --build backend
+docker compose exec backend python manage.py migrate
+```
+
+The API must be published on port 8000. Containers serving ports 3000 or 3001
+do not provide this Django API. The default console email backend writes OTP
+emails to `docker compose logs backend`; it does not deliver email to inboxes.
+
+The frontend expects these endpoints:
+
+- `POST /api/auth/register/`
+- `POST /api/auth/verify-email/`
+- `POST /api/auth/resend-otp/`
+- `POST /api/auth/login/`
+- `POST /api/auth/token/refresh/`
+- `POST /api/auth/logout/`
+- `POST /api/auth/password-reset/`
+- `POST /api/auth/password-reset/confirm/`
+- `GET /api/auth/me/`
+- `PATCH /api/auth/me/`
+
+## Release Checks
+
+- Register sends `first_name`, `last_name`, `password`, and `password_confirm`.
+- Email verification stores the returned access and refresh tokens.
+- Login stores the returned access and refresh tokens.
+- Authenticated requests send `Authorization: Bearer <access_token>`.
+- A `401` response refreshes the token pair and retries the original request once.
+- A failed refresh clears tokens and returns the app to signed-out state.
+- App startup restores saved sessions through `GET /api/auth/me/`.
+- Logout calls the backend with the refresh token and clears secure storage.

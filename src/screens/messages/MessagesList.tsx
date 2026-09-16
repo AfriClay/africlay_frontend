@@ -14,7 +14,7 @@ import { Search } from 'lucide-react-native';
 import { EmptyState } from '../../components/ui/EmptyState';
 
 export const MessagesList: React.FC = () => {
-  const navigation = useNavigation<NativeStackNavigationProp<MessagesStackParamList, 'Messages'>>();
+  const navigation = useNavigation<NativeStackNavigationProp<MessagesStackParamList, 'MessagesInbox'>>();
   const auth = useAuth();
   const { data: conversations = [], isLoading } = useQuery({ queryKey: ['conversations'], queryFn: () => messageService.fetchConversations() });
   const [authSheet, setAuthSheet] = useState(false);

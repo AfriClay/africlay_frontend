@@ -2,5 +2,12 @@
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
     "strict": true
-  }
+  },
+  "exclude": [
+    "node_modules",
+    "android",
+    "dist",
+    "dist-web-auth-check",
+    "africlay_frontend.worktrees"
+  ]
 }

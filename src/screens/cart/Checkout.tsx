@@ -45,6 +45,8 @@ export const Checkout: React.FC = () => {
       phone: '+254 712 345 678',
       addressLine: 'Westlands',
       city: 'Nairobi',
+      postalCode: '',
+      country: 'Kenya',
     },
   });
 
@@ -87,6 +89,8 @@ export const Checkout: React.FC = () => {
         sellerId: cart.items[0]?.sellerId ?? 'seller-zuri',
         deliveryAddress: `${addressValues.name}\n${addressValues.addressLine}, ${addressValues.city}`,
         deliveryFee,
+        shippingPostalCode: addressValues.postalCode,
+        shippingCountry: addressValues.country,
         total,
         items: cart.items.map(item => ({ ...item })),
       });
@@ -111,6 +115,8 @@ export const Checkout: React.FC = () => {
           <Controller control={control} name="phone" render={({ field: { value, onChange }, fieldState }) => <Input label="Phone" value={value} onChangeText={onChange} keyboardType="phone-pad" error={fieldState.error?.message} />} />
           <Controller control={control} name="addressLine" render={({ field: { value, onChange }, fieldState }) => <Input label="Address" value={value} onChangeText={onChange} error={fieldState.error?.message} />} />
           <Controller control={control} name="city" render={({ field: { value, onChange }, fieldState }) => <Input label="City" value={value} onChangeText={onChange} error={fieldState.error?.message} />} />
+          <Controller control={control} name="postalCode" render={({ field: { value, onChange }, fieldState }) => <Input label="Postal code" value={value} onChangeText={onChange} error={fieldState.error?.message} />} />
+          <Controller control={control} name="country" render={({ field: { value, onChange }, fieldState }) => <Input label="Country" value={value} onChangeText={onChange} error={fieldState.error?.message} />} />
         </View>
       ) : (
         <View style={styles.card}><Text style={styles.addressName}>{address.name}</Text><Text style={styles.cardText}>{address.addressLine}, {address.city}</Text><Text style={styles.cardText}>{address.phone}</Text></View>

@@ -9,8 +9,9 @@ import { GuestAuthSheet } from '../../components/ui/GuestAuthSheet';
 import { useAuth } from '../../hooks/useAuth';
 import { ProfileStackParamList } from '../../navigation/ProfileStack';
 import { theme } from '../../theme';
+import { useResponsiveLayout } from '../../contexts/ResponsiveLayoutContext';
 
-type ProfileNavigation = NativeStackNavigationProp<ProfileStackParamList, 'Profile'>;
+type ProfileNavigation = NativeStackNavigationProp<ProfileStackParamList, 'ProfileOverview'>;
 type ProfileRouteName = 'MyOrders' | 'Wishlist' | 'MyAddresses' | 'PaymentMethodsWallet' | 'MyReviews' | 'Settings' | 'SupportHelp';
 
 const menuItems: ReadonlyArray<{ label: string; route: ProfileRouteName; icon: typeof Package }> = [
@@ -24,6 +25,7 @@ const menuItems: ReadonlyArray<{ label: string; route: ProfileRouteName; icon: t
 ];
 
 export const Profile: React.FC = () => {
+  const { isExpanded } = useResponsiveLayout();
   const auth = useAuth();
   const navigation = useNavigation<ProfileNavigation>();
   const [authSheetVisible, setAuthSheetVisible] = useState(false);
@@ -64,8 +66,8 @@ export const Profile: React.FC = () => {
           <View style={styles.stat}><Text style={styles.statValue}>{stats.reviews}</Text><Text style={styles.statLabel}>Reviews</Text></View>
         </View>
 
-        <View style={styles.menu}>
-          <Pressable style={styles.menuRow} onPress={() => navigation.getParent()?.navigate('Messages')} accessibilityRole="button">
+        <View style={[styles.menu, isExpanded && styles.desktopMenu]}>
+          <Pressable style={[styles.menuRow, isExpanded && styles.desktopRow]} onPress={() => navigation.getParent()?.navigate('Messages')} accessibilityRole="button">
             <View style={styles.menuIcon}><MessageCircle color={theme.colors.ink} size={20} /></View>
             <Text style={styles.menuLabel}>My Messages</Text>
             <ChevronRight color={theme.colors.muted} size={19} />
@@ -73,7 +75,7 @@ export const Profile: React.FC = () => {
           {menuItems.map(item => {
             const Icon = item.icon;
             return (
-              <Pressable key={item.route} style={styles.menuRow} onPress={() => openRoute(item.route)} accessibilityRole="button">
+              <Pressable key={item.route} style={[styles.menuRow, isExpanded && styles.desktopRow]} onPress={() => openRoute(item.route)} accessibilityRole="button">
                 <View style={styles.menuIcon}><Icon color={theme.colors.ink} size={20} /></View>
                 <Text style={styles.menuLabel}>{item.label}</Text>
                 <ChevronRight color={theme.colors.muted} size={19} />
@@ -81,7 +83,7 @@ export const Profile: React.FC = () => {
             );
           })}
           {auth.user ? (
-            <Pressable style={styles.menuRow} onPress={confirmLogout} accessibilityRole="button">
+            <Pressable style={[styles.menuRow, isExpanded && styles.desktopRow]} onPress={confirmLogout} accessibilityRole="button">
               <View style={styles.menuIcon}><LogOut color={theme.colors.error} size={20} /></View>
               <Text style={styles.logoutLabel}>Logout</Text>
             </Pressable>
@@ -98,6 +100,8 @@ export const Profile: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
+  desktopMenu: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
+  desktopRow: { width: '48%', paddingVertical: theme.spacing.sm },
   container: { flex: 1, backgroundColor: theme.colors.cream },
   header: { alignItems: 'center', paddingHorizontal: theme.spacing.lg, paddingTop: theme.spacing.xl, paddingBottom: theme.spacing.lg, backgroundColor: theme.colors.primary.DEFAULT },
   name: { marginTop: theme.spacing.sm, fontSize: theme.typography.h2.fontSize, fontWeight: '800', color: theme.colors.white },

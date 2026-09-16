@@ -1,4 +1,5 @@
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { RouteProp } from '@react-navigation/native';
+import { NativeStackNavigationOptions, createNativeStackNavigator } from '@react-navigation/native-stack';
 import { DashboardHome } from '../screens/seller/DashboardHome';
 import { ProductManagement } from '../screens/seller/ProductManagement';
 import { AddEditProduct } from '../screens/seller/AddEditProduct';
@@ -22,7 +23,11 @@ export const SellerDashboardStack = () => (
   <Stack.Navigator screenOptions={{ headerShadowVisible: false, headerStyle: { backgroundColor: theme.colors.cream }, headerTintColor: theme.colors.ink, headerBackButtonDisplayMode: 'minimal' }}>
     <Stack.Screen name="DashboardHome" component={DashboardHome} options={{ headerShown: false }} />
     <Stack.Screen name="ProductManagement" component={ProductManagement} options={{ title: 'Manage Products' }} />
-    <Stack.Screen name="AddEditProduct" component={AddEditProduct} options={({ route }) => ({ title: route.params?.productId ? 'Edit Product' : 'Add Product' })} />
+    <Stack.Screen
+      name="AddEditProduct"
+      component={AddEditProduct}
+      options={({ route }: { route: RouteProp<SellerDashboardStackParamList, 'AddEditProduct'> }): NativeStackNavigationOptions => ({ title: route.params?.productId ? 'Edit Product' : 'Add Product' })}
+    />
     <Stack.Screen name="SellerOrders" component={SellerOrders} options={{ title: 'Seller Orders' }} />
     <Stack.Screen name="PaymentMethodsWallet" component={PaymentMethodsWallet} options={{ title: 'Wallet & Earnings' }} />
     <Stack.Screen name="OrderDetails" component={OrderDetails as any} options={{ title: 'Order Details' }} />

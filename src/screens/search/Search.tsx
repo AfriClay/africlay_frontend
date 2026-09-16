@@ -1,8 +1,9 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useResponsiveLayout } from '../../contexts/ResponsiveLayoutContext';
 import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Image } from 'expo-image';
-import { useNavigation } from '@react-navigation/native';
+import { CatalogImage } from '../../components/ui/CatalogImage';
+import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useQuery } from '@tanstack/react-query';
 import { MapPin, Search as SearchIcon, SlidersHorizontal, Store } from 'lucide-react-native';
@@ -12,7 +13,7 @@ import { productService } from '../../services/productService';
 import { theme } from '../../theme';
 import { formatCurrency } from '../../utils/formatCurrency';
 
-type SearchNavigation = NativeStackNavigationProp<SearchStackParamList, 'Search'>;
+type SearchNavigation = NativeStackNavigationProp<SearchStackParamList, 'SearchLanding'>;
 type SearchResult =
   | { id: string; type: 'product'; title: string; meta: string; imageUrl?: string }
   | { id: string; type: 'service'; title: string; meta: string; imageUrl?: string }
@@ -21,8 +22,12 @@ type SearchResult =
 const popularSearches = ['Maasai beads', 'Organic produce', 'Home cleaning', 'African decor'];
 
 export const Search: React.FC = () => {
+  const { isExpanded, isWide } = useResponsiveLayout();
+  const columns = isExpanded ? (isWide ? 3 : 2) : 1;
+  const route = useRoute<RouteProp<SearchStackParamList, 'SearchLanding'>>();
   const navigation = useNavigation<SearchNavigation>();
   const [query, setQuery] = useState('');
+  useEffect(() => { if (route.params?.query !== undefined) setQuery(route.params.query); }, [route.params?.query]);
   const { data: products = [] } = useQuery({ queryKey: ['products'], queryFn: productService.fetchProducts });
   const { data: services = [] } = useQuery({ queryKey: ['services'], queryFn: productService.fetchServices });
   const { data: sellers = [] } = useQuery({ queryKey: ['sellers'], queryFn: productService.fetchSellers });
@@ -68,11 +73,13 @@ export const Search: React.FC = () => {
         </View>
       ) : (
         <FlatList
+          key={columns}
+          numColumns={columns}
           data={results}
           keyExtractor={item => `${item.type}-${item.id}`}
           renderItem={({ item }) => (
-            <Pressable style={styles.result} onPress={() => openResult(item)} accessibilityRole="button">
-              {item.imageUrl ? <Image source={{ uri: item.imageUrl }} style={styles.resultImage} contentFit="cover" /> : <View style={styles.resultImage} />}
+            <Pressable style={[styles.result, isExpanded && { flex: 1, maxWidth: `${100 / columns}%`, marginHorizontal: theme.spacing.xs }]} onPress={() => openResult(item)} accessibilityRole="button">
+              <CatalogImage uri={item.imageUrl} label={item.title} style={styles.resultImage} />
               <View style={styles.resultCopy}><Text style={styles.resultTitle}>{item.title}</Text><Text style={styles.resultMeta}>{item.meta}</Text></View>
             </Pressable>
           )}

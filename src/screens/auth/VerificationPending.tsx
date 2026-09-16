@@ -5,6 +5,7 @@ import { Clock3, ShieldCheck } from 'lucide-react-native';
 import { Button } from '../../components/ui/Button';
 import { useAuth } from '../../hooks/useAuth';
 import { theme } from '../../theme';
+import { FormFrame } from '../../components/layout/FormFrame';
 
 export const VerificationPending: React.FC = () => {
   const navigation = useNavigation<any>();
@@ -25,7 +26,7 @@ export const VerificationPending: React.FC = () => {
   };
 
   return (
-    <View style={styles.container}>
+    <FormFrame style={styles.container}>
       <View style={styles.icon}><Clock3 color={theme.colors.secondary.DEFAULT} size={38} /></View>
       <Text style={styles.title}>Verification pending</Text>
       <Text style={styles.copy}>Your documents were submitted successfully. AfriClay will notify you when the review is complete.</Text>
@@ -33,7 +34,7 @@ export const VerificationPending: React.FC = () => {
       {error ? <Text style={styles.error}>{error}</Text> : null}
       <Button onPress={approveDemo} loading={loading}>Approve for Demo Testing</Button>
       <Text style={styles.demoNote}>Demo control: simulates the approval webhook so you can test storefront and seller tools.</Text>
-    </View>
+    </FormFrame>
   );
 };
 

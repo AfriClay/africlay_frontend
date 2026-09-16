@@ -5,6 +5,8 @@ export const checkoutAddressSchema = z.object({
   phone: z.string().trim().min(9, 'Enter a valid phone number'),
   addressLine: z.string().trim().min(4, 'Enter a delivery address'),
   city: z.string().trim().min(2, 'Enter a city'),
+  postalCode: z.string().trim().min(2, 'Enter a postal code'),
+  country: z.string().trim().min(2, 'Enter a country'),
 });
 
 export type CheckoutAddressForm = z.infer<typeof checkoutAddressSchema>;

@@ -10,10 +10,12 @@ import { GuestAuthSheet } from '../../components/ui/GuestAuthSheet';
 import { useAuth } from '../../hooks/useAuth';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../navigation/RootNavigator';
-import { Image } from 'expo-image';
+import { CatalogImage } from '../../components/ui/CatalogImage';
 import { Trash2, X } from 'lucide-react-native';
+import { useResponsiveLayout } from '../../contexts/ResponsiveLayoutContext';
 
 export const Cart: React.FC = () => {
+  const { isExpanded } = useResponsiveLayout();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList, 'Cart'>>();
   const cart = useCart();
   const auth = useAuth();
@@ -36,11 +38,11 @@ export const Cart: React.FC = () => {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}><Text style={styles.title}>Cart</Text><Pressable style={styles.closeButton} onPress={() => navigation.goBack()} accessibilityRole="button" accessibilityLabel="Close cart"><X color={theme.colors.ink} size={22} /></Pressable></View>
       {cart.itemCount === 0 ? (
-        <View style={styles.empty}><Text style={styles.emptyText}>Your cart is empty. Add items to continue.</Text></View>
+        <View style={[styles.empty, isExpanded && styles.desktopEmpty]}><Text style={styles.emptyText}>Your cart is empty. Add items to continue.</Text></View>
       ) : (
-        <FlatList data={cart.items} keyExtractor={item => item.id} renderItem={({ item }) => (
+        <FlatList style={isExpanded && styles.desktopList} data={cart.items} keyExtractor={item => item.id} renderItem={({ item }) => (
           <View style={styles.itemRow}>
-            {item.thumbnailUrl ? <Image source={{ uri: item.thumbnailUrl }} style={styles.thumbnail} contentFit="cover" /> : null}
+            {item.thumbnailUrl ? <CatalogImage uri={item.thumbnailUrl} label={item.name} style={styles.thumbnail} /> : null}
             <View style={styles.itemInfo}>
               <Text style={styles.itemName}>{item.name}</Text>
               <Text style={styles.itemPrice}>{formatCurrency(item.price)}</Text>
@@ -54,7 +56,7 @@ export const Cart: React.FC = () => {
           </View>
         )} contentContainerStyle={styles.list} />
       )}
-      <View style={styles.footer}>
+      <View style={[styles.footer, isExpanded && styles.desktopFooter]}>
         <View>
           <Text style={styles.summaryLabel}>{`${cart.itemCount} items`}</Text>
           <Text style={styles.summaryValue}>{formatCurrency(cart.subtotal)}</Text>
@@ -66,6 +68,9 @@ export const Cart: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
+  desktopList: { flexGrow: 0, flexShrink: 1 },
+  desktopEmpty: { flex: 0, minHeight: 180 },
+  desktopFooter: { gap: theme.spacing.md, marginTop: theme.spacing.md },
   container: {
     flex: 1,
     backgroundColor: theme.colors.cream,

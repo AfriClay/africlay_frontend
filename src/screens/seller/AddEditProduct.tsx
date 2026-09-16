@@ -10,6 +10,9 @@ import { Input } from '../../components/ui/Input';
 import { categories } from '../../mock/categories';
 import { SellerDashboardStackParamList } from '../../navigation/SellerDashboardStack';
 import { productService } from '../../services/productService';
+import { invalidateCatalog } from '../../services/catalogQueries';
+import { ErrorState } from '../../components/ui/ErrorState';
+import { EmptyState } from '../../components/ui/EmptyState';
 import { ProductCategory } from '../../types/product';
 import { useAuth } from '../../hooks/useAuth';
 import { theme } from '../../theme';
@@ -25,7 +28,8 @@ export const AddEditProduct: React.FC = () => {
   const sellerId = auth.user?.id ?? '';
   const productId = route.params?.productId;
   const populated = useRef(false);
-  const { data: product } = useQuery({ queryKey: ['product', productId], queryFn: () => productService.fetchProductById(productId!), enabled: Boolean(productId) });
+  const productQuery = useQuery({ queryKey: ['product', productId], queryFn: () => productService.fetchProductById(productId!), enabled: Boolean(productId) });
+  const { data: product } = productQuery;
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState<ProductCategory>();
@@ -36,6 +40,12 @@ export const AddEditProduct: React.FC = () => {
   const [dimensions, setDimensions] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string>();
+
+  useEffect(() => {
+    populated.current = false;
+    setName(''); setDescription(''); setCategory(undefined); setPrice(''); setStock('0');
+    setImages([]); setWeight(''); setDimensions(''); setError(undefined);
+  }, [productId]);
 
   useEffect(() => {
     if (!product || populated.current) return;
@@ -85,11 +95,7 @@ export const AddEditProduct: React.FC = () => {
       };
       if (productId) await productService.updateSellerProduct(sellerId, productId, draft);
       else await productService.addSellerProduct(sellerId, draft);
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['seller-products', sellerId] }),
-        queryClient.invalidateQueries({ queryKey: ['products'] }),
-        queryClient.invalidateQueries({ queryKey: ['product', productId] }),
-      ]);
+      await invalidateCatalog(queryClient, sellerId, productId);
       navigation.goBack();
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : 'Unable to save this product.');
@@ -97,6 +103,10 @@ export const AddEditProduct: React.FC = () => {
       setSaving(false);
     }
   };
+
+  if (productId && productQuery.isError) return <ErrorState message="Unable to load this product." onRetry={() => void productQuery.refetch()} />;
+  if (productId && productQuery.isLoading) return <Text style={styles.label}>Loading product...</Text>;
+  if (productId && !product) return <EmptyState title="Product not found" description="This product can no longer be edited." />;
 
   return (
     <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
