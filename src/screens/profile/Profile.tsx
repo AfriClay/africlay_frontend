@@ -1,47 +1,43 @@
 import React, { useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { ChevronRight, CircleHelp, CreditCard, Heart, LogOut, MapPin, MessageCircle, Package, Settings, Star, BadgeCheck } from 'lucide-react-native';
+import { ChevronRight, CircleHelp, LogOut, MapPin, MessageCircle, Package, Settings, BadgeCheck } from 'lucide-react-native';
 import { Avatar } from '../../components/ui/Avatar';
 import { GuestAuthSheet } from '../../components/ui/GuestAuthSheet';
 import { useAuth } from '../../hooks/useAuth';
 import { ProfileStackParamList } from '../../navigation/ProfileStack';
 import { theme } from '../../theme';
+import { useResponsiveLayout } from '../../contexts/ResponsiveLayoutContext';
+import { confirmLogout } from '../../utils/confirmLogout';
+import { useQuery } from '@tanstack/react-query';
+import { orderService } from '../../services/orderService';
 
-type ProfileNavigation = NativeStackNavigationProp<ProfileStackParamList, 'Profile'>;
-type ProfileRouteName = 'MyOrders' | 'Wishlist' | 'MyAddresses' | 'PaymentMethodsWallet' | 'MyReviews' | 'Settings' | 'SupportHelp';
+type ProfileNavigation = NativeStackNavigationProp<ProfileStackParamList, 'ProfileOverview'>;
+type ProfileRouteName = 'MyOrders' | 'MyAddresses' | 'Settings' | 'SupportHelp';
 
 const menuItems: ReadonlyArray<{ label: string; route: ProfileRouteName; icon: typeof Package }> = [
   { label: 'My Orders', route: 'MyOrders', icon: Package },
-  { label: 'Wishlist', route: 'Wishlist', icon: Heart },
   { label: 'My Addresses', route: 'MyAddresses', icon: MapPin },
-  { label: 'Payment Methods & Wallet', route: 'PaymentMethodsWallet', icon: CreditCard },
-  { label: 'My Reviews', route: 'MyReviews', icon: Star },
   { label: 'Settings', route: 'Settings', icon: Settings },
   { label: 'Help & Support', route: 'SupportHelp', icon: CircleHelp },
 ];
 
 export const Profile: React.FC = () => {
+  const { isExpanded } = useResponsiveLayout();
   const auth = useAuth();
   const navigation = useNavigation<ProfileNavigation>();
   const [authSheetVisible, setAuthSheetVisible] = useState(false);
-  const stats = auth.user?.stats ?? { orders: 0, wishlist: 0, reviews: 0 };
+  const userId = auth.user?.id ?? '';
+  const ordersQuery = useQuery({ queryKey: ['buyer-orders', userId], queryFn: orderService.fetchOrders, enabled: Boolean(userId) });
 
   const openRoute = (route: ProfileRouteName) => {
-    if (auth.isGuest && route === 'Wishlist') {
-      setAuthSheetVisible(true);
-      return;
-    }
     navigation.navigate({ name: route, params: undefined });
   };
 
-  const confirmLogout = () => {
-    Alert.alert('Log out?', 'You will need to sign in again to access your account.', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Log Out', style: 'destructive', onPress: () => void auth.logout() },
-    ]);
+  const requestLogout = () => {
+    confirmLogout(() => void auth.logout());
   };
 
   return (
@@ -57,15 +53,11 @@ export const Profile: React.FC = () => {
         </View>
 
         <View style={styles.statsCard}>
-          <View style={styles.stat}><Text style={styles.statValue}>{stats.orders}</Text><Text style={styles.statLabel}>Orders</Text></View>
-          <View style={styles.statDivider} />
-          <View style={styles.stat}><Text style={styles.statValue}>{stats.wishlist}</Text><Text style={styles.statLabel}>Wishlist</Text></View>
-          <View style={styles.statDivider} />
-          <View style={styles.stat}><Text style={styles.statValue}>{stats.reviews}</Text><Text style={styles.statLabel}>Reviews</Text></View>
+          <View style={styles.stat}><Text style={styles.statValue}>{ordersQuery.isLoading ? '...' : ordersQuery.isError ? '-' : ordersQuery.data?.length ?? 0}</Text><Text style={styles.statLabel}>Orders</Text></View>
         </View>
 
-        <View style={styles.menu}>
-          <Pressable style={styles.menuRow} onPress={() => navigation.getParent()?.navigate('Messages')} accessibilityRole="button">
+        <View style={[styles.menu, isExpanded && styles.desktopMenu]}>
+          <Pressable style={[styles.menuRow, isExpanded && styles.desktopRow]} onPress={() => navigation.getParent()?.navigate('Messages')} accessibilityRole="button">
             <View style={styles.menuIcon}><MessageCircle color={theme.colors.ink} size={20} /></View>
             <Text style={styles.menuLabel}>My Messages</Text>
             <ChevronRight color={theme.colors.muted} size={19} />
@@ -73,7 +65,7 @@ export const Profile: React.FC = () => {
           {menuItems.map(item => {
             const Icon = item.icon;
             return (
-              <Pressable key={item.route} style={styles.menuRow} onPress={() => openRoute(item.route)} accessibilityRole="button">
+              <Pressable key={item.route} style={[styles.menuRow, isExpanded && styles.desktopRow]} onPress={() => openRoute(item.route)} accessibilityRole="button">
                 <View style={styles.menuIcon}><Icon color={theme.colors.ink} size={20} /></View>
                 <Text style={styles.menuLabel}>{item.label}</Text>
                 <ChevronRight color={theme.colors.muted} size={19} />
@@ -81,7 +73,7 @@ export const Profile: React.FC = () => {
             );
           })}
           {auth.user ? (
-            <Pressable style={styles.menuRow} onPress={confirmLogout} accessibilityRole="button">
+            <Pressable style={[styles.menuRow, isExpanded && styles.desktopRow]} onPress={requestLogout} accessibilityRole="button">
               <View style={styles.menuIcon}><LogOut color={theme.colors.error} size={20} /></View>
               <Text style={styles.logoutLabel}>Logout</Text>
             </Pressable>
@@ -92,12 +84,14 @@ export const Profile: React.FC = () => {
           )}
         </View>
       </ScrollView>
-      <GuestAuthSheet visible={authSheetVisible} onClose={() => setAuthSheetVisible(false)} description="Create an account to save items and keep your orders, messages, and payment details in one place." />
+      <GuestAuthSheet visible={authSheetVisible} onClose={() => setAuthSheetVisible(false)} description="Create an account to keep your orders and messages in one place." />
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
+  desktopMenu: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
+  desktopRow: { width: '48%', paddingVertical: theme.spacing.sm },
   container: { flex: 1, backgroundColor: theme.colors.cream },
   header: { alignItems: 'center', paddingHorizontal: theme.spacing.lg, paddingTop: theme.spacing.xl, paddingBottom: theme.spacing.lg, backgroundColor: theme.colors.primary.DEFAULT },
   name: { marginTop: theme.spacing.sm, fontSize: theme.typography.h2.fontSize, fontWeight: '800', color: theme.colors.white },

@@ -1,40 +1,52 @@
 import React, { useMemo, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { FlatList, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useQuery } from '@tanstack/react-query';
-import { BriefcaseBusiness, BrushCleaning, Camera, GraduationCap, House, Search, Truck } from 'lucide-react-native';
+import { BriefcaseBusiness, Search } from 'lucide-react-native';
 import { ServiceCard } from '../../components/domain/ServiceCard';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { productService } from '../../services/productService';
 import { theme } from '../../theme';
 import { HomeStackParamList } from '../../navigation/HomeStack';
-
-const serviceCategories = [
-  { label: 'Home Repair & Maintenance', icon: House },
-  { label: 'Transport & Delivery', icon: Truck },
-  { label: 'Cleaning Services', icon: BrushCleaning },
-  { label: 'Tutoring & Training', icon: GraduationCap },
-  { label: 'Events & Photography', icon: Camera },
-  { label: 'Business Services', icon: BriefcaseBusiness },
-] as const;
+import { useResponsiveLayout } from '../../contexts/ResponsiveLayoutContext';
+import { serviceService, ServiceCategory } from '../../services/serviceService';
+import { ErrorState } from '../../components/ui/ErrorState';
 
 type ServicesNavigation = NativeStackNavigationProp<HomeStackParamList, 'Services'>;
 
 export const Services: React.FC = () => {
+  const { isExpanded, isWeb } = useResponsiveLayout();
+  const Content = isWeb ? ScrollView : View;
+  const [contentWidth, setContentWidth] = useState(0);
+  const columns = Math.max(2, Math.min(4, Math.floor((contentWidth - 48) / 236)));
   const navigation = useNavigation<ServicesNavigation>();
   const [query, setQuery] = useState('');
-  const { data: services = [], isLoading } = useQuery({ queryKey: ['services'], queryFn: productService.fetchServices });
+  const servicesQuery = useQuery({ queryKey: ['services'], queryFn: productService.fetchServices });
+  const categoriesQuery = useQuery({ queryKey: ['service-categories'], queryFn: serviceService.categories });
+  const { data: services = [], isLoading } = servicesQuery;
+  const serviceCategories = categoriesQuery.data ?? [];
+  const [categoryId, setCategoryId] = useState<string>();
 
   const filteredServices = useMemo(() => {
     const normalized = query.trim().toLowerCase();
-    if (!normalized) return services;
-    return services.filter(service => `${service.title} ${service.description} ${service.category}`.toLowerCase().includes(normalized));
-  }, [query, services]);
+    return services.filter(service => (!categoryId || service.categoryId === categoryId) &&
+      (!normalized || `${service.title} ${service.description} ${service.category}`.toLowerCase().includes(normalized)));
+  }, [query, services, categoryId]);
+
+  const renderCategory = ({ item }: { item: ServiceCategory }) => {
+    return <Pressable key={item.id} style={styles.category} onPress={() => setCategoryId(current => current === item.id ? undefined : item.id)} accessibilityRole="button" accessibilityLabel={item.name} accessibilityState={{ selected: categoryId === item.id }}>
+      <View style={styles.categoryIcon}><BriefcaseBusiness color={theme.colors.primary.DEFAULT} size={22} /></View>
+      <Text style={styles.categoryLabel} numberOfLines={2}>{item.name}</Text>
+    </Pressable>;
+  };
+
+  if (servicesQuery.isError || categoriesQuery.isError) return <ErrorState message="Unable to load services." onRetry={() => { void servicesQuery.refetch(); void categoriesQuery.refetch(); }} />;
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} onLayout={event => setContentWidth(event.nativeEvent.layout.width)}>
+      <Content style={{ flex: 1 }}>
       <View style={styles.headerRow}>
         <Text style={styles.title}>Services</Text>
         <Search color={theme.colors.ink} size={22} />
@@ -53,45 +65,50 @@ export const Services: React.FC = () => {
       <View style={styles.hero}>
         <View style={styles.heroCopy}>
           <Text style={styles.heroTitle}>Find trusted experts for all your needs</Text>
-          <Text style={styles.heroText}>Verified local providers, clear prices, easy booking.</Text>
+          <Text style={styles.heroText}>Explore services from local providers.</Text>
         </View>
-        <Pressable style={styles.heroButton} accessibilityRole="button" onPress={() => setQuery('')}>
-          <Text style={styles.heroButtonText}>Book Now</Text>
+        <Pressable style={styles.heroButton} accessibilityRole="button" onPress={() => { setQuery(''); setCategoryId(undefined); }}>
+          <Text style={styles.heroButtonText}>Browse All</Text>
         </Pressable>
       </View>
       <Text style={styles.sectionTitle}>Popular Services</Text>
-      <FlatList
+      {isExpanded ? <View style={[styles.categories, styles.categoryGrid]}>{serviceCategories.map(item => renderCategory({ item }))}</View> : <FlatList
+        style={isWeb && { flexGrow: 0 }}
         data={serviceCategories}
         horizontal
         showsHorizontalScrollIndicator={false}
-        keyExtractor={item => item.label}
-        renderItem={({ item }) => {
-          const Icon = item.icon;
-          return (
-            <Pressable style={styles.category} onPress={() => setQuery(item.label)} accessibilityRole="button" accessibilityLabel={item.label}>
-              <View style={styles.categoryIcon}><Icon color={theme.colors.primary.DEFAULT} size={22} /></View>
-              <Text style={styles.categoryLabel} numberOfLines={2}>{item.label}</Text>
-            </Pressable>
-          );
-        }}
+        keyExtractor={item => item.id}
+        renderItem={renderCategory}
         contentContainerStyle={styles.categories}
-      />
+      />}
       <Text style={styles.sectionTitle}>Recommended for you</Text>
       {isLoading ? (
         <View style={styles.skeleton} />
+      ) : isExpanded ? (
+        filteredServices.length ? <View style={[styles.services, styles.serviceGrid]}>{filteredServices.map(item =>
+          <View key={item.id} style={{ width: `${100 / columns}%`, maxWidth: 320, padding: theme.spacing.sm }}>
+            <ServiceCard grid service={item} onPress={() => navigation.navigate('ServiceDetails', { serviceId: item.slug ?? item.id })} />
+          </View>)}
+        </View> : <EmptyState title="No services found" description="Try another service or clear your search." />
       ) : (
         <FlatList
+          key={isExpanded ? `grid-${columns}` : 'horizontal'}
           data={filteredServices}
-          horizontal
+          horizontal={!isExpanded}
+          numColumns={isExpanded ? columns : 1}
+          scrollEnabled={!isExpanded}
           showsHorizontalScrollIndicator={false}
           keyExtractor={item => item.id}
           renderItem={({ item }) => (
-            <ServiceCard service={item} onPress={() => navigation.navigate('ServiceDetails', { serviceId: item.id })} />
+            <View style={isExpanded && { width: `${100 / columns}%`, maxWidth: 320, padding: theme.spacing.sm }}>
+              <ServiceCard grid={isExpanded} service={item} onPress={() => navigation.navigate('ServiceDetails', { serviceId: item.slug ?? item.id })} />
+            </View>
           )}
           ListEmptyComponent={<EmptyState title="No services found" description="Try another service or clear your search." />}
           contentContainerStyle={styles.services}
         />
       )}
+      </Content>
     </SafeAreaView>
   );
 };
@@ -110,6 +127,8 @@ const styles = StyleSheet.create({
   heroButtonText: { color: theme.colors.ink, fontWeight: '800' },
   sectionTitle: { color: theme.colors.ink, fontSize: theme.typography.h3.fontSize, fontWeight: '800', marginHorizontal: theme.spacing.lg, marginBottom: theme.spacing.md },
   categories: { paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.lg },
+  categoryGrid: { flexDirection: 'row', flexWrap: 'wrap', rowGap: theme.spacing.md },
+  serviceGrid: { flexDirection: 'row', flexWrap: 'wrap' },
   category: { width: 104, alignItems: 'center', marginRight: theme.spacing.sm },
   categoryIcon: { width: 52, height: 52, borderRadius: theme.radii.md, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.white, ...theme.shadows.sm },
   categoryLabel: { marginTop: theme.spacing.sm, color: theme.colors.ink, textAlign: 'center', fontSize: 11, lineHeight: 15 },

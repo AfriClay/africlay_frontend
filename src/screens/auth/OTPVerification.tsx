@@ -5,6 +5,7 @@ import { Button } from '../../components/ui/Button';
 import { useNavigation } from '@react-navigation/native';
 import { getAuthErrorMessage } from '../../services/authService';
 import { theme } from '../../theme';
+import { FormFrame } from '../../components/layout/FormFrame';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../../navigation/AuthStack';
 import { useAuth } from '../../hooks/useAuth';
@@ -66,7 +67,7 @@ export const OTPVerification: React.FC = () => {
   };
 
   return (
-    <View style={styles.container}>
+    <FormFrame style={styles.container}>
       <Text style={styles.title}>Verify your email</Text>
       <Text style={styles.copy}>Enter the 6-digit code sent to {pendingEmail ?? 'your email'}.</Text>
       <OTPInput value={code} onChange={setCode} onComplete={handleComplete} error={error} accessibilityLabel="Email verification code" />
@@ -75,7 +76,7 @@ export const OTPVerification: React.FC = () => {
         <Text style={[styles.resend, !canResend || resending ? styles.resendDisabled : null]}>Resend code {canResend ? '' : `(${timer}s)`}</Text>
       </Pressable>
       <Button onPress={handleComplete} disabled={code.length !== 6 || verifying} loading={verifying} accessibilityLabel="Verify email">Verify Email</Button>
-    </View>
+    </FormFrame>
   );
 };
 

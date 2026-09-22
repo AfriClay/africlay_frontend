@@ -12,11 +12,14 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { MessagesStackParamList } from '../../navigation/MessagesStack';
 import { Search } from 'lucide-react-native';
 import { EmptyState } from '../../components/ui/EmptyState';
+import { ErrorState } from '../../components/ui/ErrorState';
 
 export const MessagesList: React.FC = () => {
-  const navigation = useNavigation<NativeStackNavigationProp<MessagesStackParamList, 'Messages'>>();
+  const navigation = useNavigation<NativeStackNavigationProp<MessagesStackParamList, 'MessagesInbox'>>();
   const auth = useAuth();
-  const { data: conversations = [], isLoading } = useQuery({ queryKey: ['conversations'], queryFn: () => messageService.fetchConversations() });
+  const userId = auth.user?.id ?? '';
+  const conversationsQuery = useQuery({ queryKey: ['conversations', userId], queryFn: () => messageService.fetchConversations(userId), enabled: Boolean(userId) });
+  const { data: conversations = [], isLoading } = conversationsQuery;
   const [authSheet, setAuthSheet] = useState(false);
   const [query, setQuery] = useState('');
   const filteredConversations = useMemo(() => conversations.filter(conversation => `${conversation.name} ${conversation.lastMessage}`.toLowerCase().includes(query.toLowerCase())), [conversations, query]);
@@ -33,7 +36,8 @@ export const MessagesList: React.FC = () => {
     <SafeAreaView style={styles.container}>
       <Text style={styles.title}>Messages</Text>
       <View style={styles.searchBar}><Search color={theme.colors.muted} size={18} /><TextInput value={query} onChangeText={setQuery} placeholder="Search messages…" placeholderTextColor={theme.colors.muted} style={styles.searchInput} accessibilityLabel="Search messages" /></View>
-      {isLoading ? (
+      {!userId ? <EmptyState title="Sign in to view messages" description="Conversations belong to your account." /> : conversationsQuery.isError ?
+        <ErrorState message="Unable to load conversations." onRetry={() => void conversationsQuery.refetch()} /> : isLoading ? (
         <View style={styles.list}>
           {Array.from({ length: 6 }).map((_, i) => (
             <View key={i} style={styles.skeletonRoot}>
@@ -50,7 +54,7 @@ export const MessagesList: React.FC = () => {
       ) : (
         <FlatList data={filteredConversations} keyExtractor={item => item.id} renderItem={({ item }) => (
           <MessagePreviewCard conversation={item} onPress={() => openConversation(item.id, item.name)} />
-        )} ListEmptyComponent={<EmptyState title="No conversations found" description="Try another name or message." />} contentContainerStyle={filteredConversations.length ? styles.list : styles.emptyList} />
+        )} ListEmptyComponent={<EmptyState title="No conversations found" description="Conversations with sellers will appear here." />} contentContainerStyle={filteredConversations.length ? styles.list : styles.emptyList} />
       )}
 
       <GuestAuthSheet visible={authSheet} onClose={() => setAuthSheet(false)} description="Register or log in to message sellers and support." />

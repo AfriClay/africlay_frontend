@@ -1,130 +1,61 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { orders } from '../mock/orders';
-import { Order, OrderStatus } from '../types/order';
-import { simulateNetwork } from './api';
+import { z } from 'zod';
+import { Order, OrderItem } from '../types/order';
+import { apiClient, ApiError } from './api';
+import { parseAmount, parseCommerce, parseCommerceList } from './commerceContract';
 
-const SELLER_ORDERS_KEY = 'africlay-seller-orders-v1';
-let currentOrders = [...orders];
+const orderItemSchema = z.object({
+  id: z.string().uuid(), product_id: z.string().uuid().nullish(),
+  product_name: z.string().nullish(), product_slug: z.string().nullish(),
+  seller_id: z.string().uuid().nullish(), quantity: z.number().int().positive(),
+  price_at_purchase: z.union([z.string(), z.number()]),
+});
+const orderSchema = z.object({
+  id: z.string().uuid(), buyer_id: z.string().uuid(),
+  total_amount: z.union([z.string(), z.number()]), currency: z.string().length(3),
+  status: z.enum(['pending', 'processing', 'shipped', 'delivered', 'cancelled']),
+  shipping_address: z.string(), shipping_city: z.string(),
+  shipping_postal_code: z.string(), shipping_country: z.string(),
+  items: z.array(orderItemSchema), created_at: z.string(),
+});
 
-interface SellerOrderState {
-  initializedSellerIds: string[];
-  orders: Order[];
-}
+const toOrder = (raw: z.infer<typeof orderSchema>): Order => ({
+  id: raw.id, buyerId: raw.buyer_id, date: raw.created_at,
+  status: raw.status, total: parseAmount(raw.total_amount), currency: raw.currency,
+  deliveryAddress: [raw.shipping_address, raw.shipping_city, raw.shipping_postal_code, raw.shipping_country].filter(Boolean).join(', '),
+  items: raw.items.map((item): OrderItem => ({
+    id: item.id, productId: item.product_id ?? undefined, productSlug: item.product_slug ?? undefined,
+    name: item.product_name ?? 'Unavailable product', quantity: item.quantity,
+    price: parseAmount(item.price_at_purchase), sellerId: item.seller_id ?? undefined,
+  })),
+});
 
-const emptySellerOrders: SellerOrderState = { initializedSellerIds: [], orders: [] };
-
-const readSellerOrders = async (): Promise<SellerOrderState> => {
-  const stored = await AsyncStorage.getItem(SELLER_ORDERS_KEY);
-  if (!stored) return emptySellerOrders;
-  try {
-    const parsed = JSON.parse(stored) as SellerOrderState;
-    return {
-      initializedSellerIds: Array.isArray(parsed.initializedSellerIds) ? parsed.initializedSellerIds : [],
-      orders: Array.isArray(parsed.orders) ? parsed.orders : [],
-    };
-  } catch {
-    return emptySellerOrders;
-  }
+export type CheckoutPayload = {
+  shipping_address: string;
+  shipping_city: string;
+  shipping_postal_code: string;
+  shipping_country: string;
 };
 
-const writeSellerOrders = async (state: SellerOrderState): Promise<void> => {
-  await AsyncStorage.setItem(SELLER_ORDERS_KEY, JSON.stringify(state));
-};
-
-const seedOrders = (sellerId: string): Order[] => {
-  const now = new Date();
-  const deadline = new Date(now.getTime() + 2 * 60 * 60 * 1000).toISOString();
-  return [
-    {
-      id: `SELL-${sellerId.slice(-6).toUpperCase()}-01`,
-      date: now.toISOString(),
-      status: 'New',
-      sellerId,
-      customerName: 'David K.',
-      acceptanceDeadline: deadline,
-      deliveryAddress: 'Kilimani, Nairobi',
-      deliveryFee: 150,
-      total: 1950,
-      items: [{
-        id: `${sellerId}-order-kitenge`,
-        productId: `${sellerId}-kitenge-bundle`,
-        name: 'Kitenge Fabric Bundle',
-        quantity: 1,
-        price: 1800,
-        sellerId,
-        thumbnailUrl: 'https://images.unsplash.com/photo-1604514628550-37477afdf4e3?auto=format&fit=crop&w=400&q=80',
-      }],
-    },
-    {
-      id: `SELL-${sellerId.slice(-6).toUpperCase()}-02`,
-      date: new Date(now.getTime() - 45 * 60 * 1000).toISOString(),
-      status: 'Accepted',
-      sellerId,
-      customerName: 'Grace W.',
-      deliveryAddress: 'Westlands, Nairobi',
-      deliveryFee: 180,
-      total: 3380,
-      items: [{
-        id: `${sellerId}-order-sisal`,
-        productId: `${sellerId}-sisal-rug`,
-        name: 'Handmade Sisal Rug',
-        quantity: 1,
-        price: 3200,
-        sellerId,
-        thumbnailUrl: 'https://images.unsplash.com/photo-1600166898405-da9535204843?auto=format&fit=crop&w=400&q=80',
-      }],
-    },
-  ];
-};
+let checkoutPending = false;
 
 export const orderService = {
-  initializeSellerOrders: async (sellerId: string): Promise<Order[]> => {
-    const state = await readSellerOrders();
-    if (!state.initializedSellerIds.includes(sellerId)) {
-      state.initializedSellerIds.push(sellerId);
-      state.orders.push(...seedOrders(sellerId));
-      await writeSellerOrders(state);
+  checkout: async (payload: CheckoutPayload): Promise<Order> => {
+    if (checkoutPending) throw new Error('Checkout is already in progress.');
+    checkoutPending = true;
+    try {
+      return toOrder(parseCommerce(orderSchema, await apiClient('/cart/checkout/', { method: 'POST', body: payload })));
+    } finally {
+      checkoutPending = false;
     }
-    return simulateNetwork(state.orders.filter(order => order.sellerId === sellerId));
   },
-
-  fetchSellerOrders: async (sellerId: string): Promise<Order[]> => {
-    const state = await readSellerOrders();
-    return simulateNetwork(state.orders.filter(order => order.sellerId === sellerId));
-  },
-
-  updateSellerOrderStatus: async (sellerId: string, orderId: string, status: OrderStatus): Promise<Order> => {
-    const state = await readSellerOrders();
-    const index = state.orders.findIndex(order => order.id === orderId && order.sellerId === sellerId);
-    if (index < 0) throw new Error('Order not found.');
-    const updated = { ...state.orders[index], status } as Order;
-    state.orders[index] = updated;
-    await writeSellerOrders(state);
-    return simulateNetwork(updated);
-  },
-
-  expireSellerOrders: async (sellerId: string): Promise<string[]> => {
-    const state = await readSellerOrders();
-    const now = Date.now();
-    const expiredIds: string[] = [];
-    state.orders = state.orders.map(order => {
-      if (order.sellerId === sellerId && order.status === 'New' && order.acceptanceDeadline && new Date(order.acceptanceDeadline).getTime() <= now) {
-        expiredIds.push(order.id);
-        return { ...order, status: 'Cancelled' as const };
-      }
-      return order;
-    });
-    if (expiredIds.length) await writeSellerOrders(state);
-    return expiredIds;
-  },
-
-  fetchOrders: async (): Promise<Order[]> => simulateNetwork(currentOrders),
-  fetchOrderById: async (id: string): Promise<Order | undefined> => {
-    const sellerState = await readSellerOrders();
-    return simulateNetwork(currentOrders.find(item => item.id === id) ?? sellerState.orders.find(item => item.id === id));
-  },
-  createOrder: async (order: Order): Promise<Order> => {
-    currentOrders = [order, ...currentOrders];
-    return simulateNetwork(order);
+  fetchOrders: async (): Promise<Order[]> =>
+    parseCommerceList(orderSchema, await apiClient('/cart/orders/')).map(toOrder),
+  fetchOrderById: async (id: string): Promise<Order | null> => {
+    try {
+      return toOrder(parseCommerce(orderSchema, await apiClient(`/cart/orders/${encodeURIComponent(id)}/`)));
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 404) return null;
+      throw error;
+    }
   },
 };

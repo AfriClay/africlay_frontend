@@ -1,56 +1,54 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { BadgeCheck, ClipboardList, PackagePlus, Pencil, WalletCards } from 'lucide-react-native';
+import { BriefcaseBusiness, PackagePlus, Pencil } from 'lucide-react-native';
 import { useQuery } from '@tanstack/react-query';
-import { OrderCard } from '../../components/domain/OrderCard';
 import { StatCard } from '../../components/domain/StatCard';
 import { useAuth } from '../../hooks/useAuth';
 import { SellerDashboardStackParamList } from '../../navigation/SellerDashboardStack';
-import { orderService } from '../../services/orderService';
 import { productService } from '../../services/productService';
 import { theme } from '../../theme';
+import { useResponsiveLayout } from '../../contexts/ResponsiveLayoutContext';
+import { catalogKeys } from '../../services/catalogQueries';
+import { ErrorState } from '../../components/ui/ErrorState';
 
 type DashboardNavigation = NativeStackNavigationProp<SellerDashboardStackParamList, 'DashboardHome'>;
 
 const actions = [
   { label: 'Manage Products', route: 'ProductManagement' as const, icon: Pencil },
   { label: 'Add New Product', route: 'AddEditProduct' as const, icon: PackagePlus },
-  { label: 'View Orders', route: 'SellerOrders' as const, icon: ClipboardList },
-  { label: 'Wallet & Earnings', route: 'PaymentMethodsWallet' as const, icon: WalletCards },
+  { label: 'Manage Services', route: 'ServiceManagement' as const, icon: BriefcaseBusiness },
 ];
 
 export const DashboardHome: React.FC = () => {
+  const { isWide } = useResponsiveLayout();
   const navigation = useNavigation<DashboardNavigation>();
   const auth = useAuth();
   const sellerId = auth.user?.id ?? '';
-  const { data: products = [] } = useQuery({ queryKey: ['seller-products', sellerId], queryFn: () => productService.initializeSellerCatalog(sellerId), enabled: Boolean(sellerId) });
-  const { data: orders = [] } = useQuery({ queryKey: ['seller-orders', sellerId], queryFn: () => orderService.initializeSellerOrders(sellerId), enabled: Boolean(sellerId) });
-  const pendingCount = orders.filter(order => order.status === 'New').length;
-  const reviewCount = products.reduce((total, product) => total + product.reviewCount, 0);
-  const rating = useMemo(() => {
-    if (!reviewCount) return undefined;
-    return products.reduce((total, product) => total + product.rating * product.reviewCount, 0) / reviewCount;
-  }, [products, reviewCount]);
-  const recentOrders = orders.slice(0, 3);
+  const productsQuery = useQuery({ queryKey: catalogKeys.ownedProducts(sellerId), queryFn: productService.fetchSellerProducts, enabled: Boolean(sellerId) });
+  const { data: products = [] } = productsQuery;
+  const storeQuery = useQuery({ queryKey: ['owned-store', sellerId], queryFn: () => productService.fetchOwnStore(sellerId), enabled: Boolean(sellerId) });
+  const store = storeQuery.data;
+  const reviewCount = store?.reviewCount ?? 0;
+  const rating = reviewCount ? store?.rating : undefined;
+
+  if (productsQuery.isError || storeQuery.isError) return <ErrorState message="Unable to load your store." onRetry={() => { void productsQuery.refetch(); void storeQuery.refetch(); }} />;
 
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.storeHeader}>
-          {auth.storefront?.logoUrl ? <Image source={{ uri: auth.storefront.logoUrl }} style={styles.logo} /> : <View style={styles.logoFallback}><Text style={styles.logoInitial}>{auth.storefront?.name?.[0] ?? 'A'}</Text></View>}
+          {store?.logoUrl ? <Image source={{ uri: store.logoUrl }} style={styles.logo} /> : <View style={styles.logoFallback}><Text style={styles.logoInitial}>{store?.name?.[0] ?? 'A'}</Text></View>}
           <View style={styles.storeCopy}>
             <Text style={styles.eyebrow}>MY STORE</Text>
-            <Text style={styles.storeName}>{auth.storefront?.name ?? "Wanjiku's Corner"}</Text>
-            <View style={styles.verified}><BadgeCheck color={theme.colors.success} size={16} /><Text style={styles.verifiedText}>Verified Seller</Text></View>
+            <Text style={styles.storeName}>{store?.name ?? (storeQuery.isLoading ? 'Loading store...' : 'Store unavailable')}</Text>
           </View>
         </View>
 
         <View style={styles.stats}>
           <StatCard value={String(products.length)} label="Products" />
-          <StatCard value={String(pendingCount)} label="Pending Orders" />
           <StatCard value={rating ? rating.toFixed(1) : 'No ratings yet'} label={rating ? `${reviewCount} reviews` : 'Store rating'} />
         </View>
 
@@ -59,7 +57,7 @@ export const DashboardHome: React.FC = () => {
           {actions.map(action => {
             const Icon = action.icon;
             return (
-              <Pressable key={action.label} style={styles.action} onPress={() => navigation.navigate(action.route as any)} accessibilityRole="button">
+              <Pressable key={action.label} style={[styles.action, isWide && { width: '23.5%' }]} onPress={() => navigation.navigate(action.route as any)} accessibilityRole="button">
                 <View style={styles.actionIcon}><Icon color={theme.colors.primary.DEFAULT} size={23} /></View>
                 <Text style={styles.actionLabel}>{action.label}</Text>
               </Pressable>
@@ -67,13 +65,6 @@ export const DashboardHome: React.FC = () => {
           })}
         </View>
 
-        <View style={styles.sectionHeading}>
-          <Text style={styles.sectionTitle}>Recent Orders</Text>
-          <Text style={styles.link} onPress={() => navigation.navigate('SellerOrders')}>View all</Text>
-        </View>
-        {recentOrders.length
-          ? recentOrders.map(order => <OrderCard key={order.id} order={order} onPress={() => navigation.navigate('OrderDetails', { orderId: order.id })} />)
-          : <Text style={styles.empty}>Incoming customer orders will appear here.</Text>}
       </ScrollView>
     </SafeAreaView>
   );

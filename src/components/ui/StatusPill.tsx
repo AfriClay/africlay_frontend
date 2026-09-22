@@ -1,27 +1,25 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { theme } from '../../theme';
+import { OrderStatus } from '../../types/order';
 
 const STATUS_CONFIG = {
-  New: { backgroundColor: theme.colors.secondary.DEFAULT, color: theme.colors.ink },
-  Accepted: { backgroundColor: theme.colors.primary.tint, color: theme.colors.primary.dark },
-  Packed: { backgroundColor: theme.colors.secondary.tint, color: theme.colors.ink },
-  Processing: { backgroundColor: theme.colors.secondary.tint, color: theme.colors.ink },
-  Shipped: { backgroundColor: theme.colors.primary.DEFAULT, color: theme.colors.white },
-  Delivered: { backgroundColor: theme.colors.success, color: theme.colors.white },
-  Completed: { backgroundColor: theme.colors.success, color: theme.colors.white },
-  Cancelled: { backgroundColor: theme.colors.error, color: theme.colors.white },
+  pending: { backgroundColor: theme.colors.secondary.tint, color: theme.colors.ink, label: 'Pending' },
+  processing: { backgroundColor: theme.colors.primary.tint, color: theme.colors.primary.dark, label: 'Processing' },
+  shipped: { backgroundColor: theme.colors.primary.DEFAULT, color: theme.colors.white, label: 'Shipped' },
+  delivered: { backgroundColor: theme.colors.success, color: theme.colors.white, label: 'Delivered' },
+  cancelled: { backgroundColor: theme.colors.error, color: theme.colors.white, label: 'Cancelled' },
 } as const;
 
 interface StatusPillProps {
-  status: keyof typeof STATUS_CONFIG;
+  status: OrderStatus;
 }
 
 export const StatusPill: React.FC<StatusPillProps> = ({ status }) => {
   const config = STATUS_CONFIG[status];
   return (
     <View style={[styles.root, { backgroundColor: config.backgroundColor }]}> 
-      <Text style={[styles.text, { color: config.color }]}>{status}</Text>
+      <Text style={[styles.text, { color: config.color }]}>{config.label}</Text>
     </View>
   );
 };

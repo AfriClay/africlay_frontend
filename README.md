@@ -1,281 +1,318 @@
-# AfriClay
+# AfriClay Frontend
 
-AfriClay is an Expo React Native marketplace app for discovering African products and services, messaging sellers, managing a cart, placing orders, and setting up a seller storefront.
+AfriClay frontend is the Expo + React Native client for the marketplace experience. It is designed to run on Android, iOS, and web while keeping the same business logic and UI structure across platforms.
 
-## Requirements
+This app is responsible for:
 
-This guide assumes Windows and Android development. The project currently targets Expo SDK 57, React Native 0.86, React 19, Android API 36, and Java/Kotlin native modules.
+- authentication and onboarding screens
+- seller discovery and storefront browsing
+- product details and cart flows
+- category and marketplace exploration
+- responsive web behavior alongside mobile-native experience
+- Django JWT bearer authentication on web and native
 
-Install these tools before running the app:
+## Tech Stack
 
-1. **Node.js LTS**, which includes npm. Verify it in PowerShell:
+- Expo SDK 57
+- React Native 0.86
+- React 19
+- TypeScript
+- React Navigation
+- React Query
+- Expo Secure Store
+- Native and web compatibility via React Native Web
 
-	```powershell
-	node --version
-	npm.cmd --version
-	```
-
-2. **Git**, if you are cloning the repository.
-
-3. **Android Studio**, including:
-	- Android SDK Platform 36
-	- Android SDK Build-Tools 36.0.0
-	- Android SDK Platform-Tools
-	- Android SDK Command-line Tools
-	- Android Emulator
-	- An Android SDK location such as `C:\Users\<username>\AppData\Local\Android\Sdk`
-
-4. **JDK 17**. Android Studio's bundled JDK is normally suitable. In Android Studio, check `File > Settings > Build, Execution, Deployment > Build Tools > Gradle > Gradle JDK` and select the embedded JDK or another JDK 17 installation.
-
-5. A **Clerk account and publishable key**. The app cannot complete authentication without `EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY`. See [AUTH_SETUP.md](AUTH_SETUP.md) for the Clerk dashboard configuration.
-
-The Android SDK tools must be available to PowerShell. Add these Windows environment variables if they are not already configured:
+## Project Structure
 
 ```text
-ANDROID_HOME=C:\Users\<username>\AppData\Local\Android\Sdk
-ANDROID_SDK_ROOT=C:\Users\<username>\AppData\Local\Android\Sdk
+front_end/
+├── App.tsx                  # App bootstrap and root providers
+├── app.json                 # Expo app configuration
+├── index.ts                 # Expo entry point
+├── package.json             # Scripts and dependencies
+├── tsconfig.json            # TypeScript config
+├── .env.example             # Frontend environment template
+├── assets/                  # Static app assets
+├── scripts/                 # Helper scripts
+├── src/
+│   ├── components/          # Shared UI and layout components
+│   ├── contexts/            # Auth, cart, and app-level state
+│   ├── hooks/               # Reusable app hooks
+│   ├── lib/                 # Utility and helper code
+│   ├── navigation/          # App navigation structure
+│   ├── screens/             # Feature screens
+│   ├── services/            # API and backend integration
+│   ├── theme/               # Design tokens and theme setup
+│   ├── types/               # Type definitions
+│   └── utils/               # Shared helper functions
+├── android/                 # Native Android project
+├── ios/                     # Native iOS project
+├── dist/                    # Build artifacts
+├── README.md                # This file
+├── AUTH_SETUP.md            # Auth and API flow notes
+├── RESPONSIVE_LAYOUT.md     # Web/mobile layout strategy
+└── node_modules/            # Installed dependencies
 ```
 
-Add these folders to `Path`:
+## Prerequisites
 
-```text
-%ANDROID_HOME%\platform-tools
-%ANDROID_HOME%\emulator
-%ANDROID_HOME%\cmdline-tools\latest\bin
-```
+Before running the frontend, install:
 
-Close and reopen PowerShell after changing environment variables. Verify Android debugging tools are available:
+- Node.js LTS
+- npm
+- Git
+- Android Studio + Android SDK (for Android builds)
+- JDK 17
+- A working Django backend instance from `updated_backend/Africlay-server`
+
+## Install Dependencies
+
+From the frontend folder:
 
 ```powershell
-adb version
-```
-
-## First-time setup
-
-Run all commands from the repository root, the folder containing `package.json` and `App.tsx`.
-
-If Android Studio installed the SDK in a different folder, update `android/local.properties` so its `sdk.dir` points to that SDK. For example:
-
-```properties
-sdk.dir=C:\\Users\\<username>\\AppData\\Local\\Android\\Sdk
-```
-
-Install JavaScript dependencies and create the local environment file:
-
-```powershell
-npm.cmd install
+cd front_end
+npm install
 Copy-Item .env.example .env
 ```
 
-Open `.env` and replace the placeholder with the Clerk **publishable** key:
+## Environment Configuration
 
-```dotenv
-EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_your_publishable_key
+Open `.env` and set the backend URL that matches your target environment:
+
+```env
+EXPO_PUBLIC_API_URL=http://localhost:8000/api
 ```
 
-Do not put a Clerk secret key, Google client secret, or other private credential in `.env` variables exposed to the app. Never commit `.env`.
+Use these values depending on your runtime:
 
-After changing `.env`, stop any running Expo process and clear the Metro cache:
+- Web: `http://localhost:8000/api`
+- Android emulator: `http://10.0.2.2:8000/api`
+- Physical device: `http://<your-lan-ip>:8000/api`
+
+Do not use Docker service names directly in the mobile client app.
+
+## Start the App
+
+### Web
 
 ```powershell
-npx.cmd expo start --clear
+npm run web
 ```
 
-The first native Android build downloads Gradle and Android dependencies and can take several minutes.
+This starts the Expo web app, usually at:
 
-## Run on Android
+- `http://localhost:8081`
+- or another assigned Expo port depending on availability
 
-`npm.cmd run android` builds the native development app, installs it on the first available emulator or device, and starts the JavaScript bundler. Keep the Android target running and connected before using that command.
+### Android Emulator / Device
 
 ```powershell
-npm.cmd run android
+npm run android
 ```
 
-If PowerShell reports that `npm` scripts are disabled, use `npm.cmd` and `npx.cmd` as shown above. This is a Windows PowerShell policy issue, not an application error.
+This builds the native Android app and launches it on the connected emulator or device.
 
-### Option 1: Android Studio emulator
-
-1. Open Android Studio.
-2. Open **More Actions > Virtual Device Manager** or **Tools > Device Manager**.
-3. Select **Create device** and choose a phone, such as a Pixel device.
-4. Download and select an x86_64 or arm64 system image. Android API 35 or 36 is appropriate.
-5. Finish creating the virtual device and press its play button.
-6. Confirm that Android sees it:
-
-	```powershell
-	adb devices
-	```
-
-	The emulator should appear with a status of `device`.
-
-7. From the repository root, run:
-
-	```powershell
-	npm.cmd run android
-	```
-
-The emulator can use the computer's `localhost` for Metro. If the app opens but cannot load JavaScript, close the app, run `npx.cmd expo start --clear`, and press `r` in the Expo terminal to reload.
-
-### Option 2: Physical device over USB
-
-1. On the Android phone, open **Settings > About phone**.
-2. Tap **Build number** seven times to enable Developer options.
-3. Open **Developer options** and enable **USB debugging**.
-4. Connect the phone with a USB cable that supports data transfer.
-5. Accept the **Allow USB debugging** prompt on the phone. If the prompt does not appear, unlock the phone and reconnect the cable.
-6. Confirm the connection:
-
-	```powershell
-	adb devices
-	```
-
-	The phone should appear with a status of `device`, not `unauthorized`.
-
-7. Run the native app:
-
-	```powershell
-	npm.cmd run android
-	```
-
-If the device is `unauthorized`, revoke USB debugging authorizations in Developer options, reconnect the cable, and accept the prompt again. If no device appears, try another USB cable or install the phone manufacturer's Windows USB driver.
-
-### Option 3: Physical device over Wi-Fi
-
-The computer and phone must be connected to the same Wi-Fi network. Avoid guest networks that isolate devices.
-
-#### Android 11 and newer: wireless pairing
-
-1. On the phone, enable **Developer options** and **Wireless debugging**.
-2. Open **Wireless debugging > Pair device with pairing code** and leave that screen visible.
-3. In PowerShell, use the IP address and pairing port displayed on the phone:
-
-	```powershell
-	adb pair PHONE_IP:PAIRING_PORT
-	```
-
-4. Enter the six-digit pairing code shown on the phone.
-5. Connect using the address and connection port shown on the main Wireless debugging screen:
-
-	```powershell
-	adb connect PHONE_IP:CONNECTION_PORT
-	adb devices
-	```
-
-6. When the device status is `device`, run:
-
-	```powershell
-	npm.cmd run android
-	```
-
-The pairing port and connection port are usually different. Use the values shown by Android rather than assuming port `5555`.
-
-#### Older Android versions: USB-assisted Wi-Fi debugging
-
-Connect the phone by USB first, then run:
+### Start Expo Dev Server
 
 ```powershell
-adb devices
-adb tcpip 5555
-adb connect PHONE_IP:5555
-adb disconnect USB_DEVICE_ID
-adb devices
+npm start
 ```
 
-Replace `PHONE_IP` with the phone's Wi-Fi address. Once `adb devices` shows the phone over Wi-Fi, run `npm.cmd run android`. This method may stop working after the phone restarts; repeat it when necessary.
-
-For Metro, keep the phone and computer on the same network. If the app cannot reach the bundler, start Expo in LAN mode and reload the app:
+## Useful Scripts
 
 ```powershell
-npx.cmd expo start --dev-client --lan
-```
+# Start Expo development server
+npm start
 
-If the network blocks LAN traffic, use USB debugging instead or configure the Expo development server through the developer menu using the computer's IP address.
+# Start web dev server
+npm run web
 
-## Useful commands
-
-```powershell
-# Start Expo without building the native app
-npm.cmd start
-
-# Start with a clean Metro cache and a development client
-npx.cmd expo start --dev-client --clear
-
-# Check connected Android targets
-adb devices
-
-# Run the web target
-npm.cmd run web
+# Start Android app
+npm run android
 
 # Type-check the project
-npx.cmd tsc --noEmit
+npx tsc --noEmit
 
-# Rebuild after native configuration or dependency changes
-npx.cmd expo prebuild
-npm.cmd run android
+# Clear Metro cache
+npx expo start --clear
 ```
 
-The app uses a native development build, so Expo Go is not the expected target for the full Android experience. Use the emulator or device workflows above.
+## Authentication Flow
 
-## Troubleshooting Android
+The frontend uses the Django backend for:
 
-### `NoClassDefFoundError` for an Expo class
+- login
+- registration
+- email verification OTP flow
+- password reset flow
+- JWT token persistence
+- session handling and refresh logic
 
-This means the installed native APK was built from inconsistent Expo package versions or is stale. Reinstall dependencies, clean the native build, and rebuild:
+Login and email verification return a nested access/refresh token pair. The app
+stores it with `expo-secure-store` on native and browser `localStorage` on web.
+Authenticated requests use `Authorization: Bearer <access>`. On `401`, one
+refresh rotates the pair and the request is retried once. Logout posts the
+refresh token with the access bearer header and clears local tokens. The updated
+backend has no `/auth/csrf/` endpoint and does not use cookie authentication.
+
+Browser `localStorage` is JavaScript-accessible, **not HttpOnly**; an XSS bug can
+expose stored tokens. Use HTTPS and a strict script/CSP policy for production.
+See `AUTH_SETUP.md` for the contract and deployment tradeoffs.
+
+## Catalog API (Phase 2B)
+
+The updated Django backend serves public products, categories, tags, and
+active stores under `/api/products/` and `/api/stores/`. Public product details
+use `/api/products/<slug>/`; seller-owned reads and writes use UUIDs under
+`/api/products/manage/`. Product creation and updates send Django's `name`,
+`slug`, `sku`, `description`, `price`, `currency`, `stock_quantity`, `category`
+(UUID or null), `tags` (UUIDs), and `status` fields. Images are uploaded
+separately with multipart `POST /api/products/manage/<uuid>/images/` and must
+be 5 MB or smaller. Backend image validation is via Django's ImageField; the
+client picker accepts JPG, PNG, and WebP. New products are saved as drafts;
+publishing requires approved KYC on the backend.
+
+Public filters accept category and tag **slugs**. The backend has no search
+parameter or store-product filter, so the UI searches the already loaded
+unpaginated public list and filters that list by store UUID for store pages.
+Do not treat that as server-wide search if pagination is enabled later. The
+current backend returns arrays; the client also accepts a `results` wrapper,
+but does not follow subsequent pages. No mock products or sellers are shown
+when the API fails.
+
+There is no product DELETE route, image DELETE route, or public store-detail
+route by UUID. Seller management therefore supports list, create, edit, and
+image upload, **not full CRUD**. The delete control is hidden. Store detail and
+update use store slugs; UUIDs from products are resolved through the public
+store list. The store list does not expose KYC approval, so an active store is
+not presented as verified. Seller onboarding no longer seeds demo products,
+but its storefront form is still local flow state and does not create a Django
+store or change a buyer's backend role. A real seller account and store are
+required for seller product mutations. Services, reviews, cart, and orders
+remain separate integration phases.
+
+### Phase 2B local verification (2026-09-20)
+
+With the updated backend Docker containers running on port 8000, seed the
+local database from `updated_backend/Africlay-server`:
 
 ```powershell
-npm.cmd install
-Push-Location android
-.\gradlew.bat clean
-Pop-Location
-npm.cmd run android
+docker compose exec -T backend python manage.py seed_phase2b_catalog
 ```
 
-The Expo packages in this project must stay on SDK 57-compatible versions. In particular, `expo-splash-screen` must not be replaced with an SDK 55 version.
+The command refuses non-local or non-debug settings. It creates a namespaced,
+verified seller with an unusable password, an active store with approved local
+test KYC, two categories, two tags, two published products, and synthetic PNG
+images. It is idempotent and does not change unrelated records. The generated
+images prove rendering and upload behavior, not real catalog photography.
 
-### `adb` is not recognized
-
-Add the Android SDK `platform-tools` folder to the Windows `Path`, reopen PowerShell, and retry `adb version`.
-
-### The app opens but shows a network or bundle error
-
-Make sure the device and computer can reach each other, then restart Metro with a clean cache:
+Start Expo web on port 8081, then run the local Edge browser check from
+`front_end` (Playwright is installed outside the repository):
 
 ```powershell
-npx.cmd expo start --dev-client --clear
+npm install --prefix "$env:TEMP\africlay-phase2b-browser" --no-save --package-lock=false playwright
+node scripts/test-phase2b-live-browser.cjs
 ```
 
-For a physical device, use USB debugging or confirm both devices are on the same non-isolated Wi-Fi network.
+The check generates a short-lived seller session through the local Django
+container in memory; it does not print or save credentials. It creates one
+namespaced browser draft and one UI draft on the first run, then reuses them.
+Recorded result: 16/16 Edge checks passed for public listing, slug detail,
+gallery/images, category/tag filters, store tabs/products, authenticated
+wishlist, seller dashboard access, and seller create/edit/upload. Django
+`manage.py check` and all 88 backend tests passed; 17 catalog and 15 auth
+frontend checks, TypeScript, and web export passed.
 
-### The app says Clerk is not configured
+The verification exposed and fixed a seller-navigation defect: a verified
+backend seller was sent to local onboarding after session restore. The Sell tab
+now checks the signed-in seller's active store and approved backend KYC before
+showing the existing dashboard. Backend permissions still control mutations.
+The unsupported delete, server-side search, store-product filter, and
+store-creating onboarding limitations above remain open; this is not full
+seller CRUD. No commerce integration was started.
 
-Check that `.env` contains a real `EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY`, not the placeholder, then fully restart Expo with `npx.cmd expo start --clear`. The key must be a Clerk publishable key beginning with `pk_test_` or `pk_live_`.
+## Responsive Layout Strategy
 
-## Authentication setup
+This project is intentionally built as a mobile-first app with web-aware layout adjustments. The app uses:
 
-The app uses Clerk for:
+- route-aware container widths
+- layout context for compact/expanded/wide behavior
+- a shared marketplace shell instead of forcing a single desktop redesign
 
-- Email/password registration and login
-- Six-digit email verification
-- Password reset codes
-- Google sign-in through Expo's browser-based OAuth flow
-- Secure native session persistence
-- Client Trust email challenges on new devices
+Please review:
 
-Complete the Clerk dashboard configuration and OAuth redirect setup described in [AUTH_SETUP.md](AUTH_SETUP.md). The native callback scheme is `africlay://auth/callback`.
+- `src/components/layout/MarketplaceShell.tsx`
+- `src/contexts/ResponsiveLayoutContext.tsx`
+- `RESPONSIVE_LAYOUT.md`
 
-Never put a Clerk secret key or a Google client secret in the app or in an `EXPO_PUBLIC_` variable.
+## Project Notes
+
+- The frontend remains aligned with the backend contract and should not replace Django auth flows.
+- Do not introduce alternate auth providers unless explicitly required.
+- Keep the app architecture stable while improving behavior and responsiveness.
+- Prefer minimal, targeted fixes over redesigns when stabilizing features.
+
+## Troubleshooting
+
+### App cannot reach backend
+
+Check:
+
+- `.env` is present and correct
+- backend is running on the expected port
+- the target device and computer are on the same network if using LAN IP
+
+### Web runtime crashes
+
+Common causes include:
+
+- using native-only storage APIs in browser context
+- using native navigation assumptions on web
+- assuming secure-store is available in all environments
+
+### Metro or Expo issues
+
+Run a clean cache:
+
+```powershell
+npx expo start --clear
+```
+
+### TypeScript errors
+
+```powershell
+npx tsc --noEmit
+```
+
+## Development Recommendation
+
+Use this flow during active development:
+
+1. Start the Django backend
+2. Confirm the API is reachable from the chosen device
+3. Start the Expo app in the correct mode
+4. Validate web and native flows separately
+5. Keep API contract fixes centered on the backend and UI stability fixes centered on the frontend
+
+## License
+
+Specify the project license here if applicable.
+- Automatic access-token refresh on `401`
+- Logout with refresh-token revocation
+
+Keep the backend Dockerized and separate from this Expo app. Configure the frontend with `EXPO_PUBLIC_API_URL`, including the `/api` suffix.
 
 ## How the app works
 
 ### Startup and authentication state
 
-`App.tsx` loads the Inter fonts, keeps the splash screen visible until fonts are ready, and mounts the application providers. `RootNavigator` waits for Clerk and auth initialization, shows the splash screen for a short minimum duration, and then chooses the navigation tree:
+`App.tsx` loads the Inter fonts, keeps the splash screen visible until fonts are ready, and mounts the application providers. `RootNavigator` waits for auth initialization, shows the splash screen for a short minimum duration, and then chooses the navigation tree:
 
 - Signed out: `AuthStack`
 - Guest: `AppTabs` plus modal access to `AuthStack`
 - Signed-in member: `AppTabs`, cart, checkout, and notifications
 
-The auth flow can include registration, email verification, role selection, profile completion, seller KYC, pending verification, and storefront setup. A completed Clerk session is mapped into the app's `User` type by `src/services/authService.ts`.
+The auth flow can include registration, email verification, role selection, profile completion, seller KYC, pending verification, and storefront setup. A Django user response is mapped into the app's `User` type by `src/services/authService.ts`.
 
 ### Main navigation
 
@@ -294,17 +331,16 @@ The cart, checkout, and notifications screens are root-level modal routes. The s
 The root provider order is:
 
 1. `SafeAreaProvider`
-2. Clerk provider
-3. React Query client
-4. `AuthProvider`
-5. `CartProvider`
-6. `WishlistProvider`
+2. React Query client
+3. `AuthProvider`
+4. `CartProvider`
+5. `WishlistProvider`
 
-Auth state comes from Clerk and is also used to track onboarding and seller verification state. Cart and wishlist state are exposed through their React contexts. React Query is available for screen-level server-style data fetching and caching.
+Auth state comes from the Django JWT API and is also used to track onboarding and seller verification state. Cart and wishlist state are exposed through their React contexts. React Query is available for screen-level server-style data fetching and caching.
 
 Most marketplace data is local development data. Services such as `productService`, `orderService`, `reviewService`, `messageService`, and `notificationService` read from `src/mock/` and use `simulateNetwork()` to imitate network latency and occasional failures. This means the app can be explored without a backend, but changes are not a replacement for a production API.
 
-Some local data is persisted with AsyncStorage, including seller-created catalog entries and relevant app state. Clerk stores its native session using the Clerk token cache. Clearing app storage or reinstalling the app removes local development state.
+Some local data is persisted with AsyncStorage, including seller-created catalog entries and relevant app state. JWT tokens use `expo-secure-store` on native and `localStorage` on web. Clearing app storage removes local development state.
 
 ## Project layout
 
@@ -326,5 +362,5 @@ assets/                   App icon, splash, and other static assets
 
 - The app is configured as a light, portrait-oriented Expo app named `AfriClay`.
 - Native configuration uses the `africlay` URL scheme, so changes to native app configuration require a native rebuild.
-- Seller role and onboarding values currently live in Clerk `unsafeMetadata`. Treat them as client-editable data; production authorization must be enforced by a backend using server-controlled metadata.
+- Seller role and onboarding values are frontend flow state until the matching backend seller profile endpoints are wired. Production authorization must be enforced by the backend.
 - There are no test or lint scripts currently defined in `package.json`. Use the TypeScript compiler or the platform build as an additional local check when changing code.

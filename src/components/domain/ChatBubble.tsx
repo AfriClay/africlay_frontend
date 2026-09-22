@@ -10,7 +10,7 @@ interface ChatBubbleProps {
 export const ChatBubble: React.FC<ChatBubbleProps> = ({ message }) => {
   const isOwn = message.from === 'You';
   return (
-    <View style={[styles.root, isOwn ? styles.own : styles.other]}>
+    <View testID={`message-${message.id}`} style={[styles.root, isOwn ? styles.own : styles.other]}>
       <Text style={styles.text}>{message.text}</Text>
       <Text style={styles.timestamp}>{new Date(message.timestamp).toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit' })}</Text>
     </View>

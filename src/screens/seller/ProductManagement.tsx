@@ -1,18 +1,21 @@
 import React from 'react';
-import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { PackagePlus, Pencil, Trash2 } from 'lucide-react-native';
+import { useQuery } from '@tanstack/react-query';
+import { PackagePlus, Pencil } from 'lucide-react-native';
 import { ProductCard } from '../../components/domain/ProductCard';
 import { Button } from '../../components/ui/Button';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { useAuth } from '../../hooks/useAuth';
 import { SellerDashboardStackParamList } from '../../navigation/SellerDashboardStack';
 import { productService } from '../../services/productService';
+import { catalogKeys } from '../../services/catalogQueries';
+import { ErrorState } from '../../components/ui/ErrorState';
 import { Product } from '../../types/product';
 import { theme } from '../../theme';
+import { getApiErrorMessage } from '../../services/api';
 
 type ProductNavigation = NativeStackNavigationProp<SellerDashboardStackParamList, 'ProductManagement'>;
 const LOW_STOCK_THRESHOLD = 5;
@@ -21,25 +24,10 @@ export const ProductManagement: React.FC = () => {
   const navigation = useNavigation<ProductNavigation>();
   const auth = useAuth();
   const sellerId = auth.user?.id ?? '';
-  const queryClient = useQueryClient();
-  const { data: products = [], isLoading } = useQuery({ queryKey: ['seller-products', sellerId], queryFn: () => productService.initializeSellerCatalog(sellerId), enabled: Boolean(sellerId) });
+  const productsQuery = useQuery({ queryKey: catalogKeys.ownedProducts(sellerId), queryFn: productService.fetchSellerProducts, enabled: Boolean(sellerId) });
+  const { data: products = [], isLoading } = productsQuery;
 
-  const confirmDelete = (product: Product) => {
-    Alert.alert('Delete product?', `${product.name} will be removed from your store.`, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          await productService.deleteSellerProduct(sellerId, product.id);
-          await Promise.all([
-            queryClient.invalidateQueries({ queryKey: ['seller-products', sellerId] }),
-            queryClient.invalidateQueries({ queryKey: ['products'] }),
-          ]);
-        },
-      },
-    ]);
-  };
+  if (productsQuery.isError) return <ErrorState message={getApiErrorMessage(productsQuery.error, 'Unable to load your products.')} onRetry={() => void productsQuery.refetch()} />;
 
   const renderProduct = ({ item }: { item: Product }) => {
     const lowStock = item.availableQuantity < LOW_STOCK_THRESHOLD;
@@ -50,7 +38,6 @@ export const ProductManagement: React.FC = () => {
           <Text style={[styles.stock, lowStock ? styles.lowStock : null]}>{item.availableQuantity} in stock{lowStock ? ' · Low stock' : ''}</Text>
           <View style={styles.actions}>
             <Pressable onPress={() => navigation.navigate('AddEditProduct', { productId: item.id })} style={styles.action} accessibilityRole="button"><Pencil color={theme.colors.primary.DEFAULT} size={17} /><Text style={styles.edit}>Edit</Text></Pressable>
-            <Pressable onPress={() => confirmDelete(item)} style={styles.action} accessibilityRole="button"><Trash2 color={theme.colors.error} size={17} /><Text style={styles.delete}>Delete</Text></Pressable>
           </View>
         </View>
       </View>
@@ -60,7 +47,7 @@ export const ProductManagement: React.FC = () => {
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
       <View style={styles.header}>
-        <Text style={styles.summary}>{products.length} listed product{products.length === 1 ? '' : 's'}</Text>
+        <Text style={styles.summary}>{products.length} product{products.length === 1 ? '' : 's'}</Text>
         <Pressable style={styles.addIcon} onPress={() => navigation.navigate('AddEditProduct')} accessibilityRole="button"><PackagePlus color={theme.colors.white} size={21} /></Pressable>
       </View>
       {isLoading ? <Text style={styles.loading}>Loading products…</Text> : (

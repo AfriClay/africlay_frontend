@@ -19,12 +19,8 @@ export const ROUTES = {
   MyOrders: 'MyOrders',
   OrderDetails: 'OrderDetails',
   MyAddresses: 'MyAddresses',
-  PaymentMethodsWallet: 'PaymentMethodsWallet',
-  MyReviews: 'MyReviews',
   Settings: 'Settings',
   SupportHelp: 'SupportHelp',
-  Wishlist: 'Wishlist',
   Cart: 'Cart',
   Checkout: 'Checkout',
-  Notifications: 'Notifications',
 } as const;

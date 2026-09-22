@@ -1,200 +1,138 @@
-import React, { useState } from 'react';
-import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useRef, useState } from 'react';
+import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Controller, useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Check, CircleCheckBig, CreditCard, Smartphone, WalletCards, X } from 'lucide-react-native';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { CircleCheckBig, X } from 'lucide-react-native';
+import { AddressForm } from '../../components/domain/AddressForm';
 import { Button } from '../../components/ui/Button';
 import { GuestAuthSheet } from '../../components/ui/GuestAuthSheet';
-import { Input } from '../../components/ui/Input';
 import { useAuth } from '../../hooks/useAuth';
 import { useCart } from '../../hooks/useCart';
 import { RootStackParamList } from '../../navigation/RootNavigator';
+import { addressService, AddressInput } from '../../services/addressService';
+import { ApiError, getApiErrorMessage } from '../../services/api';
 import { orderService } from '../../services/orderService';
 import { theme } from '../../theme';
 import { formatCurrency } from '../../utils/formatCurrency';
-import { CheckoutAddressForm, checkoutAddressSchema } from '../../validation/checkoutSchemas';
+import { checkoutAddressSchema } from '../../validation/checkoutSchemas';
 
 type CheckoutNavigation = NativeStackNavigationProp<RootStackParamList, 'Checkout'>;
-type PaymentMethod = 'mpesa' | 'wallet' | 'card';
-
-const paymentMethods = [
-  { id: 'mpesa' as const, title: 'M-Pesa', description: 'Secure STK push to your phone', icon: Smartphone },
-  { id: 'wallet' as const, title: 'AfriClay Wallet', description: 'Available balance: KSh 12,500', icon: WalletCards },
-  { id: 'card' as const, title: 'Card Payment', description: 'Visa or Mastercard', icon: CreditCard },
-];
 
 export const Checkout: React.FC = () => {
   const navigation = useNavigation<CheckoutNavigation>();
   const cart = useCart();
   const auth = useAuth();
-  const [method, setMethod] = useState<PaymentMethod>('mpesa');
-  const [loading, setLoading] = useState(false);
+  const userId = auth.user?.id ?? '';
+  const queryClient = useQueryClient();
+  const addressKey = ['addresses', userId] as const;
+  const addressesQuery = useQuery({ queryKey: addressKey, queryFn: addressService.list, enabled: Boolean(userId) });
+  const [selectedId, setSelectedId] = useState<string>();
+  const [creating, setCreating] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const inFlight = useRef(false);
+  const [error, setError] = useState<string>();
   const [authSheet, setAuthSheet] = useState(false);
-  const [editingAddress, setEditingAddress] = useState(false);
   const [confirmedOrderId, setConfirmedOrderId] = useState<string>();
-  const deliveryFee = 150;
-  const total = cart.subtotal + deliveryFee;
+  const addresses = addressesQuery.data ?? [];
+  const selected = addresses.find(address => address.id === selectedId) ?? addresses.find(address => address.is_default) ?? addresses[0];
 
-  const { control, handleSubmit, getValues } = useForm<CheckoutAddressForm>({
-    resolver: zodResolver(checkoutAddressSchema),
-    defaultValues: {
-      name: auth.user?.name ?? '',
-      phone: '+254 712 345 678',
-      addressLine: 'Westlands',
-      city: 'Nairobi',
-    },
-  });
+  const createAddress = async (input: AddressInput) => {
+    const saved = await addressService.create(input);
+    setSelectedId(saved.id);
+    await queryClient.invalidateQueries({ queryKey: addressKey });
+    setCreating(false);
+  };
 
-  if (auth.isGuest) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <GuestAuthSheet visible={authSheet} onClose={() => setAuthSheet(false)} description="Register or log in to proceed with checkout." />
-        <View style={styles.guestContent}>
-          <Text style={styles.title}>Checkout</Text>
-          <View style={styles.card}><Text style={styles.cardText}>Please create an account or log in to complete your purchase.</Text></View>
-          <Button onPress={() => setAuthSheet(true)}>Continue</Button>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  if (confirmedOrderId) {
-    return (
-      <SafeAreaView style={styles.confirmation}>
-        <CircleCheckBig color={theme.colors.success} size={72} />
-        <Text style={styles.confirmationTitle}>Order confirmed</Text>
-        <Text style={styles.confirmationText}>Your payment was successful. We&apos;ll notify you when the seller starts preparing order #{confirmedOrderId}.</Text>
-        <View style={styles.confirmationActions}>
-          <Button onPress={() => navigation.navigate('AppTabs', { screen: 'Profile', params: { screen: 'MyOrders' } })}>View My Orders</Button>
-          <Button variant="outline" onPress={() => navigation.navigate('AppTabs', { screen: 'Home' })}>Continue Shopping</Button>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  const handlePayment = async (addressValues: CheckoutAddressForm) => {
-    if (!cart.itemCount) return;
-    setLoading(true);
+  const submit = async () => {
+    if (inFlight.current || !cart.itemCount || !selected || !auth.user) return;
+    const candidate = {
+      shipping_address: [selected.street_address, selected.apartment_suite].filter(Boolean).join(', '),
+      shipping_city: selected.city,
+      shipping_postal_code: selected.postal_code ?? '',
+      shipping_country: selected.country,
+    };
+    const parsed = checkoutAddressSchema.safeParse(candidate);
+    if (!parsed.success) { setError(parsed.error.issues[0]?.message); return; }
+    inFlight.current = true;
+    setSubmitting(true);
+    setError(undefined);
     try {
-      const orderId = `AFR${Math.floor(10000 + Math.random() * 90000)}`;
-      await orderService.createOrder({
-        id: orderId,
-        date: new Date().toISOString(),
-        status: 'Processing',
-        sellerId: cart.items[0]?.sellerId ?? 'seller-zuri',
-        deliveryAddress: `${addressValues.name}\n${addressValues.addressLine}, ${addressValues.city}`,
-        deliveryFee,
-        total,
-        items: cart.items.map(item => ({ ...item })),
-      });
-      cart.clearCart();
-      setConfirmedOrderId(orderId);
-    } catch {
-      Alert.alert('Payment not completed', 'Please check your connection and try again.');
+      const order = await orderService.checkout(parsed.data);
+      setConfirmedOrderId(order.id);
+      void cart.refresh().catch(() => {});
+      void queryClient.invalidateQueries({ queryKey: ['buyer-orders', userId] });
+    } catch (submitError) {
+      setError(submitError instanceof ApiError && submitError.status < 500
+        ? getApiErrorMessage(submitError, 'Unable to place your order.')
+        : 'Checkout status is unknown. Check My Orders before trying again.');
     } finally {
-      setLoading(false);
+      inFlight.current = false;
+      setSubmitting(false);
     }
   };
 
-  const address = getValues();
+  if (!auth.user) return <SafeAreaView style={styles.container}>
+    <GuestAuthSheet visible={authSheet} onClose={() => setAuthSheet(false)} description="Log in to complete checkout." />
+    <View style={styles.content}><Text style={styles.title}>Checkout</Text><Text style={styles.note}>Log in to place an order.</Text><Button onPress={() => setAuthSheet(true)}>Log In</Button></View>
+  </SafeAreaView>;
 
-  const Header = (
-    <>
-      <View style={styles.header}><Text style={styles.title}>Checkout</Text><Pressable style={styles.closeButton} onPress={() => navigation.goBack()} accessibilityRole="button" accessibilityLabel="Close checkout"><X color={theme.colors.ink} size={22} /></Pressable></View>
-      <View style={styles.sectionHeader}><Text style={styles.sectionTitle}>Delivery Address</Text><Text style={styles.changeLink} onPress={() => setEditingAddress(current => !current)}>{editingAddress ? 'Done' : 'Change'}</Text></View>
-      {editingAddress ? (
-        <View style={styles.card}>
-          <Controller control={control} name="name" render={({ field: { value, onChange }, fieldState }) => <Input label="Recipient" value={value} onChangeText={onChange} error={fieldState.error?.message} />} />
-          <Controller control={control} name="phone" render={({ field: { value, onChange }, fieldState }) => <Input label="Phone" value={value} onChangeText={onChange} keyboardType="phone-pad" error={fieldState.error?.message} />} />
-          <Controller control={control} name="addressLine" render={({ field: { value, onChange }, fieldState }) => <Input label="Address" value={value} onChangeText={onChange} error={fieldState.error?.message} />} />
-          <Controller control={control} name="city" render={({ field: { value, onChange }, fieldState }) => <Input label="City" value={value} onChangeText={onChange} error={fieldState.error?.message} />} />
-        </View>
-      ) : (
-        <View style={styles.card}><Text style={styles.addressName}>{address.name}</Text><Text style={styles.cardText}>{address.addressLine}, {address.city}</Text><Text style={styles.cardText}>{address.phone}</Text></View>
-      )}
-      <Text style={styles.sectionTitleStandalone}>Order Summary</Text>
-    </>
-  );
+  if (confirmedOrderId) return <SafeAreaView style={styles.confirmation}>
+    <CircleCheckBig color={theme.colors.success} size={72} />
+    <Text style={styles.title}>Order placed</Text>
+    <Text style={styles.confirmationText}>Order #{confirmedOrderId} was created. Payment has not been collected.</Text>
+    <View style={styles.actions}>
+      <Button onPress={() => navigation.navigate('AppTabs', { screen: 'Profile', params: { screen: 'MyOrders' } })}>View My Orders</Button>
+      <Button variant="outline" onPress={() => navigation.navigate('AppTabs', { screen: 'Home' })}>Continue Shopping</Button>
+    </View>
+  </SafeAreaView>;
 
-  const Footer = (
-    <>
-      <Text style={styles.sectionTitleStandalone}>Payment Method</Text>
-      <View style={styles.paymentOptions}>
-        {paymentMethods.map(payment => {
-          const Icon = payment.icon;
-          const selected = method === payment.id;
-          return (
-            <Pressable key={payment.id} style={[styles.paymentOption, selected ? styles.paymentSelected : null]} onPress={() => setMethod(payment.id)} accessibilityRole="radio" accessibilityState={{ selected }}>
-              <View style={styles.paymentIcon}><Icon color={theme.colors.primary.DEFAULT} size={21} /></View>
-              <View style={styles.paymentCopy}><Text style={styles.optionTitle}>{payment.title}</Text><Text style={styles.optionText}>{payment.description}</Text></View>
-              <View style={[styles.radio, selected ? styles.radioSelected : null]}>{selected ? <Check color={theme.colors.white} size={12} /> : null}</View>
-            </Pressable>
-          );
-        })}
-      </View>
-      <View style={styles.summary}>
-        <View style={styles.priceRow}><Text style={styles.priceLabel}>Subtotal</Text><Text style={styles.priceValue}>{formatCurrency(cart.subtotal)}</Text></View>
-        <View style={styles.priceRow}><Text style={styles.priceLabel}>Delivery fee</Text><Text style={styles.priceValue}>{formatCurrency(deliveryFee)}</Text></View>
-        <View style={styles.totalRow}><Text style={styles.totalLabel}>Total</Text><Text style={styles.totalValue}>{formatCurrency(total)}</Text></View>
-      </View>
-      <Button loading={loading} onPress={handleSubmit(handlePayment)} disabled={!cart.itemCount || loading} accessibilityLabel={`Pay ${formatCurrency(total)}`}>Pay {formatCurrency(total)} with {paymentMethods.find(item => item.id === method)?.title}</Button>
-    </>
-  );
-
-  return (
-    <SafeAreaView style={styles.container}>
-      <FlatList
-        data={cart.items}
-        keyExtractor={item => item.id}
-        renderItem={({ item }) => <View style={styles.itemRow}><Text style={styles.itemLabel}>{item.name} × {item.quantity}</Text><Text style={styles.itemValue}>{formatCurrency(item.price * item.quantity)}</Text></View>}
-        ListHeaderComponent={Header}
-        ListFooterComponent={Footer}
-        ListEmptyComponent={<Text style={styles.emptyText}>Your cart is empty.</Text>}
-        contentContainerStyle={styles.content}
-      />
-    </SafeAreaView>
-  );
+  const header = <>
+    <View style={styles.header}><Text style={styles.title}>Checkout</Text><Pressable onPress={() => navigation.goBack()} accessibilityRole="button" accessibilityLabel="Close checkout" style={styles.close}><X color={theme.colors.ink} size={22} /></Pressable></View>
+    <Text style={styles.sectionTitle}>Delivery Address</Text>
+    {addressesQuery.isLoading ? <Text style={styles.note}>Loading addresses...</Text> : addressesQuery.isError ?
+      <View><Text style={styles.error}>Unable to load addresses.</Text><Button variant="outline" onPress={() => void addressesQuery.refetch()}>Retry</Button></View> :
+      addresses.map(address => <Pressable key={address.id} onPress={() => setSelectedId(address.id)} accessibilityRole="radio" accessibilityState={{ selected: selected?.id === address.id }} style={[styles.address, selected?.id === address.id && styles.selectedAddress]}>
+        <Text style={styles.addressName}>{address.recipient_name || address.street_address}{address.is_default ? ' (Default)' : ''}</Text>
+        <Text style={styles.note}>{[address.street_address, address.city, address.postal_code, address.country].filter(Boolean).join(', ')}</Text>
+      </Pressable>)}
+    {creating ? <AddressForm onSave={createAddress} onCancel={() => setCreating(false)} /> :
+      <Button variant="outline" onPress={() => setCreating(true)}>Add Address</Button>}
+    <Text style={styles.sectionTitle}>Order Summary</Text>
+  </>;
+  const footer = <View style={styles.footer}>
+    <View style={styles.totalRow}><Text style={styles.note}>Items total</Text><Text style={styles.total}>{formatCurrency(cart.subtotal)}</Text></View>
+    <Text style={styles.note}>The backend confirms the final total. No payment is taken here.</Text>
+    {cart.error && <Text style={styles.error} accessibilityRole="alert">{cart.error}</Text>}
+    {error && <Text style={styles.error} accessibilityRole="alert">{error}</Text>}
+    <Button onPress={() => void submit()} loading={submitting} disabled={submitting || cart.loading || cart.mutating || !cart.itemCount || !selected || addressesQuery.isError || creating || Boolean(cart.error)}>Place Order</Button>
+  </View>;
+  return <SafeAreaView style={styles.container}><FlatList data={cart.items} keyExtractor={item => item.id}
+    renderItem={({ item }) => <View style={styles.itemRow}><Text style={styles.itemName}>{item.name} x {item.quantity}</Text><Text style={styles.itemPrice}>{formatCurrency(item.price * item.quantity)}</Text></View>}
+    ListHeaderComponent={header} ListFooterComponent={footer}
+    ListEmptyComponent={<Text style={styles.note}>{cart.error ? 'Cart unavailable. Return to the cart and retry.' : 'Your cart is empty.'}</Text>} contentContainerStyle={styles.content} /></SafeAreaView>;
 };
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.cream },
   content: { padding: theme.spacing.lg, paddingBottom: theme.spacing.xl },
-  guestContent: { flex: 1, padding: theme.spacing.lg },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: theme.spacing.lg },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  close: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
   title: { fontSize: theme.typography.h2.fontSize, fontWeight: '800', color: theme.colors.ink },
-  closeButton: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.sm },
-  sectionTitle: { color: theme.colors.ink, fontWeight: '800', fontSize: theme.typography.h3.fontSize },
-  sectionTitleStandalone: { color: theme.colors.ink, fontWeight: '800', fontSize: theme.typography.h3.fontSize, marginTop: theme.spacing.lg, marginBottom: theme.spacing.sm },
-  changeLink: { color: theme.colors.primary.DEFAULT, fontWeight: '700', paddingVertical: theme.spacing.sm },
-  card: { backgroundColor: theme.colors.white, borderRadius: theme.radii.lg, padding: theme.spacing.md, ...theme.shadows.sm },
-  addressName: { color: theme.colors.ink, fontWeight: '800', marginBottom: theme.spacing.xs },
-  cardText: { color: theme.colors.muted, lineHeight: 21 },
-  itemRow: { minHeight: 44, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  itemLabel: { flex: 1, color: theme.colors.ink, marginRight: theme.spacing.sm },
-  itemValue: { color: theme.colors.ink, fontWeight: '700' },
-  paymentOptions: { gap: theme.spacing.sm },
-  paymentOption: { minHeight: 68, backgroundColor: theme.colors.white, borderRadius: theme.radii.lg, padding: theme.spacing.md, borderWidth: 1, borderColor: theme.colors.border, flexDirection: 'row', alignItems: 'center' },
-  paymentSelected: { backgroundColor: theme.colors.primary.tint, borderColor: theme.colors.primary.DEFAULT },
-  paymentIcon: { width: 38 },
-  paymentCopy: { flex: 1 },
-  optionTitle: { color: theme.colors.ink, fontWeight: '800' },
-  optionText: { color: theme.colors.muted, fontSize: theme.typography.small.fontSize, marginTop: 2 },
-  radio: { width: 22, height: 22, borderRadius: 11, borderWidth: 1, borderColor: theme.colors.border, alignItems: 'center', justifyContent: 'center' },
-  radioSelected: { backgroundColor: theme.colors.primary.DEFAULT, borderColor: theme.colors.primary.DEFAULT },
-  summary: { marginVertical: theme.spacing.lg },
-  priceRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: theme.spacing.sm },
-  priceLabel: { color: theme.colors.muted },
-  priceValue: { color: theme.colors.ink, fontWeight: '700' },
-  totalRow: { flexDirection: 'row', justifyContent: 'space-between', paddingTop: theme.spacing.sm, borderTopWidth: 1, borderTopColor: theme.colors.border },
-  totalLabel: { color: theme.colors.ink, fontWeight: '800', fontSize: theme.typography.h3.fontSize },
-  totalValue: { color: theme.colors.ink, fontWeight: '800', fontSize: theme.typography.h3.fontSize },
-  emptyText: { color: theme.colors.muted, paddingVertical: theme.spacing.lg },
-  confirmation: { flex: 1, backgroundColor: theme.colors.cream, alignItems: 'center', justifyContent: 'center', padding: theme.spacing.xl },
-  confirmationTitle: { color: theme.colors.ink, fontSize: theme.typography.h2.fontSize, fontWeight: '800', marginTop: theme.spacing.lg },
-  confirmationText: { color: theme.colors.muted, textAlign: 'center', lineHeight: 23, marginTop: theme.spacing.sm },
-  confirmationActions: { alignSelf: 'stretch', gap: theme.spacing.sm, marginTop: theme.spacing.xl },
+  sectionTitle: { fontSize: theme.typography.h3.fontSize, fontWeight: '800', color: theme.colors.ink, marginTop: theme.spacing.lg, marginBottom: theme.spacing.sm },
+  address: { padding: theme.spacing.md, backgroundColor: theme.colors.white, borderWidth: 1, borderColor: theme.colors.border, borderRadius: theme.radii.md, marginBottom: theme.spacing.sm },
+  selectedAddress: { borderColor: theme.colors.primary.DEFAULT },
+  addressName: { fontWeight: '700', color: theme.colors.ink },
+  note: { color: theme.colors.muted, marginVertical: theme.spacing.xs },
+  itemRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: theme.spacing.sm },
+  itemName: { flex: 1, color: theme.colors.ink },
+  itemPrice: { color: theme.colors.ink, fontWeight: '700' },
+  footer: { gap: theme.spacing.sm, marginTop: theme.spacing.lg },
+  totalRow: { flexDirection: 'row', justifyContent: 'space-between' },
+  total: { fontSize: theme.typography.h3.fontSize, fontWeight: '800', color: theme.colors.ink },
+  error: { color: theme.colors.error },
+  confirmation: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: theme.spacing.xl, backgroundColor: theme.colors.cream },
+  confirmationText: { textAlign: 'center', color: theme.colors.ink, marginTop: theme.spacing.md },
+  actions: { alignSelf: 'stretch', gap: theme.spacing.sm, marginTop: theme.spacing.lg },
 });

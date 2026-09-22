@@ -6,31 +6,42 @@ import { BadgeCheck, PackagePlus, Store, TrendingUp } from 'lucide-react-native'
 import { Button } from '../../components/ui/Button';
 import { useAuth } from '../../hooks/useAuth';
 import { theme } from '../../theme';
+import { useQuery } from '@tanstack/react-query';
+import { storeService } from '../../services/storeService';
+import { ErrorState } from '../../components/ui/ErrorState';
 
 const benefits = [
   { icon: Store, text: 'Create your own AfriClay storefront' },
   { icon: PackagePlus, text: 'List and manage products from your phone' },
-  { icon: TrendingUp, text: 'Receive orders and track your earnings' },
+  { icon: TrendingUp, text: 'Manage your products and services' },
 ];
 
 export const StartSelling: React.FC = () => {
   const navigation = useNavigation<any>();
-  const { isGuest, verificationStatus } = useAuth();
+  const { isGuest, user } = useAuth();
+  const seller = user?.role === 'seller' || user?.role === 'both';
+  const userId = user?.id ?? '';
+  const storeQuery = useQuery({ queryKey: ['owned-store', userId], queryFn: () => storeService.ownStore(userId), enabled: Boolean(userId && seller) });
+  const slug = storeQuery.data?.slug ?? '';
+  const kycQuery = useQuery({ queryKey: ['store-kyc', slug], queryFn: () => storeService.kyc(slug), enabled: Boolean(slug) });
 
   const start = () => {
     if (isGuest) {
       navigation.getParent()?.getParent()?.navigate('AuthStack');
       return;
     }
-    navigation.navigate('KYCUpload');
+    if (!seller || !user?.verified) return;
+    navigation.navigate(!slug ? 'StorefrontSetup' : kycQuery.data ? 'VerificationPending' : 'KYCUpload');
   };
+
+  if (storeQuery.isError || kycQuery.isError) return <ErrorState message="Unable to check your seller account." onRetry={() => { void storeQuery.refetch(); void kycQuery.refetch(); }} />;
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.hero}>
         <View style={styles.icon}><BadgeCheck color={theme.colors.secondary.DEFAULT} size={38} /></View>
         <Text style={styles.title}>Start Selling on AfriClay</Text>
-        <Text style={styles.copy}>Reach buyers across Africa with a verified storefront and simple tools for products, orders, and earnings.</Text>
+        <Text style={styles.copy}>Create a storefront and submit verification documents before publishing.</Text>
       </View>
       <View style={styles.benefits}>
         {benefits.map(item => {
@@ -38,8 +49,12 @@ export const StartSelling: React.FC = () => {
           return <View key={item.text} style={styles.benefit}><Icon color={theme.colors.primary.DEFAULT} size={22} /><Text style={styles.benefitText}>{item.text}</Text></View>;
         })}
       </View>
-      {verificationStatus === 'rejected' ? <Text style={styles.rejected}>Your previous submission needs changes. Submit fresh documents to try again.</Text> : null}
-      <Button onPress={start}>{isGuest ? 'Create Account to Sell' : 'Begin Seller Verification'}</Button>
+      {!isGuest && !seller && <Text style={styles.rejected}>This account has the buyer role. The backend does not support changing it to seller yet.</Text>}
+      {seller && !user?.verified && <Text style={styles.rejected}>Verify your email before creating a store.</Text>}
+      {kycQuery.data?.status === 'rejected' && <Text style={styles.rejected}>{kycQuery.data.rejection_reason || 'Your submission needs changes.'}</Text>}
+      <Button onPress={start} disabled={(!isGuest && (!seller || !user?.verified)) || storeQuery.isLoading || kycQuery.isLoading}>
+        {isGuest ? 'Create Account' : !slug ? 'Create Storefront' : kycQuery.data ? 'View Verification' : 'Submit Verification'}
+      </Button>
     </SafeAreaView>
   );
 };

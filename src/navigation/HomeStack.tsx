@@ -6,9 +6,10 @@ import { SellerStore } from '../screens/home/SellerStore';
 import { Services } from '../screens/home/Services';
 import { ServiceDetails } from '../screens/home/ServiceDetails';
 import { theme } from '../theme';
+import { useResponsiveLayout } from '../contexts/ResponsiveLayoutContext';
 
 export type HomeStackParamList = {
-  Home: undefined;
+  HomeFeed: undefined;
   ProductListing: { categoryId?: string } | undefined;
   ProductDetails: { productId: string };
   SellerStore: { sellerId: string };
@@ -18,9 +19,11 @@ export type HomeStackParamList = {
 
 const Stack = createNativeStackNavigator<HomeStackParamList>();
 
-export const HomeStack = () => (
-  <Stack.Navigator screenOptions={{ headerShadowVisible: false, headerStyle: { backgroundColor: theme.colors.cream }, headerTintColor: theme.colors.ink, headerBackButtonDisplayMode: 'minimal' }}>
-    <Stack.Screen name="Home" component={Home} options={{ headerShown: false }} />
+export const HomeStack = () => {
+  const { isExpanded } = useResponsiveLayout();
+  return (
+  <Stack.Navigator screenOptions={({ route }) => ({ headerShown: !(isExpanded && ['ProductListing', 'Services'].includes(route.name)), headerShadowVisible: false, headerStyle: { backgroundColor: theme.colors.cream }, headerTintColor: theme.colors.ink, headerBackButtonDisplayMode: 'minimal' })}>
+    <Stack.Screen name="HomeFeed" component={Home} options={{ headerShown: false }} />
     <Stack.Screen name="ProductListing" component={ProductListing} options={{ title: 'Products' }} />
     <Stack.Screen name="ProductDetails" component={ProductDetails} options={{ title: '' }} />
     <Stack.Screen name="SellerStore" component={SellerStore} options={{ title: 'Seller Store' }} />
@@ -28,3 +31,4 @@ export const HomeStack = () => (
     <Stack.Screen name="ServiceDetails" component={ServiceDetails} options={{ title: '' }} />
   </Stack.Navigator>
 );
+};

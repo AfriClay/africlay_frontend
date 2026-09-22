@@ -1,5 +1,7 @@
 export interface Seller {
   id: string;
+  ownerId?: string;
+  slug?: string;
   name: string;
   verified: boolean;
   rating: number;
@@ -7,6 +9,8 @@ export interface Seller {
   location: string;
   bio: string;
   bannerUrl?: string;
+  logoUrl?: string;
+  totalProducts?: number;
 }
 
 export type VerificationStatus = 'none' | 'pending' | 'approved' | 'rejected';

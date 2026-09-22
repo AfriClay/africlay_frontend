@@ -9,6 +9,9 @@ import { EmptyState } from '../../components/ui/EmptyState';
 import { ProfileStackParamList } from '../../navigation/ProfileStack';
 import { orderService } from '../../services/orderService';
 import { theme } from '../../theme';
+import { useAuth } from '../../hooks/useAuth';
+import { ErrorState } from '../../components/ui/ErrorState';
+import { getApiErrorMessage } from '../../services/api';
 
 type OrderTab = 'Active' | 'Delivered' | 'Cancelled';
 type OrdersNavigation = NativeStackNavigationProp<ProfileStackParamList, 'MyOrders'>;
@@ -16,13 +19,18 @@ const tabs: OrderTab[] = ['Active', 'Delivered', 'Cancelled'];
 
 export const MyOrders: React.FC = () => {
   const navigation = useNavigation<OrdersNavigation>();
+  const userId = useAuth().user?.id ?? '';
   const [activeTab, setActiveTab] = useState<OrderTab>('Active');
-  const { data: orders = [], isLoading } = useQuery({ queryKey: ['orders'], queryFn: orderService.fetchOrders });
+  const ordersQuery = useQuery({ queryKey: ['buyer-orders', userId], queryFn: orderService.fetchOrders, enabled: Boolean(userId), refetchOnMount: 'always' });
+  const { data: orders = [], isLoading } = ordersQuery;
 
   const filteredOrders = useMemo(() => orders.filter(order => {
-    if (activeTab === 'Active') return order.status === 'Processing' || order.status === 'Shipped';
-    return order.status === activeTab;
+    if (activeTab === 'Active') return ['pending', 'processing', 'shipped'].includes(order.status);
+    return order.status === activeTab.toLowerCase();
   }), [activeTab, orders]);
+
+  if (!userId) return <EmptyState title="Sign in to view orders" description="Your orders are linked to your account." />;
+  if (ordersQuery.isError) return <ErrorState message={getApiErrorMessage(ordersQuery.error, 'Unable to load orders.')} onRetry={() => void ordersQuery.refetch()} />;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -40,6 +48,8 @@ export const MyOrders: React.FC = () => {
       ) : (
         <FlatList
           data={filteredOrders}
+          refreshing={ordersQuery.isFetching}
+          onRefresh={() => void ordersQuery.refetch()}
           keyExtractor={item => item.id}
           renderItem={({ item }) => <OrderCard order={item} onPress={() => navigation.navigate('OrderDetails', { orderId: item.id })} />}
           ListEmptyComponent={<EmptyState title={`No ${activeTab.toLowerCase()} orders`} description="Your orders will appear here as their status changes." />}
