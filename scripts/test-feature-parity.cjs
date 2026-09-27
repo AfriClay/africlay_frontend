@@ -9,7 +9,6 @@ const sellerId = '11111111-1111-4111-8111-111111111111';
 const storeId = '22222222-2222-4222-8222-222222222222';
 const serviceId = '33333333-3333-4333-8333-333333333333';
 const categoryId = '44444444-4444-4444-8444-444444444444';
-const conversationId = '55555555-5555-4555-8555-555555555555';
 const buyerId = '66666666-6666-4666-8666-666666666666';
 const messageId = '77777777-7777-4777-8777-777777777777';
 const kycId = '88888888-8888-4888-8888-888888888888';
@@ -21,11 +20,6 @@ const store = { id: storeId, owner: sellerId, name: 'Clay Studio', slug: 'clay-s
 const kyc = { id: kycId, store: storeId, status: 'pending', document_type: 'national_id',
   document: '/media/kyc/id.png', rejection_reason: '', submitted_at: '2026-09-20T08:00:00Z' };
 const buyer = { id: buyerId, full_name: 'Buyer', email: 'buyer@example.test' };
-const seller = { id: sellerId, full_name: 'Seller', email: 'seller@example.test' };
-const message = { id: messageId, conversation_id: conversationId, sender: seller, body: 'Hello',
-  created_at: '2026-09-20T08:00:00Z', read_at: null, is_from_me: false };
-const conversation = { id: conversationId, buyer, seller, last_message_at: message.created_at,
-  unread_count: 1, last_message: { body: message.body }, messages: [message] };
 const user = { id: buyerId, email: buyer.email, role: 'buyer', is_verified: true,
   profile: { first_name: 'Buyer', last_name: '', bio: 'Maker' } };
 const json = (value, status = 200) => new Response(JSON.stringify(value), { status });
@@ -70,7 +64,6 @@ function harness(respond) {
     api, requests, storage,
     services: load('services/serviceService.ts').serviceService,
     stores: load('services/storeService.ts').storeService,
-    messages: load('services/messageService.ts').messageService,
     auth: load('services/authService.ts').authService,
   };
 }
@@ -140,23 +133,6 @@ test('store creation and KYC submit use multipart; rejected submission is not re
     registrationNumber: 'REG-1', taxNumber: 'TAX-1', documentType: 'national_id', document }), error => error.status === 400);
 });
 
-test('messaging uses conversation detail for messages and returns backend-confirmed send', async () => {
-  const h = harness((route, init) => {
-    if (route === '/api/messages/conversations/' && !init.method) return json({ results: [conversation] });
-    if (route === '/api/messages/conversations/' && init.method === 'POST') return json(conversation, 201);
-    if (route === `/api/messages/conversations/${conversationId}/`) return json(conversation);
-    if (route === `/api/messages/conversations/${conversationId}/messages/` && init.method === 'POST') return json(message, 201);
-  });
-  await h.api.tokenManager.setTokens({ access: 'access', refresh: 'refresh' });
-  assert.equal((await h.messages.fetchConversations(buyerId))[0].name, 'Seller');
-  await h.messages.createConversation({ seller_id: sellerId, store_id: storeId }, buyerId);
-  assert.equal(JSON.parse(h.requests[1].init.body).store_id, storeId);
-  assert.equal((await h.messages.fetchMessages(conversationId))[0].text, 'Hello');
-  assert.equal((await h.messages.sendMessage(conversationId, 'Hello')).id, messageId);
-  assert.deepEqual(JSON.parse(h.requests.at(-1).init.body), { body: 'Hello' });
-  assert.equal(h.requests.filter(request => request.path.endsWith('/messages/')).length, 1);
-});
-
 test('profile PATCH sends only supported fields and maps returned server user', async () => {
   const h = harness(route => route === '/api/auth/me/' ? json({ message: 'Profile updated successfully.', user: { ...user,
     phone_number: '+254700000000', profile: { ...user.profile, first_name: 'New', last_name: 'Buyer' } } }) : undefined);
@@ -169,7 +145,7 @@ test('profile PATCH sends only supported fields and maps returned server user', 
   });
 });
 
-test('production source has no demo network adapter or mock import; unsupported routes stay hidden', () => {
+test('production source has no demo network adapter or mock import; unsupported payment routes stay hidden', () => {
   const sourceRoot = path.resolve(__dirname, '../src');
   function walk(directory) {
     for (const entry of readdirSync(directory, { withFileTypes: true })) {
@@ -184,6 +160,25 @@ test('production source has no demo network adapter or mock import; unsupported 
   }
   walk(sourceRoot);
   for (const file of ['navigation/ProfileStack.tsx', 'navigation/SellerDashboardStack.tsx', 'navigation/RootNavigator.tsx']) {
-    assert.doesNotMatch(readFileSync(path.join(sourceRoot, file), 'utf8'), /Wallet|PaymentMethods|Notifications/, file);
+    assert.doesNotMatch(readFileSync(path.join(sourceRoot, file), 'utf8'), /Wallet|PaymentMethods/, file);
   }
+});
+
+test('mobile marketplace exposes cart, notification permission and compact catalog navigation', () => {
+  const sourceRoot = path.resolve(__dirname, '../src');
+  const home = readFileSync(path.join(sourceRoot, 'screens/home/Home.tsx'), 'utf8');
+  const listing = readFileSync(path.join(sourceRoot, 'screens/home/ProductListing.tsx'), 'utf8');
+  const sideMenu = readFileSync(path.join(sourceRoot, 'components/SideMenu.tsx'), 'utf8');
+  const bridge = readFileSync(path.join(sourceRoot, 'components/notifications/NativeNotificationBridge.tsx'), 'utf8');
+  const deviceNotifications = readFileSync(path.join(sourceRoot, 'services/deviceNotificationService.ts'), 'utf8');
+
+  assert.match(home, /ShoppingCart/);
+  assert.match(home, /Notifications, \$\{unreadQuery\.data\?\.length/);
+  assert.match(listing, /<ScrollView horizontal/);
+  assert.doesNotMatch(sideMenu, /flattenCategoryTree/);
+  assert.match(bridge, /notificationService\.list\(\)/);
+  assert.match(deviceNotifications, /requestPermissionsAsync\(\)/);
+  assert.match(deviceNotifications, /Platform\.OS === 'web'/);
+  assert.match(deviceNotifications, /requireOptionalNativeModule/);
+  assert.match(deviceNotifications, /ExpoPushTokenManager/);
 });

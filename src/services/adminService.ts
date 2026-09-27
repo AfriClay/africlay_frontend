@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { ApiError, apiClient } from './api';
+import { API_ORIGIN, ApiError, apiClient } from './api';
 
 const count = z.number().int().nonnegative().optional().default(0);
 const storeSchema = z.object({
@@ -43,8 +43,7 @@ const list = <T>(schema: z.ZodType<T>, raw: unknown, label: string): T[] => {
 const mediaUrl = (value?: string | null): string | undefined => {
   if (!value) return undefined;
   if (/^https?:\/\//i.test(value)) return value;
-  const host = (process.env.EXPO_PUBLIC_API_URL?.trim() || 'http://localhost:8000/api').replace(/\/api\/?$/, '');
-  return `${host}/${value.replace(/^\/+/, '')}`;
+  return `${API_ORIGIN}/${value.replace(/^\/+/, '')}`;
 };
 const taxonomyPath = (kind: TaxonomyKind): string => kind === 'product-categories'
   ? '/products/categories/' : kind === 'product-tags' ? '/products/tags/' : '/services/categories/';

@@ -10,6 +10,8 @@ import { RootNavigator } from './src/navigation/RootNavigator';
 import { useFonts, Inter_400Regular, Inter_600SemiBold, Inter_700Bold, Inter_800ExtraBold } from '@expo-google-fonts/inter';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useAuth } from './src/hooks/useAuth';
+import { WishlistProvider } from './src/contexts/WishlistContext';
+import { NativeNotificationBridge } from './src/components/notifications/NativeNotificationBridge';
 
 if (Platform.OS !== 'web') {
   SplashScreen.preventAutoHideAsync();
@@ -19,8 +21,8 @@ const queryClient = new QueryClient();
 
 const AppContent = () => {
   const role = useAuth().user?.role;
-  const navigator = <AppFrame><RootNavigator /></AppFrame>;
-  return role === 'admin' || role === 'super_admin' ? navigator : <CartProvider>{navigator}</CartProvider>;
+  const navigator = <AppFrame><NativeNotificationBridge /><RootNavigator /></AppFrame>;
+  return role === 'admin' || role === 'super_admin' ? navigator : <CartProvider><WishlistProvider>{navigator}</WishlistProvider></CartProvider>;
 };
 
 export default function App() {

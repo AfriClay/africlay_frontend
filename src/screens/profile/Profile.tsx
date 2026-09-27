@@ -3,7 +3,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { ChevronRight, CircleHelp, LogOut, MapPin, MessageCircle, Package, Settings, BadgeCheck } from 'lucide-react-native';
+import { Bell, CalendarClock, ChevronRight, CircleHelp, Heart, LogOut, MapPin, Package, Settings, BadgeCheck } from 'lucide-react-native';
 import { Avatar } from '../../components/ui/Avatar';
 import { GuestAuthSheet } from '../../components/ui/GuestAuthSheet';
 import { useAuth } from '../../hooks/useAuth';
@@ -13,12 +13,16 @@ import { useResponsiveLayout } from '../../contexts/ResponsiveLayoutContext';
 import { confirmLogout } from '../../utils/confirmLogout';
 import { useQuery } from '@tanstack/react-query';
 import { orderService } from '../../services/orderService';
+import { useWishlist } from '../../hooks/useWishlist';
 
 type ProfileNavigation = NativeStackNavigationProp<ProfileStackParamList, 'ProfileOverview'>;
-type ProfileRouteName = 'MyOrders' | 'MyAddresses' | 'Settings' | 'SupportHelp';
+type ProfileRouteName = 'MyOrders' | 'MyAddresses' | 'Wishlist' | 'Notifications' | 'MyBookings' | 'Settings' | 'SupportHelp';
 
 const menuItems: ReadonlyArray<{ label: string; route: ProfileRouteName; icon: typeof Package }> = [
   { label: 'My Orders', route: 'MyOrders', icon: Package },
+  { label: 'My Bookings', route: 'MyBookings', icon: CalendarClock },
+  { label: 'My Wishlist', route: 'Wishlist', icon: Heart },
+  { label: 'Notifications', route: 'Notifications', icon: Bell },
   { label: 'My Addresses', route: 'MyAddresses', icon: MapPin },
   { label: 'Settings', route: 'Settings', icon: Settings },
   { label: 'Help & Support', route: 'SupportHelp', icon: CircleHelp },
@@ -29,11 +33,12 @@ export const Profile: React.FC = () => {
   const auth = useAuth();
   const navigation = useNavigation<ProfileNavigation>();
   const [authSheetVisible, setAuthSheetVisible] = useState(false);
+  const wishlist = useWishlist();
   const userId = auth.user?.id ?? '';
   const ordersQuery = useQuery({ queryKey: ['buyer-orders', userId], queryFn: orderService.fetchOrders, enabled: Boolean(userId) });
 
   const openRoute = (route: ProfileRouteName) => {
-    navigation.navigate({ name: route, params: undefined });
+    navigation.navigate(route);
   };
 
   const requestLogout = () => {
@@ -54,14 +59,11 @@ export const Profile: React.FC = () => {
 
         <View style={styles.statsCard}>
           <View style={styles.stat}><Text style={styles.statValue}>{ordersQuery.isLoading ? '...' : ordersQuery.isError ? '-' : ordersQuery.data?.length ?? 0}</Text><Text style={styles.statLabel}>Orders</Text></View>
+          <View style={styles.statDivider} />
+          <View style={styles.stat}><Text style={styles.statValue}>{auth.user ? wishlist.items.length : 0}</Text><Text style={styles.statLabel}>Saved</Text></View>
         </View>
 
         <View style={[styles.menu, isExpanded && styles.desktopMenu]}>
-          <Pressable style={[styles.menuRow, isExpanded && styles.desktopRow]} onPress={() => navigation.getParent()?.navigate('Messages')} accessibilityRole="button">
-            <View style={styles.menuIcon}><MessageCircle color={theme.colors.ink} size={20} /></View>
-            <Text style={styles.menuLabel}>My Messages</Text>
-            <ChevronRight color={theme.colors.muted} size={19} />
-          </Pressable>
           {menuItems.map(item => {
             const Icon = item.icon;
             return (
@@ -84,7 +86,7 @@ export const Profile: React.FC = () => {
           )}
         </View>
       </ScrollView>
-      <GuestAuthSheet visible={authSheetVisible} onClose={() => setAuthSheetVisible(false)} description="Create an account to keep your orders and messages in one place." />
+      <GuestAuthSheet visible={authSheetVisible} onClose={() => setAuthSheetVisible(false)} description="Create an account to keep your orders, bookings, and saved items in one place." />
     </SafeAreaView>
   );
 };

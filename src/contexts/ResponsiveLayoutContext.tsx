@@ -23,9 +23,9 @@ export const contentLimit = (route: string) => {
   if (authRoutes.has(route)) return 480;
   if (['Checkout', 'Cart'].includes(route)) return 880;
   if (['StartSelling', 'AddEditProduct'].includes(route)) return 880;
-  if (['Services', 'DashboardHome', 'ProductManagement', 'SellerOrders'].includes(route)) return 1200;
+  if (['Services', 'DashboardHome', 'ProductManagement', 'SellerOrders', 'SellerBookings'].includes(route)) return 1200;
   if (['ProductDetails', 'ServiceDetails'].includes(route)) return 1200;
   if (route === 'Settings') return 760;
-  if (['ProfileOverview', 'Settings', 'SupportHelp', 'MyOrders', 'OrderDetails', 'MyAddresses'].includes(route)) return 960;
+  if (['ProfileOverview', 'Settings', 'SupportHelp', 'MyOrders', 'OrderDetails', 'MyAddresses', 'Wishlist', 'Notifications', 'MyBookings'].includes(route)) return 960;
   return 1440;
 };

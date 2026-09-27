@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useResponsiveLayout } from '../../contexts/ResponsiveLayoutContext';
-import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { FlatList, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { productService } from '../../services/productService';
 import { ProductCard } from '../../components/domain/ProductCard';
@@ -11,9 +11,10 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { HomeStackParamList } from '../../navigation/HomeStack';
 import { ErrorState } from '../../components/ui/ErrorState';
 import { catalogKeys } from '../../services/catalogQueries';
+import { rootCategories } from '../../utils/categoryTree';
 
 export const ProductListing: React.FC = () => {
-  const { productColumns } = useResponsiveLayout();
+  const { isExpanded, productColumns } = useResponsiveLayout();
   const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList, 'ProductListing'>>();
   const route = useRoute<RouteProp<HomeStackParamList, 'ProductListing'>>();
   const [query, setQuery] = useState('');
@@ -27,32 +28,41 @@ export const ProductListing: React.FC = () => {
     queryFn: () => productService.fetchProducts({ category: activeCategory, tag: activeTag }),
   });
   const { data: products = [], isLoading } = productsQuery;
+  const categoryOptions = useMemo(() => {
+    const categories = categoriesQuery.data ?? [];
+    const roots = rootCategories(categories);
+    const selected = categories.find(category => category.slug === activeCategory);
+    return selected && !roots.some(category => category.id === selected.id) ? [selected, ...roots] : roots;
+  }, [activeCategory, categoriesQuery.data]);
 
   const filtered = useMemo(() => products.filter(product => {
     const matchesQuery = query.length === 0 || product.name.toLowerCase().includes(query.toLowerCase());
     return matchesQuery;
   }), [products, query]);
+  const tagButtons = [{ slug: '', label: 'All tags' }, ...(tagsQuery.data ?? [])].map(tag => (
+    <Pressable key={tag.slug} onPress={() => setActiveTag(tag.slug || undefined)} style={[styles.filterChip, activeTag === (tag.slug || undefined) ? styles.filterActive : null]} accessibilityRole="button" accessibilityLabel={tag.label}>
+      <Text style={[styles.filterText, activeTag === (tag.slug || undefined) ? styles.filterTextActive : null]}>{tag.label}</Text>
+    </Pressable>
+  ));
 
   if (productsQuery.isError || categoriesQuery.isError || tagsQuery.isError) return <ErrorState message="Unable to load products." onRetry={() => { void productsQuery.refetch(); void categoriesQuery.refetch(); void tagsQuery.refetch(); }} />;
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Products</Text>
+      {isExpanded ? <Text style={styles.title}>Products</Text> : null}
       <TextInput value={query} onChangeText={setQuery} placeholder="Search products" placeholderTextColor={theme.colors.muted} style={styles.search} accessibilityLabel="Search products" />
-      <View style={styles.filters}>
-        {[{ slug: '', label: 'All' }, ...(categoriesQuery.data ?? [])].map(category => (
-          <Pressable key={category.slug} onPress={() => setActiveCategory(category.slug || undefined)} style={[styles.filterChip, activeCategory === (category.slug || undefined) ? styles.filterActive : null]} accessibilityRole="button" accessibilityLabel={category.label}>
-            <Text style={[styles.filterText, activeCategory === (category.slug || undefined) ? styles.filterTextActive : null]}>{category.label}</Text>
+      {!isExpanded && <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroller} contentContainerStyle={styles.categoryFilters} accessibilityRole="radiogroup">
+        <Pressable onPress={() => setActiveCategory(undefined)} style={[styles.filterChip, !activeCategory ? styles.filterActive : null]} accessibilityRole="radio" accessibilityState={{ selected: !activeCategory }} accessibilityLabel="All categories">
+          <Text style={[styles.filterText, !activeCategory ? styles.filterTextActive : null]}>All products</Text>
+        </Pressable>
+        {categoryOptions.map(category => (
+          <Pressable key={category.id} onPress={() => setActiveCategory(category.slug)} style={[styles.filterChip, activeCategory === category.slug && styles.filterActive]}
+            accessibilityRole="radio" accessibilityState={{ selected: activeCategory === category.slug }} accessibilityLabel={`Browse ${category.label}`}>
+            <Text numberOfLines={1} style={[styles.filterText, activeCategory === category.slug && styles.filterTextActive]}>{category.label}</Text>
           </Pressable>
         ))}
-      </View>
-      <View style={styles.filters}>
-        {[{ slug: '', label: 'All tags' }, ...(tagsQuery.data ?? [])].map(tag => (
-          <Pressable key={tag.slug} onPress={() => setActiveTag(tag.slug || undefined)} style={[styles.filterChip, activeTag === (tag.slug || undefined) ? styles.filterActive : null]} accessibilityRole="button" accessibilityLabel={tag.label}>
-            <Text style={[styles.filterText, activeTag === (tag.slug || undefined) ? styles.filterTextActive : null]}>{tag.label}</Text>
-          </Pressable>
-        ))}
-      </View>
+      </ScrollView>}
+      {isExpanded ? <View style={styles.filters}>{tagButtons}</View> : <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroller} contentContainerStyle={styles.mobileFilters}>{tagButtons}</ScrollView>}
       {isLoading || categoriesQuery.isLoading || tagsQuery.isLoading ? (
         <View style={styles.skeletonGrid}>
           {Array.from({ length: 6 }).map((_, i) => (
@@ -107,6 +117,9 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     marginBottom: theme.spacing.md,
   },
+  filterScroller: { flexGrow: 0, flexShrink: 0, height: 44, marginBottom: theme.spacing.sm },
+  mobileFilters: { paddingRight: theme.spacing.md, alignItems: 'center' },
+  categoryFilters: { paddingRight: theme.spacing.md, alignItems: 'center' },
   filterChip: {
     backgroundColor: theme.colors.white,
     borderRadius: theme.radii.pill,

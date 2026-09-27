@@ -15,7 +15,7 @@ import { AdminPortal } from '../screens/admin/AdminPortal';
 
 export type RootStackParamList = {
   AuthStack: undefined;
-  AppTabs: { screen?: 'Home' | 'Search' | 'Sell' | 'Messages' | 'Profile'; params?: { screen?: string; params?: object } } | undefined;
+  AppTabs: { screen?: 'Home' | 'Search' | 'Sell' | 'Profile'; params?: { screen?: string; params?: object } } | undefined;
   Cart: undefined;
   Checkout: { orderId?: string } | undefined;
   AdminPortal: undefined;

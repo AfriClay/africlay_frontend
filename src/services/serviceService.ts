@@ -1,7 +1,7 @@
 import type * as ImagePicker from 'expo-image-picker';
 import { z } from 'zod';
 import { Service } from '../types/product';
-import { ApiError, apiClient } from './api';
+import { API_ORIGIN, ApiError, apiClient } from './api';
 import { CatalogDataError, recordId } from './catalogContract';
 
 const categorySchema = z.object({ id: z.string().uuid(), name: z.string(), slug: z.string(), parent: z.string().uuid().nullish() });
@@ -32,8 +32,7 @@ const parseList = <T>(schema: z.ZodType<T>, value: unknown): T[] => {
 const mediaUrl = (value?: string | null): string | undefined => {
   if (!value) return undefined;
   if (/^https?:\/\//i.test(value)) return value;
-  const host = (process.env.EXPO_PUBLIC_API_URL?.trim() || 'http://localhost:8000/api').replace(/\/api\/?$/, '');
-  return `${host}/${value.replace(/^\/+/, '')}`;
+  return `${API_ORIGIN}/${value.replace(/^\/+/, '')}`;
 };
 const toService = (raw: BackendService, categories: ServiceCategory[]): Service => {
   const amount = Number(raw.price);

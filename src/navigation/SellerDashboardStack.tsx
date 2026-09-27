@@ -7,6 +7,7 @@ import { AddEditProduct } from '../screens/seller/AddEditProduct';
 import { SellerOrders } from '../screens/seller/SellerOrders';
 import { OrderDetails } from '../screens/profile/OrderDetails';
 import { theme } from '../theme';
+import { SellerBookings } from '../screens/seller/SellerBookings';
 
 export type SellerDashboardStackParamList = {
   DashboardHome: undefined;
@@ -14,6 +15,7 @@ export type SellerDashboardStackParamList = {
   ServiceManagement: undefined;
   AddEditProduct: { productId?: string } | undefined;
   SellerOrders: undefined;
+  SellerBookings: undefined;
   OrderDetails: { orderId: string };
 };
 
@@ -30,6 +32,7 @@ export const SellerDashboardStack = () => (
       options={({ route }: { route: RouteProp<SellerDashboardStackParamList, 'AddEditProduct'> }): NativeStackNavigationOptions => ({ title: route.params?.productId ? 'Edit Product' : 'Add Product' })}
     />
     <Stack.Screen name="SellerOrders" component={SellerOrders} options={{ title: 'Seller Orders' }} />
+    <Stack.Screen name="SellerBookings" component={SellerBookings} options={{ title: 'Service Bookings' }} />
     <Stack.Screen name="OrderDetails" component={OrderDetails as any} options={{ title: 'Order Details' }} />
   </Stack.Navigator>
 );

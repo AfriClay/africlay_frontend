@@ -10,7 +10,7 @@ const source = file => ts.transpileModule(
   { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } },
 ).outputText;
 
-function harness(platform, fetch) {
+function harness(platform, fetch, options = {}) {
   const storage = new Map();
   let nativeLoads = 0;
   const localStorage = {
@@ -20,10 +20,13 @@ function harness(platform, fetch) {
   };
   const api = {};
   vm.runInNewContext(source('src/services/api.ts'), {
-    exports: api, Headers, FormData, fetch, localStorage,
-    process: { env: { EXPO_PUBLIC_API_URL: 'https://api.example.test/api' } },
+    exports: api, Headers, FormData, URL, fetch, localStorage,
+    process: { env: { EXPO_PUBLIC_API_URL: options.configuredUrl ?? 'https://api.example.test/api' } },
     require(name) {
-      if (name === 'react-native') return { Platform: { OS: platform } };
+      if (name === 'react-native') return {
+        Platform: { OS: platform },
+        NativeModules: { SourceCode: { scriptURL: options.nativeBundleUrl } },
+      };
       if (name === 'expo-secure-store') {
         nativeLoads++;
         if (platform === 'web') throw new Error('Native storage used by browser');
@@ -48,6 +51,31 @@ function harness(platform, fetch) {
 }
 
 const json = (body, status = 200) => new Response(JSON.stringify(body), { status });
+
+test('native LAN development resolves localhost through the Metro host', () => {
+  const { api } = harness('android', async () => json({}), {
+    configuredUrl: 'http://localhost:8000/api',
+    nativeBundleUrl: 'http://192.168.100.21:8081/index.bundle?platform=android',
+  });
+  assert.equal(api.API_URL, 'http://192.168.100.21:8000/api');
+  assert.equal(api.API_ORIGIN, 'http://192.168.100.21:8000');
+});
+
+test('web and USB-forwarded native development keep their configured loopback URL', () => {
+  const web = harness('web', async () => json({}), {
+    configuredUrl: 'http://localhost:8000/api', nativeBundleUrl: 'http://192.168.100.21:8081/index.bundle',
+  });
+  const usb = harness('android', async () => json({}), {
+    configuredUrl: 'http://localhost:8000/api', nativeBundleUrl: 'http://127.0.0.1:8081/index.bundle',
+  });
+  assert.equal(web.api.API_URL, 'http://localhost:8000/api');
+  assert.equal(usb.api.API_URL, 'http://localhost:8000/api');
+});
+
+test('native connection failures produce an actionable message', async () => {
+  const { api } = harness('android', async () => { throw new TypeError('fetch failed'); });
+  await assert.rejects(api.apiClient('/auth/login/', { auth: false }), /same network, or restore USB forwarding/);
+});
 
 test('public web request needs no token and makes no CSRF or cookie request', async () => {
   const requests = [];

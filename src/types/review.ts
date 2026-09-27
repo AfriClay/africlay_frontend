@@ -1,7 +1,11 @@
 export interface Review {
   id: string;
-  author: string;
+  reviewerEmail: string;
   rating: number;
-  text: string;
-  date: string;
+  comment: string;
+  productId?: string;
+  serviceId?: string;
+  storeId?: string;
+  createdAt: string;
+  updatedAt: string;
 }

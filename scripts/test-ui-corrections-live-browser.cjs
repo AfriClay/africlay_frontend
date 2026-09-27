@@ -36,28 +36,6 @@ async function addCartFixtureIfNeeded(request, access) {
   assert.equal(addResponse.status(), 201);
 }
 
-async function ensureConversationFixture(request, access) {
-  const headers = { Authorization: `Bearer ${access}` };
-  const storesResponse = await request.get(`${api}/stores/`);
-  assert.equal(storesResponse.status(), 200);
-  const storePayload = await storesResponse.json();
-  const store = (Array.isArray(storePayload) ? storePayload : storePayload.results)[0];
-  const conversationResponse = await request.post(`${api}/messages/conversations/`, {
-    headers, data: { seller_id: store.owner, store_id: store.id },
-  });
-  assert.ok([200, 201].includes(conversationResponse.status()));
-  const conversation = await conversationResponse.json();
-  const detailResponse = await request.get(`${api}/messages/conversations/${conversation.id}/`, { headers });
-  assert.equal(detailResponse.status(), 200);
-  const detail = await detailResponse.json();
-  if (!detail.messages.some(message => message.body === 'UI orientation check')) {
-    const messageResponse = await request.post(`${api}/messages/conversations/${conversation.id}/messages/`, {
-      headers, data: { body: 'UI orientation check' },
-    });
-    assert.equal(messageResponse.status(), 201);
-  }
-}
-
 async function main() {
   const browser = await chromium.launch({
     headless: true,
@@ -124,7 +102,6 @@ async function main() {
   buyerPage.on('pageerror', error => errors.push(error.message));
   try {
     await addCartFixtureIfNeeded(buyerContext.request, buyerTokens.access);
-    await ensureConversationFixture(buyerContext.request, buyerTokens.access);
     await buyerPage.goto(origin, { waitUntil: 'domcontentloaded', timeout: 90000 });
     await buyerPage.getByText('Explore categories', { exact: true }).waitFor({ timeout: 60000 });
     assert.equal(await buyerPage.getByRole('button', { name: 'Sell', exact: true }).count(), 0);
@@ -137,27 +114,8 @@ async function main() {
     await buyerPage.getByRole('button', { name: 'Add to Cart', exact: true }).waitFor({ timeout: 30000 });
     console.log('PASS cart item opens its product detail');
 
-    await buyerPage.getByRole('button', { name: 'Messages', exact: true }).click();
-    const conversation = buyerPage.locator('[aria-label^="Open conversation with "]:visible').first();
-    await conversation.waitFor({ timeout: 30000 });
-    await conversation.click();
-    await buyerPage.getByLabel('Message input', { exact: true }).waitFor({ timeout: 30000 });
-    const messageBubble = buyerPage.locator('[data-testid^="message-"]:visible').last();
-    await messageBubble.waitFor({ timeout: 30000 });
-    const hasInvertedAncestor = await messageBubble.evaluate(element => {
-      let current = element;
-      while (current && current !== document.body) {
-        const transform = getComputedStyle(current).transform;
-        if (transform && transform !== 'none' && new DOMMatrix(transform).m22 < 0) return true;
-        current = current.parentElement;
-      }
-      return false;
-    });
-    assert.equal(hasInvertedAncestor, false);
-    await buyerPage.setViewportSize({ width: 390, height: 844 });
-    const composer = await buyerPage.getByLabel('Message input', { exact: true }).boundingBox();
-    assert.ok(composer && composer.y + composer.height <= 844);
-    console.log('PASS message thread is upright and composer stays inside the mobile viewport');
+    assert.equal(await buyerPage.getByRole('button', { name: 'Messages', exact: true }).count(), 0);
+    console.log('PASS messaging is absent from buyer navigation');
   } finally {
     await buyerContext.close();
   }

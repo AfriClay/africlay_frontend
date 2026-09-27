@@ -2,15 +2,18 @@ import React from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { RouteProp, useRoute } from '@react-navigation/native';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { MapPin } from 'lucide-react-native';
 import { StatusPill } from '../../components/ui/StatusPill';
+import { Button } from '../../components/ui/Button';
+import { OrderProgress } from '../../components/domain/OrderProgress';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { ErrorState } from '../../components/ui/ErrorState';
 import { useAuth } from '../../hooks/useAuth';
 import { ProfileStackParamList } from '../../navigation/ProfileStack';
 import { getApiErrorMessage } from '../../services/api';
-import { orderService } from '../../services/orderService';
+import { orderKeys, orderService } from '../../services/orderService';
+import { notificationKeys } from '../../services/notificationService';
 import { theme } from '../../theme';
 import { formatCurrency } from '../../utils/formatCurrency';
 import { formatDate } from '../../utils/formatDate';
@@ -20,8 +23,18 @@ type OrderDetailsRoute = RouteProp<ProfileStackParamList, 'OrderDetails'>;
 export const OrderDetails: React.FC = () => {
   const { params } = useRoute<OrderDetailsRoute>();
   const userId = useAuth().user?.id ?? '';
-  const orderQuery = useQuery({ queryKey: ['buyer-order', userId, params.orderId],
+  const client = useQueryClient();
+  const detailKey = orderKeys.detail(userId, params.orderId);
+  const orderQuery = useQuery({ queryKey: detailKey,
     queryFn: () => orderService.fetchOrderById(params.orderId), enabled: Boolean(userId && params.orderId) });
+  const confirmDelivery = useMutation({
+    mutationFn: () => orderService.confirmDelivery(params.orderId),
+    onSuccess: delivered => {
+      client.setQueryData(detailKey, delivered);
+      void client.invalidateQueries({ queryKey: orderKeys.buyer(userId) });
+      void client.invalidateQueries({ queryKey: notificationKeys.all(userId) });
+    },
+  });
   const { data: order } = orderQuery;
 
   if (!userId) return <EmptyState title="Sign in to view this order" description="Order details belong to your account." />;
@@ -31,6 +44,9 @@ export const OrderDetails: React.FC = () => {
 
   return <SafeAreaView style={styles.container}><ScrollView contentContainerStyle={styles.content}>
     <View style={styles.header}><View style={styles.headerCopy}><Text style={styles.id}>Order #{order.id}</Text><Text style={styles.date}>{formatDate(order.date)}</Text></View><StatusPill status={order.status} /></View>
+    <OrderProgress status={order.status} />
+    <Text style={styles.statusNote}>{order.status === 'shipped' ? 'Your order is on its way. Confirm receipt only after it arrives.' : order.status === 'processing' ? 'The seller accepted your order and is preparing it.' : order.status === 'pending' ? 'Your order is waiting for the seller to accept it.' : order.status === 'delivered' ? 'Delivery is complete. You can now rate the product or store.' : ''}</Text>
+    {order.status === 'shipped' ? <View style={styles.confirmBlock}><Button loading={confirmDelivery.isPending} disabled={confirmDelivery.isPending} onPress={() => confirmDelivery.mutate()}>Confirm item received</Button>{confirmDelivery.isError ? <Text style={styles.error} accessibilityRole="alert">{getApiErrorMessage(confirmDelivery.error, 'Unable to confirm delivery.')}</Text> : null}</View> : null}
     <Text style={styles.sectionTitle}>Items</Text>
     {order.items.map(item => <View key={item.id} style={styles.itemRow}><View style={styles.itemCopy}><Text style={styles.itemName}>{item.name}</Text><Text style={styles.date}>Qty {item.quantity}</Text></View><Text style={styles.amount}>{formatCurrency(item.price * item.quantity, order.currency)}</Text></View>)}
     <Text style={styles.sectionTitle}>Delivery Address</Text>
@@ -57,4 +73,7 @@ const styles = StyleSheet.create({
   totalRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: theme.spacing.lg, paddingTop: theme.spacing.md, borderTopWidth: 1, borderTopColor: theme.colors.border },
   totalLabel: { color: theme.colors.ink, fontWeight: '700' },
   total: { color: theme.colors.ink, fontWeight: '800', fontSize: theme.typography.h3.fontSize },
+  statusNote: { color: theme.colors.muted, lineHeight: 21, marginTop: theme.spacing.xs },
+  confirmBlock: { marginTop: theme.spacing.md, gap: theme.spacing.sm },
+  error: { color: theme.colors.error },
 });

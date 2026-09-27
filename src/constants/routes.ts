@@ -13,7 +13,6 @@ export const ROUTES = {
   ProductDetails: 'ProductDetails',
   SellerStore: 'SellerStore',
   Search: 'Search',
-  Messages: 'Messages',
   ConversationThread: 'ConversationThread',
   Profile: 'Profile',
   MyOrders: 'MyOrders',

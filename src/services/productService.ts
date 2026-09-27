@@ -2,7 +2,7 @@ import type * as ImagePicker from 'expo-image-picker';
 import { z } from 'zod';
 import type { Product, Service } from '../types/product';
 import type { Seller } from '../types/seller';
-import { ApiError, apiClient } from './api';
+import { API_ORIGIN, ApiError, apiClient } from './api';
 import { CatalogDataError, recordId } from './catalogContract';
 import { serviceService } from './serviceService';
 
@@ -16,6 +16,8 @@ const productSchema = z.object({
   sku: z.string().min(1), price: z.union([z.string(), z.number()]),
   currency: z.string().length(3), stock_quantity: quantity,
   status: z.enum(['draft', 'published', 'archived']),
+  average_rating: z.union([z.string(), z.number()]).optional().default(0),
+  review_count: quantity.optional().default(0),
 });
 const categorySchema = z.object({ id: z.string().min(1), name: z.string().min(1), slug: z.string().min(1), parent: optionalText });
 const tagSchema = z.object({ id: z.string().min(1), name: z.string().min(1), slug: z.string().min(1) });
@@ -45,8 +47,7 @@ export type SellerProductDraft = {
 const imageUrl = (value?: string | null): string | undefined => {
   if (!value?.trim()) return undefined;
   if (/^https?:\/\//i.test(value)) return value;
-  const root = (process.env.EXPO_PUBLIC_API_URL?.trim() || 'http://localhost:8000/api').replace(/\/api\/?$/, '');
-  return `${root}/${value.replace(/^\/+/, '')}`;
+  return `${API_ORIGIN}/${value.replace(/^\/+/, '')}`;
 };
 
 const list = <T>(schema: z.ZodType<T>, value: unknown): T[] => {
@@ -77,7 +78,7 @@ const toProduct = (raw: BackendProduct, categories: CatalogCategory[]): Product 
     name: raw.name, description: raw.description ?? '', price: asPrice(raw.price),
     currency: raw.currency, category: category?.label ?? 'Uncategorized', categoryId: raw.category ?? undefined,
     tagIds: raw.tags, sellerId: raw.store, images: orderedImages.map(item => imageUrl(item.image)).filter((url): url is string => Boolean(url)),
-    availableQuantity: raw.stock_quantity, rating: 0, reviewCount: 0, deliveryEstimate: '',
+    availableQuantity: raw.stock_quantity, rating: asPrice(raw.average_rating), reviewCount: raw.review_count, deliveryEstimate: '',
   };
 };
 

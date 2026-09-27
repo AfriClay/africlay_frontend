@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { Order, OrderItem } from '../types/order';
+import { Order, OrderItem, OrderStatus } from '../types/order';
 import { apiClient, ApiError } from './api';
 import { parseAmount, parseCommerce, parseCommerceList } from './commerceContract';
 
@@ -36,6 +36,12 @@ export type CheckoutPayload = {
   shipping_country: string;
 };
 
+export const orderKeys = {
+  buyer: (userId: string) => ['buyer-orders', userId] as const,
+  detail: (userId: string, orderId: string) => ['buyer-order', userId, orderId] as const,
+  seller: (userId: string) => ['seller-orders', userId] as const,
+};
+
 let checkoutPending = false;
 
 export const orderService = {
@@ -58,4 +64,14 @@ export const orderService = {
       throw error;
     }
   },
+  fetchSellerOrders: async (): Promise<Order[]> =>
+    parseCommerceList(orderSchema, await apiClient('/cart/seller/orders/')).map(toOrder),
+  updateSellerOrderStatus: async (id: string, status: OrderStatus): Promise<Order> =>
+    toOrder(parseCommerce(orderSchema, await apiClient(`/cart/seller/orders/${encodeURIComponent(id)}/`, {
+      method: 'PATCH', body: { status },
+    }))),
+  confirmDelivery: async (id: string): Promise<Order> =>
+    toOrder(parseCommerce(orderSchema, await apiClient(`/cart/orders/${encodeURIComponent(id)}/confirm-delivery/`, {
+      method: 'POST',
+    }))),
 };

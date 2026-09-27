@@ -1,8 +1,31 @@
-import { Platform } from 'react-native';
+import { NativeModules, Platform } from 'react-native';
 
 const isWeb = Platform.OS === 'web';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL?.trim() || 'http://localhost:8000/api';
+const configuredApiUrl = process.env.EXPO_PUBLIC_API_URL?.trim() || 'http://localhost:8000/api';
+const loopbackHosts = new Set(['localhost', '127.0.0.1', '::1']);
+
+const hostnameFromUrl = (value?: string): string | undefined => {
+  if (!value) return undefined;
+  const match = value.match(/^(?:https?:\/\/)?(\[[^\]]+\]|[^/:]+)(?::\d+)?(?:\/|$)/i);
+  return match?.[1]?.replace(/^\[|\]$/g, '');
+};
+
+export const resolveApiUrl = (configured: string, platform: string, nativeBundleUrl?: string): string => {
+  const normalized = configured.replace(/\/+$/, '');
+  if (platform === 'web') return normalized;
+  const parts = normalized.match(/^(https?:\/\/)(\[[^\]]+\]|[^/:]+)(:\d+)?(\/.*)?$/i);
+  const configuredHost = parts?.[2]?.replace(/^\[|\]$/g, '');
+  if (!parts || !configuredHost || !loopbackHosts.has(configuredHost)) return normalized;
+  const developmentHost = hostnameFromUrl(nativeBundleUrl);
+  if (!developmentHost || loopbackHosts.has(developmentHost)) return normalized;
+  const formattedHost = developmentHost.includes(':') ? `[${developmentHost}]` : developmentHost;
+  return `${parts[1]}${formattedHost}${parts[3] ?? ''}${parts[4] ?? ''}`;
+};
+
+const nativeBundleUrl = NativeModules?.SourceCode?.scriptURL as string | undefined;
+export const API_URL = resolveApiUrl(configuredApiUrl, Platform.OS, nativeBundleUrl);
+export const API_ORIGIN = API_URL.match(/^https?:\/\/[^/]+/i)?.[0] ?? API_URL.replace(/\/api\/?$/, '');
 const ACCESS_TOKEN_KEY = 'africlay.accessToken';
 const REFRESH_TOKEN_KEY = 'africlay.refreshToken';
 
@@ -142,12 +165,19 @@ export const apiClient = async <T>(endpoint: string, options: RequestOptions = {
     }
   }
 
-  const response = await fetch(endpointUrl(endpoint), {
-    ...init,
-    credentials: 'omit',
-    headers: requestHeaders,
-    body: body instanceof FormData ? body : body === undefined ? undefined : JSON.stringify(body),
-  });
+  let response: Response;
+  try {
+    response = await fetch(endpointUrl(endpoint), {
+      ...init,
+      credentials: 'omit',
+      headers: requestHeaders,
+      body: body instanceof FormData ? body : body === undefined ? undefined : JSON.stringify(body),
+    });
+  } catch {
+    throw new Error(isWeb
+      ? 'Unable to connect to AfriClay. Confirm that the backend is running.'
+      : 'Unable to connect to AfriClay. Keep the phone and computer on the same network, or restore USB forwarding.');
+  }
   const data = await parseResponse(response);
   if (response.status === 401 && auth && retryOnUnauthorized) {
     try {

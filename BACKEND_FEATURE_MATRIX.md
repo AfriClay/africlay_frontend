@@ -1,7 +1,7 @@
 # Django feature matrix
 
-Source: `updated_backend/Africlay-server` route files, views, serializers, and
-models inspected on 2026-09-20. All paths are relative to the Django host. `A`
+Source: `new_updated_server` route files, views, serializers, and models
+inspected on 2026-09-26 at commit `4321405`. All paths are relative to the Django host. `A`
 means public (`AllowAny`), `U` authenticated active user, `V` verified seller,
 and `D` application admin. Owner filtering also applies where noted. A 400
 response contains DRF field errors; object-not-found or inaccessible records
@@ -48,12 +48,26 @@ Statuses describe the frontend after this parity pass. See
 | `/api/services/manage/` | GET, POST V | service fields (name, slug, price, duration_minutes, optional category/tags/status) -> owned array or service | `serviceService` / ServiceManagement | Integrated |
 | `/api/services/manage/<uuid>/` | GET, PUT, PATCH, DELETE V+owner | service fields -> service; DELETE 204 | `serviceService` / ServiceManagement | Integrated |
 | `/api/services/manage/<uuid>/images/` | GET, POST V+owner | multipart image, alt text, primary/order -> image or array | `serviceService` / ServiceManagement | Integrated POST; GET images included in service detail |
+| `/api/services/bookings/` | GET, POST U | service UUID, scheduled_at, notes -> owned booking | `bookingService` / ServiceDetails, MyBookings | Integrated |
+| `/api/services/bookings/<uuid>/` | GET, DELETE U+customer | none -> booking; DELETE cancels pending/confirmed booking | `bookingService` / MyBookings | Integrated cancellation |
+| `/api/services/seller/bookings/` | GET V | none -> bookings for seller services | `bookingService` / SellerBookings | Integrated |
+| `/api/services/seller/bookings/<uuid>/` | PATCH V+owner | status -> booking | `bookingService` / SellerBookings | Integrated with allowed transition controls |
 | `/api/cart/` | GET U | none -> cart with items | `cartService` / Cart | Integrated; no clear route |
 | `/api/cart/items/` | GET, POST U | product UUID, quantity -> owned items; POST 201/200 | `cartService` / Cart | Integrated; stock checked |
 | `/api/cart/items/<uuid>/` | GET, PUT, PATCH, DELETE U+owner | quantity -> cart item; DELETE 204 | `cartService` / Cart | Integrated |
 | `/api/cart/checkout/` | POST U | four shipping fields -> 201 pending order | `orderService` / Checkout | Integrated; no payment or idempotency key |
 | `/api/cart/orders/` | GET U | none -> buyer order array | `orderService` / MyOrders | Integrated |
 | `/api/cart/orders/<uuid>/` | GET U+buyer | none -> order with items | `orderService` / OrderDetails | Integrated |
+| `/api/cart/seller/orders/` | GET V | none -> seller order array | `orderService` / SellerOrders | Integrated; backend excludes multi-seller orders |
+| `/api/cart/seller/orders/<uuid>/` | PATCH V | status -> order | `orderService` / SellerOrders | Integrated |
+| `/api/cart/wishlist/` | GET U | none -> account wishlist with items | `wishlistService`, `WishlistContext` / Wishlist | Integrated |
+| `/api/cart/wishlist/items/` | GET, POST U | product UUID -> item | `wishlistService`, `WishlistContext` / ProductDetails | Integrated |
+| `/api/cart/wishlist/items/<uuid>/` | DELETE U+owner | none -> 204 | `wishlistService`, `WishlistContext` / Wishlist | Integrated |
+| `/api/reviews/` | GET A, POST U | target filter or exactly one target UUID plus rating/comment -> review | `reviewService` / product, service, store details | Integrated |
+| `/api/reviews/<uuid>/` | GET, PATCH, DELETE U | rating/comment -> review; DELETE 204 | `reviewService` / ReviewSection | Integrated; local backend fixes partial-update target validation |
+| `/api/notifications/` | GET U | optional is_read filter -> owned notifications | `notificationService` / Notifications, desktop shell | Integrated; backend does not yet emit notifications automatically |
+| `/api/notifications/<uuid>/` | GET, PATCH U+owner | is_read -> notification | `notificationService` / Notifications | Integrated |
+| `/api/notifications/mark-all-read/` | POST U | none -> marked_read count | `notificationService` / Notifications | Integrated |
 | `/api/messages/conversations/` | GET, POST U | GET -> `{results:[conversation]}`; POST seller_id/store_id/product_id/service_id -> conversation | `messageService` / MessagesList, SellerStore | Integrated |
 | `/api/messages/conversations/<uuid>/` | GET U+participant | none -> conversation including messages; marks incoming messages read | `messageService` / ConversationThread | Integrated |
 | `/api/messages/conversations/<uuid>/messages/` | POST U+participant | body (max 2000), optional attachment URL/name -> message, 201 | `messageService` / ConversationThread | Integrated POST; GET is not implemented |
@@ -61,7 +75,7 @@ Statuses describe the frontend after this parity pass. See
 | `/api/schema/`, `/api/docs/`, `/api/redoc/` | GET A | none -> OpenAPI schema/documentation | none | Not applicable to marketplace client |
 | `/admin/` | Django admin | browser admin session -> admin UI | none | Not applicable to marketplace client |
 
-There is no backend route for role promotion, wishlist persistence, reviews,
-wallets, payments, notifications, service bookings, seller order management,
-delivery tracking, or product/image deletion. Those are not inferred from
-model names or existing frontend screens.
+There is still no backend route for role promotion, wallets, payments,
+delivery tracking, product/image deletion, server-side product search, or a
+public store-product filter. Notification storage and read APIs exist, but no
+application workflow currently creates notification records automatically.

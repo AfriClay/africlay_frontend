@@ -31,11 +31,18 @@ export const ProductManagement: React.FC = () => {
 
   const renderProduct = ({ item }: { item: Product }) => {
     const lowStock = item.availableQuantity < LOW_STOCK_THRESHOLD;
+    const published = item.status === 'published';
+    const archived = item.status === 'archived';
     return (
       <View style={styles.row}>
         <ProductCard product={item} layout="compact" onPress={() => navigation.navigate('AddEditProduct', { productId: item.id })} />
         <View style={styles.metaRow}>
+          <View style={styles.listingMeta}>
+            <View style={[styles.statusBadge, published ? styles.statusPublished : archived ? styles.statusArchived : styles.statusDraft]}>
+              <Text style={[styles.statusText, published ? styles.statusPublishedText : archived ? styles.statusArchivedText : styles.statusDraftText]}>{item.status}</Text>
+            </View>
           <Text style={[styles.stock, lowStock ? styles.lowStock : null]}>{item.availableQuantity} in stock{lowStock ? ' · Low stock' : ''}</Text>
+          </View>
           <View style={styles.actions}>
             <Pressable onPress={() => navigation.navigate('AddEditProduct', { productId: item.id })} style={styles.action} accessibilityRole="button"><Pencil color={theme.colors.primary.DEFAULT} size={17} /><Text style={styles.edit}>Edit</Text></Pressable>
           </View>
@@ -72,6 +79,15 @@ const styles = StyleSheet.create({
   emptyList: { flexGrow: 1, padding: theme.spacing.lg },
   row: { padding: theme.spacing.sm, borderRadius: theme.radii.lg, backgroundColor: theme.colors.white, marginBottom: theme.spacing.md, ...theme.shadows.sm },
   metaRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: theme.spacing.sm },
+  listingMeta: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: theme.spacing.sm },
+  statusBadge: { minHeight: 28, paddingHorizontal: theme.spacing.sm, alignItems: 'center', justifyContent: 'center', borderRadius: theme.radii.sm, borderWidth: 1 },
+  statusPublished: { backgroundColor: theme.colors.primary.tint, borderColor: theme.colors.primary.DEFAULT },
+  statusDraft: { backgroundColor: theme.colors.secondary.tint, borderColor: theme.colors.secondary.DEFAULT },
+  statusArchived: { backgroundColor: theme.colors.white, borderColor: theme.colors.muted },
+  statusText: { fontSize: theme.typography.small.fontSize, fontWeight: '700', textTransform: 'capitalize' },
+  statusPublishedText: { color: theme.colors.primary.dark },
+  statusDraftText: { color: theme.colors.secondary.dark },
+  statusArchivedText: { color: theme.colors.muted },
   stock: { color: theme.colors.muted, fontSize: theme.typography.small.fontSize },
   lowStock: { color: theme.colors.error, fontWeight: '700' },
   actions: { flexDirection: 'row', gap: theme.spacing.md },

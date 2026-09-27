@@ -23,6 +23,8 @@ import { EmptyState } from '../../components/ui/EmptyState';
 import { recordId } from '../../services/catalogContract';
 import { catalogKeys } from '../../services/catalogQueries';
 import { getApiErrorMessage } from '../../services/api';
+import { WishlistToggle } from '../../components/domain/WishlistToggle';
+import { ReviewSection } from '../../components/domain/ReviewSection';
 
 type ProductDetailsRoute = RouteProp<HomeStackParamList, 'ProductDetails'>;
 type ProductDetailsNavigation = CompositeNavigationProp<
@@ -102,7 +104,7 @@ export const ProductDetails: React.FC = () => {
         <ProductGallery key={product.id} images={product.images} name={product.name} />
         </View>
         <View style={isExpanded && styles.desktopColumn}>
-        <Text style={styles.name}>{product.name}</Text>
+        <View style={styles.nameRow}><Text style={styles.name}>{product.name}</Text><WishlistToggle productId={product.id} onGuest={() => setAuthSheetVisible(true)} /></View>
         <Text style={styles.price}>{formatCurrency(product.price, product.currency)}</Text>
         {product.reviewCount > 0 && <RatingBadge rating={product.rating} reviewCount={product.reviewCount} />}
         {sellerQuery.isError ? <ErrorState message="Unable to load seller details." onRetry={() => void sellerQuery.refetch()} /> : <Pressable disabled={!seller} accessibilityState={{ disabled: !seller }} style={styles.sellerCard} onPress={() => seller && (navigation as any).navigate('SellerStore', { sellerId: seller.id })} accessibilityRole="button">
@@ -117,12 +119,13 @@ export const ProductDetails: React.FC = () => {
         <Text style={styles.meta}>Delivery estimate: {product.deliveryEstimate}</Text>
         {cartError && <Text style={styles.description} accessibilityRole="alert">{cartError}</Text>}
         {isExpanded && actions}
+        <ReviewSection target={{ type: 'product', id: product.id }} />
         </View>
         </View>
       </ScrollView>
       {isCompact && actions}
       {isFocused && <CartToast key={product.id} event={cartEvent} bottom={isCompact ? actionHeight + theme.spacing.sm : theme.spacing.md} />}
-      <GuestAuthSheet visible={authSheetVisible} onClose={() => setAuthSheetVisible(false)} description="Register or log in to save items, message sellers, and complete your purchase." />
+      <GuestAuthSheet visible={authSheetVisible} onClose={() => setAuthSheetVisible(false)} description="Register or log in to save items and complete your purchase." />
     </SafeAreaView>
   );
 };
@@ -156,11 +159,13 @@ const styles = StyleSheet.create({
     marginLeft: theme.spacing.sm,
   },
   name: {
+    flex: 1,
     color: theme.colors.ink,
     fontSize: theme.typography.h2.fontSize,
     fontWeight: '800',
     marginBottom: theme.spacing.sm,
   },
+  nameRow: { flexDirection: 'row', alignItems: 'flex-start', gap: theme.spacing.sm },
   price: {
     color: theme.colors.secondary.dark,
     fontSize: theme.typography.h2.fontSize,

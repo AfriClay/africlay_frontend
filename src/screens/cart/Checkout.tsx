@@ -63,6 +63,7 @@ export const Checkout: React.FC = () => {
       setConfirmedOrderId(order.id);
       void cart.refresh().catch(() => {});
       void queryClient.invalidateQueries({ queryKey: ['buyer-orders', userId] });
+      void queryClient.invalidateQueries({ queryKey: ['notifications', userId] });
     } catch (submitError) {
       setError(submitError instanceof ApiError && submitError.status < 500
         ? getApiErrorMessage(submitError, 'Unable to place your order.')

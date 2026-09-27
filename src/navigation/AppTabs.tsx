@@ -1,12 +1,11 @@
 import { useCallback } from 'react';
 import { BottomTabBarProps, createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { Home, MessageCircle, Plus, Search, User } from 'lucide-react-native';
+import { Home, Plus, Search, User } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { HomeStack } from './HomeStack';
 import { SearchStack } from './SearchStack';
 import { SellTab } from './SellTab';
-import { MessagesStack } from './MessagesStack';
 import { ProfileStack } from './ProfileStack';
 import { SideMenu } from '../components/SideMenu';
 import { SideMenuProvider } from '../contexts/SideMenuContext';
@@ -19,7 +18,6 @@ export type AppTabParamList = {
   Home: undefined;
   Search: undefined;
   Sell: undefined;
-  Messages: undefined;
   Profile: undefined;
 };
 
@@ -29,7 +27,6 @@ const tabItems = [
   { name: 'Home', label: 'Home', icon: Home },
   { name: 'Search', label: 'Search', icon: Search },
   { name: 'Sell', label: 'Sell', icon: Plus },
-  { name: 'Messages', label: 'Messages', icon: MessageCircle },
   { name: 'Profile', label: 'Profile', icon: User },
 ] as const;
 
@@ -76,7 +73,6 @@ const AppTabsNavigator = () => {
       <Tab.Screen name="Home" component={HomeStack} />
       <Tab.Screen name="Search" component={SearchStack} />
       <Tab.Screen name="Sell" component={SellTab} />
-      <Tab.Screen name="Messages" component={MessagesStack} />
       <Tab.Screen name="Profile" component={ProfileStack} />
     </Tab.Navigator>
   );
@@ -101,8 +97,8 @@ const styles = StyleSheet.create({
   tabLabel: { marginTop: theme.spacing.xs, ...theme.typography.marketplace.navigation, color: theme.colors.muted },
   tabLabelActive: { color: theme.colors.primary.DEFAULT, fontWeight: '700' },
   sellButton: { position: 'relative', flex: 1, minHeight: 64, justifyContent: 'center', alignItems: 'center' },
-  sellCircle: { width: 44, height: 40, borderRadius: theme.radii.md, backgroundColor: theme.colors.primary.DEFAULT, alignItems: 'center', justifyContent: 'center', ...theme.shadows.sm },
-  sellCircleFocused: { backgroundColor: theme.colors.primary.dark },
+  sellCircle: { width: 50, height: 50, borderRadius: 25, backgroundColor: theme.colors.primary.DEFAULT, borderWidth: 3, borderColor: theme.colors.white, alignItems: 'center', justifyContent: 'center', ...theme.shadows.md },
+  sellCircleFocused: { backgroundColor: theme.colors.primary.dark, borderColor: theme.colors.primary.tint },
   sellLabel: { marginTop: 2, color: theme.colors.primary.DEFAULT, ...theme.typography.marketplace.navigation },
   iconPill: { width: 48, height: 30, borderRadius: theme.radii.pill, alignItems: 'center', justifyContent: 'center' },
   iconPillActive: { backgroundColor: theme.colors.primary.tint },

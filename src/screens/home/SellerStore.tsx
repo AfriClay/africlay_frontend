@@ -18,25 +18,18 @@ import { EmptyState } from '../../components/ui/EmptyState';
 import { recordId } from '../../services/catalogContract';
 import { catalogKeys } from '../../services/catalogQueries';
 import { serviceService } from '../../services/serviceService';
-import { messageService } from '../../services/messageService';
-import { useAuth } from '../../hooks/useAuth';
-import { GuestAuthSheet } from '../../components/ui/GuestAuthSheet';
 import { ServiceCard } from '../../components/domain/ServiceCard';
-import { getApiErrorMessage } from '../../services/api';
 import { useResponsiveLayout } from '../../contexts/ResponsiveLayoutContext';
+import { ReviewSection } from '../../components/domain/ReviewSection';
 
-const tabs = ['Shop', 'Services', 'About'] as const;
+const tabs = ['Shop', 'Services', 'Reviews', 'About'] as const;
 
 export const SellerStore: React.FC = () => {
   const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList, 'SellerStore'>>();
   const route = useRoute<RouteProp<HomeStackParamList, 'SellerStore'>>();
   const sellerId = recordId(route.params?.sellerId);
-  const auth = useAuth();
   const { isExpanded, productColumns } = useResponsiveLayout();
   const [activeTab, setActiveTab] = useState<typeof tabs[number]>('Shop');
-  const [authSheet, setAuthSheet] = useState(false);
-  const [messageError, setMessageError] = useState<string>();
-  const [creatingConversation, setCreatingConversation] = useState(false);
   useEffect(() => setActiveTab('Shop'), [sellerId]);
   const sellerQuery = useQuery<Seller | null>({ queryKey: catalogKeys.seller(sellerId), queryFn: () => productService.fetchSeller(sellerId), enabled: Boolean(sellerId) });
   const { data: seller, isLoading: sellerLoading } = sellerQuery;
@@ -44,19 +37,6 @@ export const SellerStore: React.FC = () => {
   const { data: products = [], isLoading: productsLoading } = productsQuery;
   const servicesQuery = useQuery({ queryKey: ['services'], queryFn: serviceService.list, enabled: activeTab === 'Services' });
   const services = (servicesQuery.data ?? []).filter(service => service.providerId === seller?.id);
-
-  const messageSeller = async () => {
-    if (!seller?.ownerId) { setMessageError('Seller contact is unavailable.'); return; }
-    if (!auth.user) { setAuthSheet(true); return; }
-    if (creatingConversation) return;
-    setCreatingConversation(true);
-    setMessageError(undefined);
-    try {
-      const conversation = await messageService.createConversation({ seller_id: seller.ownerId, store_id: seller.id }, auth.user.id);
-      (navigation.getParent() as any)?.navigate('Messages', { screen: 'ConversationThread', params: { conversationId: conversation.id, name: conversation.name } });
-    } catch (cause) { setMessageError(getApiErrorMessage(cause, 'Unable to start conversation.')); }
-    finally { setCreatingConversation(false); }
-  };
 
   if (sellerQuery.isError) return <ErrorState message="Unable to load this seller." onRetry={() => void sellerQuery.refetch()} />;
 
@@ -78,8 +58,6 @@ export const SellerStore: React.FC = () => {
         {seller.reviewCount > 0 && <RatingBadge rating={seller.rating} reviewCount={seller.reviewCount} />}
         {seller.verified ? <View style={styles.verifiedRow}><BadgeCheck color={theme.colors.success} size={16} /><Text style={styles.verified}>Verified Seller</Text></View> : null}
       </View>
-      {seller.ownerId && auth.user?.id !== seller.ownerId && <Pressable onPress={() => void messageSeller()} disabled={creatingConversation} accessibilityRole="button" style={styles.followButton}><Text style={styles.followText}>{creatingConversation ? 'Opening...' : 'Message seller'}</Text></Pressable>}
-      {messageError && <Text style={styles.messageError} accessibilityRole="alert">{messageError}</Text>}
     </View>
     <View style={styles.tabBar}>
       {tabs.map(tab => (
@@ -123,8 +101,8 @@ export const SellerStore: React.FC = () => {
             : <EmptyState title="No services listed" description="This store has no published services." />}
         contentContainerStyle={styles.page}
         columnWrapperStyle={serviceColumns > 1 ? styles.column : undefined}
-      /> : <ScrollView contentContainerStyle={styles.page}>{storeHeader}<View style={styles.content}><Text style={styles.description}>{seller.bio || 'No store description available.'}</Text></View></ScrollView>}
-      <GuestAuthSheet visible={authSheet} onClose={() => setAuthSheet(false)} description="Log in to message this seller." />
+      /> : activeTab === 'Reviews' ? <ScrollView contentContainerStyle={styles.page}>{storeHeader}<View style={styles.content}><ReviewSection target={{ type: 'store', id: seller.id }} /></View></ScrollView>
+        : <ScrollView contentContainerStyle={styles.page}>{storeHeader}<View style={styles.content}><Text style={styles.description}>{seller.bio || 'No store description available.'}</Text></View></ScrollView>}
     </SafeAreaView>
   );
 };
@@ -150,9 +128,6 @@ const styles = StyleSheet.create({
   logo: { width: 58, height: 58, borderRadius: 29, backgroundColor: theme.colors.ink, borderWidth: 3, borderColor: theme.colors.white, alignItems: 'center', justifyContent: 'center', marginTop: -34 },
   logoImage: { width: '100%', height: '100%', borderRadius: 29 },
   logoText: { color: theme.colors.white, fontSize: 11, fontWeight: '800' },
-  followButton: { minHeight: 40, paddingHorizontal: theme.spacing.md, borderRadius: theme.radii.md, borderWidth: 1, borderColor: theme.colors.primary.DEFAULT, alignItems: 'center', justifyContent: 'center' },
-  followText: { color: theme.colors.primary.DEFAULT, fontWeight: '700' },
-  messageError: { color: theme.colors.error, marginTop: theme.spacing.sm },
   name: {
     color: theme.colors.ink,
     fontSize: theme.typography.h2.fontSize,

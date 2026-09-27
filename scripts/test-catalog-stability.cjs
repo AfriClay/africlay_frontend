@@ -10,7 +10,7 @@ const { TabRouter, CommonActions } = require('@react-navigation/routers');
 const category = { id: 'category-id', slug: 'handmade', name: 'Handmade', parent: null };
 const tag = { id: 'tag-id', slug: 'woven', name: 'Woven' };
 const store = { id: 'store-id', owner: 'seller-id', slug: 'artisan-shop', name: 'Artisan Shop', description: 'Handmade goods', city: 'Nairobi', country: 'Kenya', logo: '/media/logo.png', banner: null, average_rating: '4.25', total_reviews: 4, total_products: 1, status: 'active' };
-const product = { id: 'product-id', store: store.id, category: category.id, tags: [tag.id], images: [{ image: '/media/rug.png', is_primary: true, display_order: 1 }, { image: null, is_primary: false, display_order: 2 }], name: 'Sisal Rug', slug: 'sisal-rug', description: 'Handwoven', sku: 'RUG-001', price: '3200.50', currency: 'KES', stock_quantity: 5, status: 'published' };
+const product = { id: 'product-id', store: store.id, category: category.id, tags: [tag.id], images: [{ image: '/media/rug.png', is_primary: true, display_order: 1 }, { image: null, is_primary: false, display_order: 2 }], name: 'Sisal Rug', slug: 'sisal-rug', description: 'Handwoven', sku: 'RUG-001', price: '3200.50', currency: 'KES', stock_quantity: 5, status: 'published', average_rating: 4.5, review_count: 12 };
 const json = (body, status = 200) => new Response(JSON.stringify(body), { status });
 
 function harness(responder = () => undefined) {
@@ -60,7 +60,12 @@ function harness(responder = () => undefined) {
   }
   const api = load('services/api.ts');
   const service = load('services/productService.ts').productService;
-  return { api, service, requests, storage, queries: load('services/catalogQueries.ts') };
+  return {
+    api, service, requests, storage,
+    queries: load('services/catalogQueries.ts'),
+    categoryTree: load('utils/categoryTree.ts'),
+    identifiers: load('utils/productIdentifiers.ts'),
+  };
 }
 
 test('tab history returns to the immediate previous tab', () => {
@@ -87,6 +92,8 @@ test('product list maps backend IDs, category, tags, decimal price, stock and im
   assert.equal(items[0].price, 3200.5);
   assert.equal(items[0].currency, 'KES');
   assert.equal(items[0].availableQuantity, 5);
+  assert.equal(items[0].rating, 4.5);
+  assert.equal(items[0].reviewCount, 12);
   assert.deepEqual(Array.from(items[0].images), ['https://api.example.test/media/rug.png']);
   assert.equal(requests.find(item => item.path === '/api/products/').init.credentials, 'omit');
 });
@@ -102,6 +109,52 @@ test('categories and tags use the backend list routes', async () => {
   const { service } = harness();
   assert.equal((await service.fetchCategories())[0].slug, 'handmade');
   assert.equal((await service.fetchTags())[0].slug, 'woven');
+});
+
+test('category hierarchy orders main, subcategory and detail levels safely', () => {
+  const { categoryTree } = harness();
+  const main = { id: 'main', slug: 'home', label: 'Home', icon: 'Tag' };
+  const sub = { id: 'sub', slug: 'decor', label: 'Decor', icon: 'Tag', parent: main.id };
+  const detail = { id: 'detail', slug: 'wall-art', label: 'Wall Art', icon: 'Tag', parent: sub.id };
+  const flattened = categoryTree.flattenCategoryTree([detail, main, sub]);
+  assert.deepEqual(Array.from(flattened, item => [item.category.id, item.depth]), [['main', 0], ['sub', 1], ['detail', 2]]);
+  assert.deepEqual(Array.from(categoryTree.categoryBranchIds([detail, main, sub], main.id)), ['main', 'sub', 'detail']);
+  assert.deepEqual(Array.from(categoryTree.leafCategoryItems([detail, main, sub]), item => item.category.id), ['detail']);
+});
+
+test('product cards clamp names and keep rating before price', () => {
+  const source = readFileSync(path.join(__dirname, '../src/components/domain/ProductCard.tsx'), 'utf8');
+  const categoryCard = readFileSync(path.join(__dirname, '../src/components/domain/CategoryCard.tsx'), 'utf8');
+  const home = readFileSync(path.join(__dirname, '../src/screens/home/Home.tsx'), 'utf8');
+  assert.match(source, /numberOfLines=\{2\}/);
+  assert.match(source, /ellipsizeMode="tail"/);
+  assert.ok(source.indexOf('<RatingBadge') < source.indexOf('formatCurrency(product.price'));
+  assert.match(categoryCard, /desktopRoot: \{ width: 116, maxWidth: 116 \}/);
+  assert.match(home, /desktopCategoryGrid: \{ justifyContent: 'flex-start', columnGap:/);
+});
+
+test('desktop category menu keeps hierarchy while mobile opens products from compact categories', () => {
+  const source = readFileSync(path.join(__dirname, '../src/components/layout/CategoryMegaMenu.tsx'), 'utf8');
+  const shell = readFileSync(path.join(__dirname, '../src/components/layout/MarketplaceShell.tsx'), 'utf8');
+  const listing = readFileSync(path.join(__dirname, '../src/screens/home/ProductListing.tsx'), 'utf8');
+  const sideMenu = readFileSync(path.join(__dirname, '../src/components/SideMenu.tsx'), 'utf8');
+  assert.match(source, /rootCategories\(categories\)/);
+  assert.match(source, /accessibilityState=\{\{ expanded \}\}/);
+  assert.match(source, /onHoverIn=\{\(\) => open\(root\)\}/);
+  assert.match(source, /Animated\.timing\(reveal/);
+  assert.match(source, /Shop all/);
+  assert.doesNotMatch(shell, /Shop by category/);
+  assert.match(listing, /\{!isExpanded && <ScrollView horizontal/);
+  assert.match(listing, /rootCategories\(categories\)/);
+  assert.doesNotMatch(listing, /flattenCategoryTree/);
+  assert.match(sideMenu, /rootCategories\(categoriesQuery\.data \?\? \[\]\)/);
+});
+
+test('new product identifiers are generated from the name without seller input', () => {
+  const { identifiers } = harness();
+  const generated = identifiers.productIdentifiers('Handmade Sisal Rug', 'ABC-123');
+  assert.equal(generated.slug, 'handmade-sisal-rug-abc123');
+  assert.equal(generated.sku, 'AF-ABC123');
 });
 
 test('category and tag filters use exact backend slug parameters and clear correctly', async () => {
@@ -170,12 +223,32 @@ test('create and update use backend fields, POST and PATCH, not local storage', 
   const { api, service, requests, storage } = harness((route, init) => route.pathname.includes('/manage/') && ['POST', 'PATCH'].includes(init.method) ? json({ ...product, status: 'draft' }, init.method === 'POST' ? 201 : 200) : undefined);
   await api.tokenManager.setTokens({ access: 'seller-access', refresh: 'seller-refresh' });
   await service.addSellerProduct(store.owner, draft);
-  await service.updateSellerProduct(store.owner, product.id, draft);
+  await service.updateSellerProduct(store.owner, product.id, { ...draft, status: 'published' });
   const mutations = requests.filter(item => item.init.method === 'POST' || item.init.method === 'PATCH');
   assert.deepEqual(mutations.map(item => [item.path, item.init.method]), [['/api/products/manage/', 'POST'], ['/api/products/manage/product-id/', 'PATCH']]);
   assert.deepEqual(JSON.parse(mutations[0].init.body), { name: 'Sisal Rug', slug: 'sisal-rug', sku: 'RUG-001', description: 'Handwoven', category: category.id, tags: [tag.id], price: '3200.50', currency: 'KES', stock_quantity: 5, status: 'draft' });
+  assert.equal(JSON.parse(mutations[1].init.body).status, 'published');
   assert.equal(mutations[0].init.headers.get('Authorization'), 'Bearer seller-access');
   assert.equal(storage.has('africlay-seller-catalog-v1'), false);
+});
+
+test('seller UI exposes listing status and makes current visibility explicit', () => {
+  const editor = readFileSync(path.join(__dirname, '../src/screens/seller/AddEditProduct.tsx'), 'utf8');
+  const management = readFileSync(path.join(__dirname, '../src/screens/seller/ProductManagement.tsx'), 'utf8');
+  for (const status of ['draft', 'published', 'archived']) assert.match(editor, new RegExp(`value: '${status}'`));
+  assert.match(editor, /accessibilityRole="radio"/);
+  assert.match(editor, /status === 'published' \? 'Publish Product' : 'Save Draft'/);
+  assert.doesNotMatch(editor, /label="Product URL slug"|label="SKU"/);
+  assert.match(editor, /accessibilityLabel="Add product images"/);
+  assert.match(management, /\{item\.status\}/);
+});
+
+test('messaging is absent from active buyer and seller navigation', () => {
+  const appTabs = readFileSync(path.join(__dirname, '../src/navigation/AppTabs.tsx'), 'utf8');
+  const shell = readFileSync(path.join(__dirname, '../src/components/layout/MarketplaceShell.tsx'), 'utf8');
+  const profile = readFileSync(path.join(__dirname, '../src/screens/profile/Profile.tsx'), 'utf8');
+  const sellerStore = readFileSync(path.join(__dirname, '../src/screens/home/SellerStore.tsx'), 'utf8');
+  for (const source of [appTabs, shell, profile, sellerStore]) assert.doesNotMatch(source, /MessagesStack|Message seller|My Messages|tab: 'Messages'/);
 });
 
 test('product image upload uses multipart without a forced Content-Type', async () => {

@@ -3,7 +3,7 @@ import { BackHandler, PanResponder, Pressable, ScrollView, StyleSheet, Text, Vie
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useNavigation } from '@react-navigation/native';
-import { CircleHelp, LayoutDashboard, LogOut, Settings, Tag } from 'lucide-react-native';
+import { Bell, CircleHelp, Home, LayoutDashboard, LogOut, Settings, ShoppingCart, Tag, User } from 'lucide-react-native';
 import { Avatar } from './ui/Avatar';
 import { categoryIconMap } from './domain/CategoryCard';
 import { useQuery } from '@tanstack/react-query';
@@ -14,14 +14,26 @@ import { useSideMenu } from '../contexts/SideMenuContext';
 import { theme } from '../theme';
 import { confirmLogout } from '../utils/confirmLogout';
 import { canAccessSellerTools } from '../utils/roles';
+import { rootCategories } from '../utils/categoryTree';
+import { useCart } from '../hooks/useCart';
+import { notificationKeys, notificationService } from '../services/notificationService';
 
 export const SideMenu: React.FC = () => {
   const { width } = useWindowDimensions();
   const panelWidth = Math.min(width * 0.86, 350);
   const navigation = useNavigation<any>();
   const auth = useAuth();
+  const cart = useCart();
   const { isOpen, close } = useSideMenu();
   const categoriesQuery = useQuery({ queryKey: catalogKeys.categories, queryFn: productService.fetchCategories });
+  const categoryItems = rootCategories(categoriesQuery.data ?? []);
+  const unreadQuery = useQuery({
+    queryKey: notificationKeys.unread(auth.user?.id ?? ''),
+    queryFn: () => notificationService.list(false),
+    enabled: Boolean(auth.user?.id),
+    staleTime: 15_000,
+    refetchInterval: 30_000,
+  });
   const translateX = useSharedValue(-panelWidth);
   const backdropOpacity = useSharedValue(0);
 
@@ -56,25 +68,39 @@ export const SideMenu: React.FC = () => {
     navigation.navigate('AppTabs', { screen, params });
   };
 
+  const goToCart = () => {
+    close();
+    navigation.navigate('Cart');
+  };
+
   const requestLogout = () => confirmLogout(() => { close(); void auth.logout(); });
 
   const showStoreDashboard = canAccessSellerTools(auth.user?.role);
 
   return (
-    <View pointerEvents={isOpen ? 'auto' : 'none'} style={styles.overlay} accessibilityViewIsModal={isOpen}>
+    <View pointerEvents={isOpen ? 'auto' : 'none'} style={styles.overlay} accessibilityViewIsModal={isOpen}
+      accessibilityElementsHidden={!isOpen} importantForAccessibility={isOpen ? 'yes' : 'no-hide-descendants'} aria-hidden={!isOpen}>
       <Animated.View style={[styles.backdrop, backdropStyle]}><Pressable style={styles.fill} onPress={close} accessibilityLabel="Close menu" /></Animated.View>
       <Animated.View style={[styles.panel, { width: panelWidth }, panelStyle]} {...panResponder.panHandlers}>
         <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
-          <Pressable style={styles.userRow} onPress={() => goTo('Profile', { screen: 'ProfileOverview' })}>
+          <View style={styles.userRow}>
             <Avatar name={auth.user?.name ?? 'AfriClay Guest'} imageUrl={auth.user?.avatarUrl} />
-            <View style={styles.userCopy}><Text style={styles.name}>{auth.user?.name ?? 'AfriClay Guest'}</Text><Text style={styles.viewProfile}>View Profile</Text></View>
-          </Pressable>
+            <View style={styles.userCopy}><Text style={styles.name}>{auth.user?.name ?? 'AfriClay Guest'}</Text></View>
+          </View>
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+            <Pressable style={styles.menuRow} onPress={() => goTo('Home', { screen: 'HomeFeed' })}><Home color={theme.colors.ink} size={20} /><Text style={styles.menuLabel}>Home</Text></Pressable>
+            <Pressable style={styles.menuRow} onPress={goToCart} accessibilityRole="button" accessibilityLabel={`Cart, ${cart.itemCount} items`}>
+              <ShoppingCart color={theme.colors.ink} size={20} /><Text style={styles.menuLabel}>Cart</Text>{cart.itemCount > 0 ? <View style={styles.countBadge}><Text style={styles.countText}>{cart.itemCount > 99 ? '99+' : cart.itemCount}</Text></View> : null}
+            </Pressable>
+            {auth.user ? <Pressable style={styles.menuRow} onPress={() => goTo('Profile', { screen: 'Notifications' })} accessibilityRole="button" accessibilityLabel={`Notifications, ${unreadQuery.data?.length ?? 0} unread`}>
+              <Bell color={theme.colors.ink} size={20} /><Text style={styles.menuLabel}>Notifications</Text>{unreadQuery.data?.length ? <View style={styles.countBadge}><Text style={styles.countText}>{unreadQuery.data.length > 99 ? '99+' : unreadQuery.data.length}</Text></View> : null}
+            </Pressable> : null}
+            <View style={styles.divider} />
             <Text style={styles.sectionTitle}>Shop by Category</Text>
-            {categoriesQuery.isError ? <Pressable onPress={() => void categoriesQuery.refetch()} accessibilityRole="button"><Text style={styles.categoryLabel}>Retry categories</Text></Pressable> : (categoriesQuery.data ?? []).map(category => {
+            {categoriesQuery.isError ? <Pressable onPress={() => void categoriesQuery.refetch()} accessibilityRole="button"><Text style={styles.categoryLabel}>Retry categories</Text></Pressable> : categoryItems.map(category => {
               const Icon = categoryIconMap[category.icon] ?? Tag;
               return (
-                <Pressable key={category.id} style={styles.categoryRow} onPress={() => goTo('Home', { screen: 'ProductListing', params: { categoryId: category.slug } })}>
+                <Pressable key={category.id} style={styles.categoryRow} onPress={() => goTo('Home', { screen: 'ProductListing', params: { categoryId: category.slug } })} accessibilityRole="button" accessibilityLabel={`Browse ${category.label}`}>
                   <View style={styles.categoryIcon}><Icon color={theme.colors.primary.DEFAULT} size={19} /></View>
                   <Text style={styles.categoryLabel}>{category.label}</Text>
                 </Pressable>
@@ -84,6 +110,7 @@ export const SideMenu: React.FC = () => {
             {showStoreDashboard ? <Pressable style={styles.menuRow} onPress={() => goTo('Sell')}><LayoutDashboard color={theme.colors.ink} size={20} /><Text style={styles.menuLabel}>Sell</Text></Pressable> : null}
             <Pressable style={styles.menuRow} onPress={() => goTo('Profile', { screen: 'Settings' })}><Settings color={theme.colors.ink} size={20} /><Text style={styles.menuLabel}>Settings</Text></Pressable>
             <Pressable style={styles.menuRow} onPress={() => goTo('Profile', { screen: 'SupportHelp' })}><CircleHelp color={theme.colors.ink} size={20} /><Text style={styles.menuLabel}>Help & Support</Text></Pressable>
+            <Pressable style={styles.menuRow} onPress={() => goTo('Profile', { screen: 'ProfileOverview' })}><User color={theme.colors.ink} size={20} /><Text style={styles.menuLabel}>Profile</Text></Pressable>
             <View style={styles.divider} />
             {auth.user ? <Pressable style={styles.menuRow} onPress={requestLogout}><LogOut color={theme.colors.error} size={20} /><Text style={styles.logout}>Logout</Text></Pressable> : null}
           </ScrollView>
@@ -111,5 +138,7 @@ const styles = StyleSheet.create({
   divider: { height: 1, backgroundColor: theme.colors.border, marginVertical: theme.spacing.md },
   menuRow: { minHeight: 54, flexDirection: 'row', alignItems: 'center' },
   menuLabel: { color: theme.colors.ink, marginLeft: theme.spacing.md, fontSize: theme.typography.body.fontSize },
+  countBadge: { minWidth: 22, height: 22, borderRadius: 11, paddingHorizontal: 6, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.primary.DEFAULT },
+  countText: { color: theme.colors.white, fontSize: 11, fontWeight: '800' },
   logout: { color: theme.colors.error, marginLeft: theme.spacing.md, fontWeight: '800' },
 });

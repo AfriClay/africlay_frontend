@@ -89,16 +89,11 @@ async function main() {
     try {
       await buyerPage.goto(origin, { waitUntil: 'domcontentloaded', timeout: 90000 });
       await buyerPage.getByRole('button', { name: 'View Phase 2B Local Studio store' }).click();
-      await buyerPage.getByRole('button', { name: 'Message seller' }).click();
-      const testMessage = buyerPage.getByText('Local parity check', { exact: true });
-      if (await testMessage.count() === 0) {
-        await buyerPage.getByRole('textbox', { name: 'Message input' }).fill('Local parity check');
-        await buyerPage.getByRole('button', { name: 'Send', exact: true }).click();
-      }
-      await testMessage.first().waitFor({ timeout: 30000 });
-      console.log('PASS buyer-to-seller conversation and backend message');
+      assert.equal(await buyerPage.getByRole('button', { name: 'Message seller' }).count(), 0);
+      assert.equal(await buyerPage.getByRole('button', { name: 'Messages', exact: true }).count(), 0);
+      console.log('PASS messaging is absent from the buyer UI');
 
-      await buyerPage.getByRole('button', { name: 'View profile' }).click();
+      await buyerPage.getByRole('button', { name: 'Profile', exact: true }).click();
       await buyerPage.getByRole('button', { name: 'Settings', exact: true }).last().click();
       await buyerPage.getByRole('button', { name: 'Edit Profile' }).click();
       await buyerPage.getByRole('textbox', { name: 'Full name' }).fill('Phase Parity Buyer');

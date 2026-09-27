@@ -4,7 +4,7 @@ import { theme } from '../../theme';
 import { OrderStatus } from '../../types/order';
 
 const STATUS_CONFIG = {
-  pending: { backgroundColor: theme.colors.secondary.tint, color: theme.colors.ink, label: 'Pending' },
+  pending: { backgroundColor: theme.colors.secondary.tint, color: theme.colors.ink, label: 'Order placed' },
   processing: { backgroundColor: theme.colors.primary.tint, color: theme.colors.primary.dark, label: 'Processing' },
   shipped: { backgroundColor: theme.colors.primary.DEFAULT, color: theme.colors.white, label: 'Shipped' },
   delivered: { backgroundColor: theme.colors.success, color: theme.colors.white, label: 'Delivered' },

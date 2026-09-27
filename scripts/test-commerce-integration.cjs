@@ -64,6 +64,9 @@ function harness(responder) {
         if (route.pathname === '/api/cart/checkout/') return json(order, 201);
         if (route.pathname === '/api/cart/orders/') return json([order]);
         if (route.pathname === `/api/cart/orders/${orderId}/`) return json(order);
+        if (route.pathname === `/api/cart/orders/${orderId}/confirm-delivery/` && init.method === 'POST') return json({ ...order, status: 'delivered' });
+        if (route.pathname === '/api/cart/seller/orders/') return json([order]);
+        if (route.pathname === `/api/cart/seller/orders/${orderId}/` && init.method === 'PATCH') return json({ ...order, status: 'processing' });
         throw new Error(`Unexpected route ${route.pathname}`);
       },
       require(name) {
@@ -170,7 +173,7 @@ test('checkout validation and network failures propagate without a fake success'
   const invalid = await signedIn(path => path === '/api/cart/checkout/' ? json({ shipping_postal_code: ['Required.'] }, 400) : undefined);
   await assert.rejects(invalid.orders.checkout(checkoutPayload), error => error.status === 400);
   const network = await signedIn(path => { if (path === '/api/cart/checkout/') throw new TypeError('Network failed'); });
-  await assert.rejects(network.orders.checkout(checkoutPayload), /Network failed/);
+  await assert.rejects(network.orders.checkout(checkoutPayload), /Unable to connect to AfriClay/);
 });
 
 test('concurrent checkout calls send only one POST', async () => {
@@ -199,9 +202,19 @@ test('missing order returns null, but server failures do not return mock orders'
   await assert.rejects(failed.orders.fetchOrders(), error => error.status === 500);
 });
 
-test('seller order and cart clear methods are absent when the backend has no route', async () => {
+test('seller orders list and update use the new backend routes', async () => {
   const h = await signedIn();
-  assert.equal(h.orders.fetchSellerOrders, undefined);
-  assert.equal(h.orders.updateSellerOrderStatus, undefined);
+  assert.equal((await h.orders.fetchSellerOrders())[0].id, orderId);
+  assert.equal((await h.orders.updateSellerOrderStatus(orderId, 'processing')).status, 'processing');
+  assert.equal(h.requests[0].path, '/api/cart/seller/orders/');
+  assert.deepEqual(JSON.parse(h.requests[1].init.body), { status: 'processing' });
   assert.equal(h.carts.clearCart, undefined);
+});
+
+test('buyer delivery confirmation uses the dedicated transition endpoint', async () => {
+  const h = await signedIn();
+  const delivered = await h.orders.confirmDelivery(orderId);
+  assert.equal(delivered.status, 'delivered');
+  assert.equal(h.requests[0].path, `/api/cart/orders/${orderId}/confirm-delivery/`);
+  assert.equal(h.requests[0].init.method, 'POST');
 });

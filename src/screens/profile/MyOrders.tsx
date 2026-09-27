@@ -7,7 +7,7 @@ import { useQuery } from '@tanstack/react-query';
 import { OrderCard } from '../../components/domain/OrderCard';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { ProfileStackParamList } from '../../navigation/ProfileStack';
-import { orderService } from '../../services/orderService';
+import { orderKeys, orderService } from '../../services/orderService';
 import { theme } from '../../theme';
 import { useAuth } from '../../hooks/useAuth';
 import { ErrorState } from '../../components/ui/ErrorState';
@@ -21,7 +21,7 @@ export const MyOrders: React.FC = () => {
   const navigation = useNavigation<OrdersNavigation>();
   const userId = useAuth().user?.id ?? '';
   const [activeTab, setActiveTab] = useState<OrderTab>('Active');
-  const ordersQuery = useQuery({ queryKey: ['buyer-orders', userId], queryFn: orderService.fetchOrders, enabled: Boolean(userId), refetchOnMount: 'always' });
+  const ordersQuery = useQuery({ queryKey: orderKeys.buyer(userId), queryFn: orderService.fetchOrders, enabled: Boolean(userId), refetchOnMount: 'always' });
   const { data: orders = [], isLoading } = ordersQuery;
 
   const filteredOrders = useMemo(() => orders.filter(order => {

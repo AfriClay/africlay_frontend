@@ -89,6 +89,11 @@ Use these values depending on your runtime:
 - Android emulator: `http://10.0.2.2:8000/api`
 - Physical device: `http://<your-lan-ip>:8000/api`
 
+During native development, a configured loopback URL is automatically replaced
+with Metro's LAN host when the app is opened over Wi-Fi. Explicit non-loopback
+and production URLs are never rewritten. Production builds must use the deployed
+HTTPS API URL.
+
 Do not use Docker service names directly in the mobile client app.
 
 ## Start the App
@@ -111,6 +116,16 @@ npm run android
 ```
 
 This builds the native Android app and launches it on the connected emulator or device.
+
+For a physical device over Wi-Fi, keep the phone and computer on the same network:
+
+```powershell
+npm run android:lan
+```
+
+For a USB-connected Android device, use `npm run android:usb`. It restores ADB
+forwarding for ports 8000 and 8081 before starting Expo. Run
+`npm run android:connect` after reconnecting the cable or restarting the phone.
 
 ### Start Expo Dev Server
 
@@ -188,8 +203,8 @@ store list. The store list does not expose KYC approval, so an active store is
 not presented as verified. Seller onboarding no longer seeds demo products,
 but its storefront form is still local flow state and does not create a Django
 store or change a buyer's backend role. A real seller account and store are
-required for seller product mutations. Services, reviews, cart, and orders
-remain separate integration phases.
+required for seller product mutations. Services, reviews, wishlist, bookings,
+cart, buyer orders, and seller order controls now use Django API routes.
 
 ### Phase 2B local verification (2026-09-20)
 
@@ -324,7 +339,9 @@ Authenticated and guest users enter five bottom tabs:
 - **Messages**: conversations with sellers and buyers
 - **Profile**: account, orders, wishlist, and profile settings
 
-The cart, checkout, and notifications screens are root-level modal routes. The side menu is mounted alongside the tabs through `SideMenuProvider`.
+Cart and checkout are root-level modal routes. Notifications, wishlist, and
+bookings are account screens in `ProfileStack`. The side menu is mounted
+alongside the tabs through `SideMenuProvider`.
 
 ### State and data
 
@@ -338,9 +355,10 @@ The root provider order is:
 
 Auth state comes from the Django JWT API and is also used to track onboarding and seller verification state. Cart and wishlist state are exposed through their React contexts. React Query is available for screen-level server-style data fetching and caching.
 
-Most marketplace data is local development data. Services such as `productService`, `orderService`, `reviewService`, `messageService`, and `notificationService` read from `src/mock/` and use `simulateNetwork()` to imitate network latency and occasional failures. This means the app can be explored without a backend, but changes are not a replacement for a production API.
-
-Some local data is persisted with AsyncStorage, including seller-created catalog entries and relevant app state. JWT tokens use `expo-secure-store` on native and `localStorage` on web. Clearing app storage removes local development state.
+Marketplace, account, commerce, messaging, review, wishlist, notification, and
+booking data comes from the Django API. Production screens do not import the
+legacy `src/mock/` fixtures. JWT tokens use `expo-secure-store` on native and
+`localStorage` on web under the existing authentication transport.
 
 ## Project layout
 
