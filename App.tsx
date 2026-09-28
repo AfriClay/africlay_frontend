@@ -4,7 +4,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ClerkProvider } from '@clerk/expo';
 import { tokenCache } from '@clerk/expo/token-cache';
-import { AuthProvider } from './src/contexts/AuthContext';
+import { AuthProvider, GuestAuthProvider } from './src/contexts/AuthContext';
 import { CartProvider } from './src/contexts/CartContext';
 import { WishlistProvider } from './src/contexts/WishlistContext';
 import { RootNavigator } from './src/navigation/RootNavigator';
@@ -30,10 +30,17 @@ export default function App() {
   if (!isClerkConfigured) {
     return (
       <SafeAreaProvider>
-        <View style={styles.configurationError}>
-          <Text style={styles.configurationTitle}>Clerk is not configured</Text>
-          <Text style={styles.configurationCopy}>Add EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY to the local .env file, then restart Expo.</Text>
-        </View>
+        <QueryClientProvider client={queryClient}>
+          <GuestAuthProvider>
+            <CartProvider>
+              <WishlistProvider>
+                <View style={styles.container}>
+                  <RootNavigator />
+                </View>
+              </WishlistProvider>
+            </CartProvider>
+          </GuestAuthProvider>
+        </QueryClientProvider>
       </SafeAreaProvider>
     );
   }

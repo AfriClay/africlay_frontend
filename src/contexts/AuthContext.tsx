@@ -65,6 +65,32 @@ const defaultState: AuthState = {
   initialized: false,
 };
 
+export const GuestAuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const guestValue = useMemo<AuthContextValue>(() => ({
+    ...defaultState,
+    role: 'buyer',
+    isGuest: true,
+    loading: false,
+    initialized: true,
+    login: async () => 'authenticated',
+    loginWithGoogle: async () => undefined,
+    register: async () => undefined,
+    verifyEmail: async () => 'authenticated',
+    resendVerification: async () => undefined,
+    sendPasswordReset: async () => undefined,
+    resetPassword: async () => undefined,
+    logout: async () => undefined,
+    continueAsGuest: async () => undefined,
+    selectRole: () => undefined,
+    beginSellerVerification: async () => undefined,
+    approveSellerVerification: async () => undefined,
+    saveStorefront: async () => undefined,
+    saveProfile: async () => undefined,
+  }), []);
+
+  return <AuthContext.Provider value={guestValue}>{children}</AuthContext.Provider>;
+};
+
 const isVerificationStatus = (value: unknown): value is VerificationStatus =>
   value === 'none' || value === 'pending' || value === 'approved' || value === 'rejected';
 
