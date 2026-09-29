@@ -1,5 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { authService, createPendingUser } from '../services/authService';
+import { authService } from '../services/authService';
 import { tokenManager, onSessionExpired } from '../services/api';
 import { RegistrationRole, User } from '../types/user';
 
@@ -67,10 +67,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setState(current => ({ ...current, loading: true }));
     try {
       const normalized = email.trim().toLowerCase();
-      const pending = await authService.register(name, normalized, password, role);
-      setState({ pendingUser: { ...createPendingUser(name, normalized), id: pending.id, role: pending.role },
-        pendingEmail: normalized, pendingVerification: 'signup', role: pending.role,
-        isGuest: false, loading: false, initialized: true });
+      const user = await authService.register(name, normalized, password, role);
+      setState(signedInState(user));
     } catch (error) { setState(current => ({ ...current, loading: false })); throw error; }
   }, []);
 

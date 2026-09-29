@@ -217,26 +217,40 @@ test('login and verification store the backend nested token pair', async () => {
   assert.equal(await api.tokenManager.getAccessToken(), 'verified-access');
 });
 
-test('registration and profile update keep their existing Django fields', async () => {
+test('registration logs the new user in and profile update keeps its Django fields', async () => {
   const requests = [];
   const { auth, api } = harness('web', async (url, init) => {
     requests.push({ url, init });
+    if (url.endsWith('/auth/register/')) {
+      return json({ user: { id: '1', email: 'member@example.test', role: 'buyer', is_verified: true } });
+    }
+    if (url.endsWith('/auth/login/')) {
+      return json({
+        user: { id: '1', email: 'member@example.test', role: 'buyer', is_verified: true, profile: { first_name: 'John', last_name: 'Kimari' } },
+        tokens: { access: 'registered-access', refresh: 'registered-refresh' },
+      });
+    }
     return json({ user: { id: '1', email: 'member@example.test', role: 'buyer', profile: { first_name: 'John', last_name: 'Kimari' } } });
   });
   const registered = await auth.authService.register('John Kimari', 'member@example.test', 'password123');
   assert.equal(registered.name, 'John Kimari');
+  assert.match(requests[0].url, /\/auth\/register\/$/);
   assert.deepEqual(JSON.parse(requests[0].init.body), {
     email: 'member@example.test', password: 'password123', password_confirm: 'password123',
     role: 'buyer', first_name: 'John', last_name: 'Kimari',
   });
   assert.equal(requests[0].init.headers.get('Authorization'), null);
+  assert.match(requests[1].url, /\/auth\/login\/$/);
+  assert.deepEqual(JSON.parse(requests[1].init.body), { email: 'member@example.test', password: 'password123' });
+  assert.equal(await api.tokenManager.getAccessToken(), 'registered-access');
+  assert.equal(await api.tokenManager.getRefreshToken(), 'registered-refresh');
   await api.tokenManager.setTokens({ access: 'access', refresh: 'refresh' });
   const updated = await auth.authService.updateProfile({ name: 'John Kimari', phoneNumber: '0700000000', bio: 'Maker' });
   assert.equal(updated.name, 'John Kimari');
-  assert.deepEqual(JSON.parse(requests[1].init.body), {
+  assert.deepEqual(JSON.parse(requests[2].init.body), {
     first_name: 'John', last_name: 'Kimari', phone_number: '0700000000', bio: 'Maker',
   });
-  assert.equal(requests[1].init.headers.get('Authorization'), 'Bearer access');
+  assert.equal(requests[2].init.headers.get('Authorization'), 'Bearer access');
 });
 
 test('startup current-user lookup uses bearer and /auth/me/', async () => {

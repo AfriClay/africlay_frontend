@@ -58,21 +58,6 @@ const splitName = (name: string): { first_name: string; last_name: string } => {
   };
 };
 
-export const createPendingUser = (name: string, email: string): User => ({
-  id: 'pending-django-sign-up',
-  name: name.trim(),
-  email: email.trim().toLowerCase(),
-  location: 'Kenya',
-  verified: false,
-  onboardingCompleted: false,
-  role: 'buyer',
-  stats: {
-    orders: 0,
-    wishlist: 0,
-    reviews: 0,
-  },
-});
-
 export const authService = {
   async login(email: string, password: string): Promise<{ user: User; tokens: TokenPair }> {
     const response = await apiClient<AuthResponse>('/auth/login/', {
@@ -86,7 +71,7 @@ export const authService = {
 
   async register(name: string, email: string, password: string, role: RegistrationRole = 'buyer'): Promise<User> {
     const names = splitName(name);
-    const response = await apiClient<{ user: BackendUser }>('/auth/register/', {
+    await apiClient<{ user: BackendUser }>('/auth/register/', {
       method: 'POST',
       auth: false,
       body: {
@@ -97,7 +82,8 @@ export const authService = {
         ...names,
       },
     });
-    return mapBackendUser(response.user);
+    const { user } = await authService.login(email, password);
+    return user;
   },
 
   async verifyEmail(email: string, code: string): Promise<{ user: User; tokens: TokenPair }> {
