@@ -37,7 +37,6 @@ export const Register: React.FC = () => {
     setSubmitError(null);
     try {
       await auth.register(data.name, data.email, data.password, role);
-      navigation.navigate(ROUTES.OTPVerification);
     } catch (error) {
       setSubmitError(getAuthErrorMessage(error, 'Unable to create account.'));
     }
