@@ -1,65 +1,46 @@
-import { makeRedirectUri } from 'expo-auth-session';
-import * as WebBrowser from 'expo-web-browser';
-import { User } from '../types/user';
+import { apiClient, getApiErrorMessage, TokenPair, tokenManager } from './api';
+import { RegistrationRole, User, UserRole } from '../types/user';
 
-WebBrowser.maybeCompleteAuthSession();
+type BackendRole = UserRole;
 
-const APP_SCHEME = 'africlay';
-const AUTH_CALLBACK_PATH = 'auth/callback';
+type BackendProfile = {
+  first_name?: string;
+  last_name?: string;
+  avatar_url?: string | null;
+  bio?: string;
+};
 
-export const clerkPublishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY?.trim() ?? '';
-export const isClerkConfigured = clerkPublishableKey.startsWith('pk_');
-export const authRedirectUri = makeRedirectUri({
-  scheme: APP_SCHEME,
-  path: AUTH_CALLBACK_PATH,
-});
-
-export class AuthFlowCancelledError extends Error {
-  constructor() {
-    super('Google sign-in was cancelled.');
-    this.name = 'AuthFlowCancelledError';
-  }
-}
-
-export interface ClerkUserLike {
+type BackendUser = {
   id: string;
-  fullName: string | null;
-  unsafeMetadata: Record<string, unknown>;
-  externalAccounts: Array<{ provider: string }>;
-  primaryEmailAddress: {
-    emailAddress: string;
-    verification: { status: string | null };
-  } | null;
-  hasImage: boolean;
-  imageUrl: string;
-}
+  email?: string;
+  phone_number?: string | null;
+  role?: BackendRole;
+  is_verified?: boolean;
+  full_name?: string;
+  profile?: BackendProfile | null;
+};
 
-const isRole = (value: unknown): value is User['role'] =>
-  value === 'buyer' || value === 'seller' || value === 'both';
+type AuthResponse = {
+  user: BackendUser;
+  tokens: TokenPair;
+};
 
-const metadataValue = (metadata: ClerkUserLike['unsafeMetadata'], key: string): unknown => metadata[key];
-
-export const mapClerkUser = (clerkUser: ClerkUserLike): User => {
-  const fullNameMetadata = metadataValue(clerkUser.unsafeMetadata, 'full_name');
-  const locationMetadata = metadataValue(clerkUser.unsafeMetadata, 'location');
-  const roleMetadata = metadataValue(clerkUser.unsafeMetadata, 'role');
-  const onboardingMetadata = metadataValue(clerkUser.unsafeMetadata, 'onboarding_completed');
-  const signedInWithGoogle = clerkUser.externalAccounts.some(account => account.provider === 'google');
-  const email = clerkUser.primaryEmailAddress?.emailAddress;
+export const mapBackendUser = (backendUser: BackendUser): User => {
+  const profile = backendUser.profile;
+  const profileName = [profile?.first_name, profile?.last_name].filter(Boolean).join(' ').trim();
+  const name = backendUser.full_name?.trim() || profileName || backendUser.email?.split('@')[0] || 'AfriClay Member';
 
   return {
-    id: clerkUser.id,
-    name:
-      clerkUser.fullName ||
-      (typeof fullNameMetadata === 'string' ? fullNameMetadata : undefined) ||
-      email?.split('@')[0] ||
-      'AfriClay Member',
-    email,
-    location: typeof locationMetadata === 'string' ? locationMetadata : 'Kenya',
-    verified: clerkUser.primaryEmailAddress?.verification.status === 'verified',
-    onboardingCompleted: onboardingMetadata === true || signedInWithGoogle,
-    role: isRole(roleMetadata) ? roleMetadata : 'buyer',
-    avatarUrl: clerkUser.hasImage ? clerkUser.imageUrl : undefined,
+    id: backendUser.id,
+    name,
+    email: backendUser.email,
+    phoneNumber: backendUser.phone_number ?? undefined,
+    bio: profile?.bio ?? undefined,
+    location: 'Kenya',
+    verified: backendUser.is_verified ?? false,
+    onboardingCompleted: true,
+    role: backendUser.role ?? 'buyer',
+    avatarUrl: profile?.avatar_url ?? undefined,
     stats: {
       orders: 0,
       wishlist: 0,
@@ -68,8 +49,17 @@ export const mapClerkUser = (clerkUser: ClerkUserLike): User => {
   };
 };
 
+const splitName = (name: string): { first_name: string; last_name: string } => {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  const first_name = parts.shift() ?? '';
+  return {
+    first_name,
+    last_name: parts.join(' '),
+  };
+};
+
 export const createPendingUser = (name: string, email: string): User => ({
-  id: 'pending-clerk-sign-up',
+  id: 'pending-django-sign-up',
   name: name.trim(),
   email: email.trim().toLowerCase(),
   location: 'Kenya',
@@ -83,57 +73,122 @@ export const createPendingUser = (name: string, email: string): User => ({
   },
 });
 
-type ErrorShape = {
-  code?: unknown;
-  longMessage?: unknown;
-  message?: unknown;
-  errors?: unknown;
-};
+export const authService = {
+  async login(email: string, password: string): Promise<{ user: User; tokens: TokenPair }> {
+    const response = await apiClient<AuthResponse>('/auth/login/', {
+      method: 'POST',
+      auth: false,
+      body: { email: email.trim().toLowerCase(), password },
+    });
+    await tokenManager.setTokens(response.tokens);
+    return { user: mapBackendUser(response.user), tokens: response.tokens };
+  },
 
-const errorDetails = (error: unknown): ErrorShape | undefined => {
-  if (!error || typeof error !== 'object') {
-    return undefined;
-  }
+  async register(name: string, email: string, password: string, role: RegistrationRole = 'buyer'): Promise<User> {
+    const names = splitName(name);
+    const response = await apiClient<{ user: BackendUser }>('/auth/register/', {
+      method: 'POST',
+      auth: false,
+      body: {
+        email: email.trim().toLowerCase(),
+        password,
+        password_confirm: password,
+        role,
+        ...names,
+      },
+    });
+    return mapBackendUser(response.user);
+  },
 
-  const candidate = error as ErrorShape;
-  if (Array.isArray(candidate.errors) && candidate.errors.length > 0) {
-    const firstError = candidate.errors[0];
-    return firstError && typeof firstError === 'object' ? (firstError as ErrorShape) : candidate;
-  }
-  return candidate;
-};
+  async verifyEmail(email: string, code: string): Promise<{ user: User; tokens: TokenPair }> {
+    const response = await apiClient<AuthResponse>('/auth/verify-email/', {
+      method: 'POST',
+      auth: false,
+      body: {
+        email: email.trim().toLowerCase(),
+        otp_code: code.trim(),
+      },
+    });
+    await tokenManager.setTokens(response.tokens);
+    return { user: mapBackendUser(response.user), tokens: response.tokens };
+  },
 
-export const getAuthErrorMessage = (error: unknown, fallback: string): string => {
-  const details = errorDetails(error);
-  const code = typeof details?.code === 'string' ? details.code : undefined;
+  async resendVerification(email: string): Promise<void> {
+    await apiClient('/auth/resend-otp/', {
+      method: 'POST',
+      auth: false,
+      body: {
+        email: email.trim().toLowerCase(),
+        otp_type: 'email_verification',
+      },
+    });
+  },
 
-  switch (code) {
-    case 'form_password_incorrect':
-    case 'form_identifier_not_found':
-    case 'identifier_not_found':
-      return 'The email or password is incorrect.';
-    case 'form_identifier_exists':
-    case 'identifier_already_exists':
-      return 'An account with this email already exists.';
-    case 'form_code_incorrect':
-    case 'verification_failed':
-    case 'verification_expired':
-      return 'That code is invalid or has expired. Request a new code.';
-    case 'too_many_requests':
-    case 'rate_limit_exceeded':
-      return 'Too many requests. Please wait a little while and try again.';
-    case 'oauth_access_denied':
-      return 'Google sign-in was cancelled.';
-    case 'strategy_for_user_invalid':
-      return 'This account uses a different sign-in method.';
-    default: {
-      const message =
-        typeof details?.longMessage === 'string'
-          ? details.longMessage
-          : typeof details?.message === 'string'
-            ? details.message
-            : undefined;
-      return message || fallback;
+  async sendPasswordReset(email: string): Promise<void> {
+    await apiClient('/auth/password-reset/', {
+      method: 'POST',
+      auth: false,
+      body: { email: email.trim().toLowerCase() },
+    });
+  },
+
+  async resetPassword(email: string, code: string, newPassword: string): Promise<void> {
+    await apiClient('/auth/password-reset/confirm/', {
+      method: 'POST',
+      auth: false,
+      body: {
+        email: email.trim().toLowerCase(),
+        otp_code: code.trim(),
+        new_password: newPassword,
+        new_password_confirm: newPassword,
+      },
+    });
+  },
+
+  async changePassword(oldPassword: string, newPassword: string): Promise<void> {
+    await apiClient('/auth/change-password/', {
+      method: 'POST',
+      body: {
+        old_password: oldPassword,
+        new_password: newPassword,
+        new_password_confirm: newPassword,
+      },
+    });
+  },
+
+  async logout(): Promise<void> {
+    try {
+      if (!await tokenManager.getRefreshToken()) return;
+      await apiClient('/auth/me/', { method: 'GET' });
+      const refresh = await tokenManager.getRefreshToken();
+      if (!refresh) return;
+      await apiClient('/auth/logout/', {
+        method: 'POST',
+        body: { refresh },
+        retryOnUnauthorized: false,
+      });
+    } finally {
+      await tokenManager.clearTokens();
     }
-  }
+  },
+
+  async currentUser(): Promise<User> {
+    const response = await apiClient<BackendUser>('/auth/me/', { method: 'GET' });
+    return mapBackendUser(response);
+  },
+
+  async updateProfile(profile: Partial<User>): Promise<User> {
+    const names = profile.name ? splitName(profile.name) : {};
+    const response = await apiClient<{ user: BackendUser }>('/auth/me/', {
+      method: 'PATCH',
+      body: {
+        ...names,
+        ...(profile.phoneNumber !== undefined ? { phone_number: profile.phoneNumber } : {}),
+        ...(profile.bio !== undefined ? { bio: profile.bio } : {}),
+      },
+    });
+    return mapBackendUser(response.user);
+  },
 };
+
+export const getAuthErrorMessage = getApiErrorMessage;

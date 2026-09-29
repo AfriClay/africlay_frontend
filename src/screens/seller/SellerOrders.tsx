@@ -1,129 +1,94 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, FlatList, Platform, Pressable, StyleSheet, Text, ToastAndroid, View } from 'react-native';
+import React from 'react';
+import { Alert, FlatList, Platform, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { OrderCard } from '../../components/domain/OrderCard';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { EmptyState } from '../../components/ui/EmptyState';
+import { ErrorState } from '../../components/ui/ErrorState';
+import { StatusPill } from '../../components/ui/StatusPill';
+import { Button } from '../../components/ui/Button';
 import { useAuth } from '../../hooks/useAuth';
-import { SellerDashboardStackParamList } from '../../navigation/SellerDashboardStack';
-import { orderService } from '../../services/orderService';
-import { Order, OrderStatus } from '../../types/order';
+import { orderKeys, orderService } from '../../services/orderService';
+import { getApiErrorMessage } from '../../services/api';
 import { theme } from '../../theme';
+import { OrderStatus } from '../../types/order';
+import { formatCurrency } from '../../utils/formatCurrency';
+import { formatDate } from '../../utils/formatDate';
+import { MapPin } from 'lucide-react-native';
 
-type SellerOrderTab = 'New' | 'Accepted' | 'Packed' | 'Shipped' | 'Completed';
-type SellerOrdersNavigation = NativeStackNavigationProp<SellerDashboardStackParamList, 'SellerOrders'>;
-const tabs: SellerOrderTab[] = ['New', 'Accepted', 'Packed', 'Shipped', 'Completed'];
-
-const countdown = (deadline?: string, now = Date.now()): string => {
-  if (!deadline) return '';
-  const remaining = Math.max(0, new Date(deadline).getTime() - now);
-  const hours = Math.floor(remaining / 3_600_000);
-  const minutes = Math.floor((remaining % 3_600_000) / 60_000);
-  const seconds = Math.floor((remaining % 60_000) / 1000);
-  return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+const nextStatuses = (status: OrderStatus): OrderStatus[] => {
+  if (status === 'pending') return ['processing', 'cancelled'];
+  if (status === 'processing') return ['shipped', 'cancelled'];
+  return [];
 };
 
+const actionLabels: Record<OrderStatus, string> = {
+  pending: 'Order placed', processing: 'Accept order', shipped: 'Mark as shipped',
+  delivered: 'Delivered', cancelled: 'Cancel order',
+};
+const actionLabel = (status: OrderStatus) => actionLabels[status];
+
 export const SellerOrders: React.FC = () => {
-  const navigation = useNavigation<SellerOrdersNavigation>();
-  const auth = useAuth();
-  const sellerId = auth.user?.id ?? '';
-  const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<SellerOrderTab>('New');
-  const [now, setNow] = useState(Date.now());
-  const expiring = useRef(false);
-  const { data: orders = [], isLoading } = useQuery({ queryKey: ['seller-orders', sellerId], queryFn: () => orderService.initializeSellerOrders(sellerId), enabled: Boolean(sellerId) });
-
-  useEffect(() => {
-    const interval = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(interval);
-  }, []);
-
-  useEffect(() => {
-    const hasExpired = orders.some(order => order.status === 'New' && order.acceptanceDeadline && new Date(order.acceptanceDeadline).getTime() <= now);
-    if (!hasExpired || expiring.current) return;
-    expiring.current = true;
-    void orderService.expireSellerOrders(sellerId).then(async expiredIds => {
-      if (expiredIds.length) {
-        const message = `${expiredIds.length} order${expiredIds.length > 1 ? 's were' : ' was'} cancelled; the buyer was refunded (demo).`;
-        if (Platform.OS === 'android') ToastAndroid.show(message, ToastAndroid.LONG);
-        else Alert.alert('Acceptance window expired', message);
-        await queryClient.invalidateQueries({ queryKey: ['seller-orders', sellerId] });
-      }
-    }).finally(() => { expiring.current = false; });
-  }, [now, orders, queryClient, sellerId]);
-
-  const filtered = useMemo(() => orders.filter(order => {
-    if (activeTab === 'Completed') return order.status === 'Completed' || order.status === 'Delivered' || order.status === 'Cancelled';
-    return order.status === activeTab;
-  }), [activeTab, orders]);
-
-  const changeStatus = async (order: Order, status: OrderStatus) => {
-    await orderService.updateSellerOrderStatus(sellerId, order.id, status);
-    await Promise.all([
-      queryClient.invalidateQueries({ queryKey: ['seller-orders', sellerId] }),
-      queryClient.invalidateQueries({ queryKey: ['order', order.id] }),
-    ]);
-  };
-
-  const renderActions = (order: Order) => {
-    if (order.status === 'New') {
-      return (
-        <View style={styles.actionRow}>
-          <Pressable style={[styles.actionButton, styles.rejectButton]} onPress={() => void changeStatus(order, 'Cancelled')}><Text style={styles.rejectText}>Reject</Text></Pressable>
-          <Pressable style={[styles.actionButton, styles.primaryButton]} onPress={() => void changeStatus(order, 'Accepted')}><Text style={styles.primaryText}>Accept</Text></Pressable>
-        </View>
-      );
+  const userId = useAuth().user?.id ?? '';
+  const client = useQueryClient();
+  const key = orderKeys.seller(userId);
+  const query = useQuery({ queryKey: key, queryFn: orderService.fetchSellerOrders, enabled: Boolean(userId), refetchOnMount: 'always' });
+  const update = useMutation({
+    mutationFn: ({ id, status }: { id: string; status: OrderStatus }) => orderService.updateSellerOrderStatus(id, status),
+    onSuccess: updated => {
+      client.setQueryData(key, (orders: typeof query.data) => orders?.map(order => order.id === updated.id ? updated : order));
+      void client.invalidateQueries({ queryKey: key });
+    },
+  });
+  const submitStatus = (id: string, status: OrderStatus) => {
+    const run = () => { update.reset(); update.mutate({ id, status }); };
+    if (status === 'processing') { run(); return; }
+    const message = status === 'shipped'
+      ? 'Confirm that the order has been handed to the delivery provider.'
+      : 'This will cancel the order and return its quantity to stock.';
+    if (Platform.OS === 'web') {
+      if (globalThis.confirm(message)) run();
+      return;
     }
-    const nextStatus = order.status === 'Accepted' ? 'Packed' : order.status === 'Packed' ? 'Shipped' : order.status === 'Shipped' ? 'Completed' : undefined;
-    if (!nextStatus) return null;
-    return <Pressable style={[styles.actionButton, styles.primaryButton, styles.fullButton]} onPress={() => void changeStatus(order, nextStatus)}><Text style={styles.primaryText}>{nextStatus === 'Packed' ? 'Mark as Packed' : nextStatus === 'Shipped' ? 'Mark as Shipped' : 'Mark Completed'}</Text></Pressable>;
+    Alert.alert(actionLabel(status), message, [{ text: 'Not yet', style: 'cancel' }, { text: 'Confirm', style: status === 'cancelled' ? 'destructive' : 'default', onPress: run }]);
   };
-
-  return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
-      <View style={styles.tabs}>
-        {tabs.map(tab => <Pressable key={tab} style={[styles.tab, tab === activeTab ? styles.tabActive : null]} onPress={() => setActiveTab(tab)}><Text style={[styles.tabText, tab === activeTab ? styles.tabTextActive : null]}>{tab}</Text></Pressable>)}
-      </View>
-      {isLoading ? <Text style={styles.loading}>Loading incoming orders…</Text> : (
-        <FlatList
-          data={filtered}
-          keyExtractor={item => item.id}
-          contentContainerStyle={filtered.length ? styles.list : styles.emptyList}
-          ListEmptyComponent={<EmptyState title={`No ${activeTab.toLowerCase()} orders`} description="Orders will move here as you process them." />}
-          renderItem={({ item }) => (
-            <View style={styles.orderWrap}>
-              <OrderCard order={item} onPress={() => navigation.navigate('OrderDetails', { orderId: item.id })} />
-              <Text style={styles.customer}>Buyer: {item.customerName ?? 'AfriClay customer'}</Text>
-              {item.status === 'New' ? <Text style={styles.countdown}>Accept within {countdown(item.acceptanceDeadline, now)}</Text> : null}
-              {renderActions(item)}
-            </View>
-          )}
-        />
-      )}
-    </SafeAreaView>
-  );
+  if (query.isError) return <ErrorState message={getApiErrorMessage(query.error, 'Unable to load seller orders.')} onRetry={() => void query.refetch()} />;
+  return <SafeAreaView style={styles.container} edges={['bottom']}><FlatList
+    data={query.data ?? []}
+    refreshing={query.isFetching}
+    onRefresh={() => void query.refetch()}
+    keyExtractor={item => item.id}
+    contentContainerStyle={(query.data?.length ?? 0) ? styles.content : styles.empty}
+    ListEmptyComponent={query.isLoading ? <Text style={styles.loading}>Loading orders...</Text> : <EmptyState title="No seller orders" description="Orders containing only your products will appear here." />}
+    renderItem={({ item }) => <View style={styles.card}>
+      <View style={styles.header}><View style={styles.headerCopy}><Text style={styles.orderId}>Order #{item.id.slice(0, 8)}</Text><Text style={styles.date}>{formatDate(item.date)}</Text></View><StatusPill status={item.status} /></View>
+      {item.items.map(orderItem => <View key={orderItem.id} style={styles.item}><Text style={styles.itemName}>{orderItem.name} x {orderItem.quantity}</Text><Text style={styles.amount}>{formatCurrency(orderItem.price * orderItem.quantity, item.currency)}</Text></View>)}
+      <View style={styles.delivery}><MapPin size={18} color={theme.colors.primary.dark} /><View style={styles.deliveryCopy}><Text style={styles.deliveryLabel}>Delivery address</Text><Text style={styles.address}>{item.deliveryAddress}</Text></View></View>
+      <View style={styles.footer}><Text style={styles.total}>{formatCurrency(item.total, item.currency)}</Text><View style={styles.actions}>{nextStatuses(item.status).map(status => <Button key={status} size="sm" variant={status === 'cancelled' ? 'outline' : 'primary'} loading={update.isPending && update.variables?.id === item.id && update.variables.status === status} disabled={update.isPending} onPress={() => submitStatus(item.id, status)}>{actionLabel(status)}</Button>)}</View></View>
+      {update.isError && update.variables?.id === item.id ? <View style={styles.updateError}><Text style={styles.errorText} accessibilityRole="alert">{getApiErrorMessage(update.error, 'Unable to update this order.')}</Text><Button size="sm" variant="ghost" onPress={() => update.reset()}>Dismiss</Button></View> : null}
+    </View>}
+  /></SafeAreaView>;
 };
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.cream },
-  tabs: { flexDirection: 'row', paddingHorizontal: theme.spacing.sm, borderBottomWidth: 1, borderBottomColor: theme.colors.border },
-  tab: { flex: 1, minHeight: 50, alignItems: 'center', justifyContent: 'center', borderBottomWidth: 2, borderBottomColor: 'transparent' },
-  tabActive: { borderBottomColor: theme.colors.primary.DEFAULT },
-  tabText: { color: theme.colors.muted, fontSize: 11, fontWeight: '600' },
-  tabTextActive: { color: theme.colors.primary.DEFAULT, fontWeight: '800' },
-  list: { padding: theme.spacing.lg, paddingBottom: theme.spacing.xxl },
-  emptyList: { flexGrow: 1, padding: theme.spacing.lg },
-  orderWrap: { padding: theme.spacing.md, borderRadius: theme.radii.lg, backgroundColor: theme.colors.white, marginBottom: theme.spacing.md, ...theme.shadows.sm },
-  customer: { color: theme.colors.ink, fontWeight: '700', marginTop: -theme.spacing.sm },
-  countdown: { color: theme.colors.secondary.dark, fontWeight: '800', marginTop: theme.spacing.sm },
-  actionRow: { flexDirection: 'row', gap: theme.spacing.sm, marginTop: theme.spacing.md },
-  actionButton: { minHeight: 42, flex: 1, alignItems: 'center', justifyContent: 'center', borderRadius: theme.radii.md },
-  rejectButton: { backgroundColor: theme.colors.white, borderWidth: 1, borderColor: theme.colors.error },
-  primaryButton: { backgroundColor: theme.colors.primary.DEFAULT },
-  fullButton: { flex: 0, marginTop: theme.spacing.md },
-  rejectText: { color: theme.colors.error, fontWeight: '800' },
-  primaryText: { color: theme.colors.white, fontWeight: '800' },
+  content: { padding: theme.spacing.lg },
+  empty: { flexGrow: 1 },
   loading: { color: theme.colors.muted, padding: theme.spacing.lg },
+  card: { backgroundColor: theme.colors.white, borderRadius: theme.radii.lg, padding: theme.spacing.md, marginBottom: theme.spacing.md, borderWidth: 1, borderColor: theme.colors.border },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm, marginBottom: theme.spacing.md },
+  headerCopy: { flex: 1, minWidth: 0 },
+  orderId: { color: theme.colors.ink, fontWeight: '800' },
+  date: { color: theme.colors.muted, marginTop: 2, fontSize: theme.typography.small.fontSize },
+  item: { flexDirection: 'row', justifyContent: 'space-between', gap: theme.spacing.sm, paddingVertical: theme.spacing.xs },
+  itemName: { flex: 1, color: theme.colors.ink },
+  amount: { color: theme.colors.ink, fontWeight: '700' },
+  delivery: { flexDirection: 'row', alignItems: 'flex-start', gap: theme.spacing.sm, marginTop: theme.spacing.sm, padding: theme.spacing.sm, borderRadius: theme.radii.sm, backgroundColor: theme.colors.primary.tint },
+  deliveryCopy: { flex: 1, minWidth: 0 },
+  deliveryLabel: { color: theme.colors.primary.dark, fontSize: theme.typography.small.fontSize, fontWeight: '700', marginBottom: 2 },
+  address: { color: theme.colors.ink },
+  footer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.md, marginTop: theme.spacing.md },
+  total: { color: theme.colors.ink, fontSize: theme.typography.h3.fontSize, fontWeight: '800' },
+  actions: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'flex-end', gap: theme.spacing.sm },
+  updateError: { marginTop: theme.spacing.sm, padding: theme.spacing.sm, borderRadius: theme.radii.sm, backgroundColor: theme.colors.white, borderWidth: 1, borderColor: theme.colors.error, flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm },
+  errorText: { flex: 1, color: theme.colors.error },
 });

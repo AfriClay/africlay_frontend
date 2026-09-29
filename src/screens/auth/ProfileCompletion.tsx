@@ -6,33 +6,37 @@ import { useAuth } from '../../hooks/useAuth';
 import { Input } from '../../components/ui/Input';
 
 export const ProfileCompletion: React.FC = () => {
-  const [address, setAddress] = useState('');
-  const [city, setCity] = useState('');
   const [phone, setPhone] = useState('');
   const [name, setName] = useState('');
+  const [error, setError] = useState<string>();
+  const [saving, setSaving] = useState(false);
   const auth = useAuth();
 
   const handleSave = async () => {
     const baseUser = auth.user ?? auth.pendingUser;
-    await auth.saveProfile({ name: name || baseUser?.name, location: city ? `${city}, Kenya` : baseUser?.location });
+    if (saving) return;
+    setSaving(true);
+    setError(undefined);
+    try { await auth.saveProfile({ name: name || baseUser?.name, phoneNumber: phone }); }
+    catch (cause) { setError(cause instanceof Error ? cause.message : 'Unable to save profile.'); }
+    finally { setSaving(false); }
   };
 
   const handleSkip = async () => {
-    await auth.saveProfile({});
+    if (saving) return;
+    setSaving(true);
+    try { await auth.saveProfile({}); }
+    catch (cause) { setError(cause instanceof Error ? cause.message : 'Unable to continue.'); setSaving(false); }
   };
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.title}>Complete your profile</Text>
       <Text style={styles.copy}>Add details to make checkout faster. You can skip this step and update later.</Text>
-      <View style={styles.avatarBox}>
-        <Text style={styles.avatarText}>Photo picker coming soon</Text>
-      </View>
       <Input label="Full name" value={name} onChangeText={setName} placeholder="Your name" accessibilityLabel="Full name" />
       <Input label="Phone" value={phone} onChangeText={setPhone} placeholder="Phone number" keyboardType="phone-pad" accessibilityLabel="Phone number" />
-      <Input label="Address" value={address} onChangeText={setAddress} placeholder="Delivery address" accessibilityLabel="Delivery address" />
-      <Input label="City" value={city} onChangeText={setCity} placeholder="City" accessibilityLabel="City" />
-      <Button onPress={handleSave} accessibilityLabel="Save and Continue">Save & Continue</Button>
+      {error && <Text style={styles.copy} accessibilityRole="alert">{error}</Text>}
+      <Button onPress={() => void handleSave()} loading={saving} accessibilityLabel="Save and Continue">Save & Continue</Button>
       <Pressable onPress={handleSkip} accessibilityRole="button">
         <Text style={styles.skip}>Skip for now</Text>
       </Pressable>

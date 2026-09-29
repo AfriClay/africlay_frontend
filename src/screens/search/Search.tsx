@@ -1,8 +1,9 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useResponsiveLayout } from '../../contexts/ResponsiveLayoutContext';
 import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Image } from 'expo-image';
-import { useNavigation } from '@react-navigation/native';
+import { CatalogImage } from '../../components/ui/CatalogImage';
+import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useQuery } from '@tanstack/react-query';
 import { MapPin, Search as SearchIcon, SlidersHorizontal, Store } from 'lucide-react-native';
@@ -11,8 +12,10 @@ import { SearchStackParamList } from '../../navigation/SearchStack';
 import { productService } from '../../services/productService';
 import { theme } from '../../theme';
 import { formatCurrency } from '../../utils/formatCurrency';
+import { ErrorState } from '../../components/ui/ErrorState';
+import { catalogKeys } from '../../services/catalogQueries';
 
-type SearchNavigation = NativeStackNavigationProp<SearchStackParamList, 'Search'>;
+type SearchNavigation = NativeStackNavigationProp<SearchStackParamList, 'SearchLanding'>;
 type SearchResult =
   | { id: string; type: 'product'; title: string; meta: string; imageUrl?: string }
   | { id: string; type: 'service'; title: string; meta: string; imageUrl?: string }
@@ -21,21 +24,28 @@ type SearchResult =
 const popularSearches = ['Maasai beads', 'Organic produce', 'Home cleaning', 'African decor'];
 
 export const Search: React.FC = () => {
+  const { isExpanded, isWide } = useResponsiveLayout();
+  const columns = isExpanded ? (isWide ? 3 : 2) : 1;
+  const route = useRoute<RouteProp<SearchStackParamList, 'SearchLanding'>>();
   const navigation = useNavigation<SearchNavigation>();
   const [query, setQuery] = useState('');
-  const { data: products = [] } = useQuery({ queryKey: ['products'], queryFn: productService.fetchProducts });
+  useEffect(() => { if (route.params?.query !== undefined) setQuery(route.params.query); }, [route.params?.query]);
+  const productsQuery = useQuery({ queryKey: catalogKeys.products, queryFn: () => productService.fetchProducts() });
+  const { data: products = [] } = productsQuery;
   const { data: services = [] } = useQuery({ queryKey: ['services'], queryFn: productService.fetchServices });
-  const { data: sellers = [] } = useQuery({ queryKey: ['sellers'], queryFn: productService.fetchSellers });
+  const sellersQuery = useQuery({ queryKey: catalogKeys.sellers, queryFn: productService.fetchSellers });
+  const { data: sellers = [] } = sellersQuery;
 
   const results = useMemo<SearchResult[]>(() => {
     const normalized = query.trim().toLowerCase();
     if (!normalized) return [];
     const productResults: SearchResult[] = products
       .filter(product => `${product.name} ${product.description} ${product.category}`.toLowerCase().includes(normalized))
-      .map(product => ({ id: product.id, type: 'product', title: product.name, meta: `${formatCurrency(product.price)} · ${product.category}`, imageUrl: product.images[0] }));
+      .filter(product => Boolean(product.slug))
+      .map(product => ({ id: product.slug!, type: 'product', title: product.name, meta: `${formatCurrency(product.price, product.currency)} · ${product.category}`, imageUrl: product.images[0] }));
     const serviceResults: SearchResult[] = services
       .filter(service => `${service.title} ${service.description}`.toLowerCase().includes(normalized))
-      .map(service => ({ id: service.id, type: 'service', title: service.title, meta: `From ${formatCurrency(service.priceFrom)} · Service`, imageUrl: service.images[0] }));
+      .map(service => ({ id: service.slug ?? service.id, type: 'service', title: service.title, meta: `From ${formatCurrency(service.priceFrom)} · Service`, imageUrl: service.images[0] }));
     const sellerResults: SearchResult[] = sellers
       .filter(seller => `${seller.name} ${seller.location} ${seller.bio}`.toLowerCase().includes(normalized))
       .map(seller => ({ id: seller.id, type: 'seller', title: seller.name, meta: `Verified Seller · ${seller.location}`, imageUrl: seller.bannerUrl }));
@@ -47,6 +57,8 @@ export const Search: React.FC = () => {
     else if (result.type === 'service') navigation.navigate('ServiceDetails', { serviceId: result.id });
     else navigation.navigate('SellerStore', { sellerId: result.id });
   };
+
+  if (productsQuery.isError || sellersQuery.isError) return <ErrorState message="Unable to search the catalog." onRetry={() => { void productsQuery.refetch(); void sellersQuery.refetch(); }} />;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -66,13 +78,15 @@ export const Search: React.FC = () => {
           </View>
           <View style={styles.tipCard}><Store color={theme.colors.primary.DEFAULT} size={28} /><Text style={styles.tipTitle}>Search the whole marketplace</Text><Text style={styles.tipText}>Find products, verified sellers, and trusted local services from one search.</Text></View>
         </View>
-      ) : (
+      ) : productsQuery.isLoading || sellersQuery.isLoading ? <Text style={styles.sectionTitle}>Loading results...</Text> : (
         <FlatList
+          key={columns}
+          numColumns={columns}
           data={results}
           keyExtractor={item => `${item.type}-${item.id}`}
           renderItem={({ item }) => (
-            <Pressable style={styles.result} onPress={() => openResult(item)} accessibilityRole="button">
-              {item.imageUrl ? <Image source={{ uri: item.imageUrl }} style={styles.resultImage} contentFit="cover" /> : <View style={styles.resultImage} />}
+            <Pressable style={[styles.result, isExpanded && { flex: 1, maxWidth: `${100 / columns}%`, marginHorizontal: theme.spacing.xs }]} onPress={() => openResult(item)} accessibilityRole="button">
+              <CatalogImage uri={item.imageUrl} label={item.title} style={styles.resultImage} />
               <View style={styles.resultCopy}><Text style={styles.resultTitle}>{item.title}</Text><Text style={styles.resultMeta}>{item.meta}</Text></View>
             </Pressable>
           )}

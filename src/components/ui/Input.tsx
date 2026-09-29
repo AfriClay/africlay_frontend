@@ -31,10 +31,11 @@ export const Input: React.FC<InputProps> = ({
   accessibilityLabel,
 }) => {
   const [visible, setVisible] = useState(!secureTextEntry);
+  const [focused, setFocused] = useState(false);
   return (
     <View style={styles.root}>
       {label ? <Text style={styles.label}>{label}</Text> : null}
-      <View style={[styles.inputWrapper, error ? styles.inputError : null]}>
+      <View style={[styles.inputWrapper, focused ? styles.inputFocused : null, error ? styles.inputError : null]}>
         <TextInput
           value={value}
           onChangeText={onChangeText}
@@ -47,6 +48,8 @@ export const Input: React.FC<InputProps> = ({
           autoCorrect={autoCorrect}
           style={styles.input}
           accessibilityLabel={accessibilityLabel}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
         />
         {secureTextEntry ? (
           <Pressable
@@ -72,6 +75,7 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.xs,
     color: theme.colors.ink,
     fontSize: theme.typography.small.fontSize,
+    fontWeight: '600',
   },
   inputWrapper: {
     backgroundColor: theme.colors.white,
@@ -81,15 +85,24 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: theme.spacing.md,
+    minHeight: 50,
   },
   input: {
     flex: 1,
-    paddingVertical: theme.spacing.md,
+    minWidth: 0,
+    paddingVertical: 12,
     color: theme.colors.ink,
     fontSize: theme.typography.body.fontSize,
   },
   eyeButton: {
-    padding: theme.spacing.sm,
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  inputFocused: {
+    borderColor: theme.colors.primary.DEFAULT,
+    borderWidth: 2,
   },
   inputError: {
     borderColor: theme.colors.error,

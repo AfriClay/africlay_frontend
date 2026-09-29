@@ -10,14 +10,19 @@ import { GuestAuthSheet } from '../../components/ui/GuestAuthSheet';
 import { useAuth } from '../../hooks/useAuth';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../navigation/RootNavigator';
-import { Image } from 'expo-image';
-import { Trash2, X } from 'lucide-react-native';
+import { ChevronRight, Trash2, X } from 'lucide-react-native';
+import { useResponsiveLayout } from '../../contexts/ResponsiveLayoutContext';
 
 export const Cart: React.FC = () => {
+  const { isExpanded } = useResponsiveLayout();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList, 'Cart'>>();
   const cart = useCart();
   const auth = useAuth();
   const [authSheet, setAuthSheet] = React.useState(false);
+  const openProduct = (slug?: string) => {
+    if (!slug) return;
+    navigation.navigate('AppTabs', { screen: 'Home', params: { screen: 'ProductDetails', params: { productId: slug } } });
+  };
 
   if (auth.isGuest) {
     return (
@@ -35,37 +40,47 @@ export const Cart: React.FC = () => {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}><Text style={styles.title}>Cart</Text><Pressable style={styles.closeButton} onPress={() => navigation.goBack()} accessibilityRole="button" accessibilityLabel="Close cart"><X color={theme.colors.ink} size={22} /></Pressable></View>
-      {cart.itemCount === 0 ? (
-        <View style={styles.empty}><Text style={styles.emptyText}>Your cart is empty. Add items to continue.</Text></View>
+      {cart.error && <View style={styles.message}><Text style={styles.error} accessibilityRole="alert">{cart.error}</Text><Pressable accessibilityRole="button" onPress={() => void cart.refresh().catch(() => {})}><Text style={styles.retry}>Retry</Text></Pressable></View>}
+      {cart.loading ? <View style={styles.empty}><Text style={styles.emptyText}>Loading cart...</Text></View> : cart.error && cart.itemCount === 0 ? (
+        <View style={[styles.empty, isExpanded && styles.desktopEmpty]}><Text style={styles.emptyText}>Cart unavailable. Retry to load your items.</Text></View>
+      ) : cart.itemCount === 0 ? (
+        <View style={[styles.empty, isExpanded && styles.desktopEmpty]}><Text style={styles.emptyText}>Your cart is empty. Add items to continue.</Text></View>
       ) : (
-        <FlatList data={cart.items} keyExtractor={item => item.id} renderItem={({ item }) => (
+        <FlatList style={isExpanded && styles.desktopList} data={cart.items} keyExtractor={item => item.id} refreshing={cart.refreshing} onRefresh={() => void cart.refresh().catch(() => {})} renderItem={({ item }) => (
           <View style={styles.itemRow}>
-            {item.thumbnailUrl ? <Image source={{ uri: item.thumbnailUrl }} style={styles.thumbnail} contentFit="cover" /> : null}
-            <View style={styles.itemInfo}>
-              <Text style={styles.itemName}>{item.name}</Text>
-              <Text style={styles.itemPrice}>{formatCurrency(item.price)}</Text>
-            </View>
+            <Pressable onPress={() => openProduct(item.productSlug)} disabled={!item.productSlug} accessibilityRole="link"
+              accessibilityLabel={`View ${item.name}`} accessibilityState={{ disabled: !item.productSlug }}
+              style={({ pressed }) => [styles.itemInfo, styles.productLink, pressed && styles.productLinkPressed]}>
+              <View style={styles.productCopy}><Text numberOfLines={2} style={styles.itemName}>{item.name}</Text><Text style={styles.itemPrice}>{formatCurrency(item.price)}</Text></View>
+              {item.productSlug && <ChevronRight color={theme.colors.primary.dark} size={20} />}
+            </Pressable>
             <View style={styles.quantityRow}>
-              <Pressable onPress={() => cart.updateQuantity(item.id, Math.max(1, item.quantity - 1))} style={styles.quantityButton} accessibilityRole="button"><Text style={styles.quantityLabel}>-</Text></Pressable>
+              <Pressable onPress={() => void cart.updateQuantity(item.id, item.quantity - 1).catch(() => {})} disabled={cart.mutating || item.quantity <= 1} style={styles.quantityButton} accessibilityRole="button" accessibilityLabel={`Decrease ${item.name} quantity`}><Text style={styles.quantityLabel}>-</Text></Pressable>
               <Text style={styles.quantityValue}>{item.quantity}</Text>
-              <Pressable onPress={() => cart.updateQuantity(item.id, item.quantity + 1)} style={styles.quantityButton} accessibilityRole="button"><Text style={styles.quantityLabel}>+</Text></Pressable>
-              <Pressable onPress={() => cart.removeItem(item.id)} style={styles.removeButton} accessibilityRole="button" accessibilityLabel={`Remove ${item.name}`}><Trash2 color={theme.colors.error} size={18} /></Pressable>
+              <Pressable onPress={() => void cart.updateQuantity(item.id, item.quantity + 1).catch(() => {})} disabled={cart.mutating} style={styles.quantityButton} accessibilityRole="button" accessibilityLabel={`Increase ${item.name} quantity`}><Text style={styles.quantityLabel}>+</Text></Pressable>
+              <Pressable onPress={() => void cart.removeItem(item.id).catch(() => {})} disabled={cart.mutating} style={styles.removeButton} accessibilityRole="button" accessibilityLabel={`Remove ${item.name}`}><Trash2 color={theme.colors.error} size={18} /></Pressable>
             </View>
           </View>
         )} contentContainerStyle={styles.list} />
       )}
-      <View style={styles.footer}>
+      <View style={[styles.footer, isExpanded && styles.desktopFooter]}>
         <View>
           <Text style={styles.summaryLabel}>{`${cart.itemCount} items`}</Text>
           <Text style={styles.summaryValue}>{formatCurrency(cart.subtotal)}</Text>
         </View>
-        <Button onPress={() => navigation.navigate('Checkout')} disabled={cart.itemCount === 0} accessibilityLabel="Proceed to checkout">Proceed to Checkout</Button>
+        <Button onPress={() => navigation.navigate('Checkout')} disabled={cart.itemCount === 0 || cart.loading || cart.mutating || Boolean(cart.error)} accessibilityLabel="Proceed to checkout">Proceed to Checkout</Button>
       </View>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
+  desktopList: { flexGrow: 0, flexShrink: 1 },
+  desktopEmpty: { flex: 0, minHeight: 180 },
+  desktopFooter: { gap: theme.spacing.md, marginTop: theme.spacing.md },
+  message: { paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.sm },
+  error: { color: theme.colors.error },
+  retry: { color: theme.colors.primary.DEFAULT, fontWeight: '700', paddingVertical: theme.spacing.sm },
   container: {
     flex: 1,
     backgroundColor: theme.colors.cream,
@@ -124,6 +139,9 @@ const styles = StyleSheet.create({
     flex: 1,
     marginRight: theme.spacing.md,
   },
+  productLink: { minHeight: 52, flexDirection: 'row', alignItems: 'center', borderRadius: theme.radii.sm, padding: theme.spacing.xs },
+  productLinkPressed: { backgroundColor: theme.colors.primary.tint },
+  productCopy: { flex: 1, minWidth: 0 },
   itemName: {
     color: theme.colors.ink,
     fontWeight: '700',

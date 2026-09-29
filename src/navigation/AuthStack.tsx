@@ -29,11 +29,11 @@ export type AuthStackParamList = {
 const Stack = createNativeStackNavigator<AuthStackParamList>();
 
 export const AuthStack = () => {
-  const { pendingEmail, pendingToken, pendingUser, pendingVerification } = useAuth();
+  const { pendingEmail, pendingUser, pendingVerification } = useAuth();
 
   const initialRouteName = pendingVerification && pendingEmail
     ? 'OTPVerification'
-    : pendingToken && pendingUser
+    : pendingUser?.verified
       ? 'RoleSelection'
       : 'GetStarted';
 

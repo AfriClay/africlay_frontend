@@ -1,5 +1,6 @@
-import React, { useMemo, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useResponsiveLayout } from '../../contexts/ResponsiveLayoutContext';
+import { FlatList, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { productService } from '../../services/productService';
 import { ProductCard } from '../../components/domain/ProductCard';
@@ -8,34 +9,61 @@ import { EmptyState } from '../../components/ui/EmptyState';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { HomeStackParamList } from '../../navigation/HomeStack';
+import { ErrorState } from '../../components/ui/ErrorState';
+import { catalogKeys } from '../../services/catalogQueries';
+import { rootCategories } from '../../utils/categoryTree';
 
 export const ProductListing: React.FC = () => {
+  const { isExpanded, productColumns } = useResponsiveLayout();
   const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList, 'ProductListing'>>();
   const route = useRoute<RouteProp<HomeStackParamList, 'ProductListing'>>();
-  const { data: products = [], isLoading } = useQuery({ queryKey: ['products'], queryFn: () => productService.fetchProducts() });
   const [query, setQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState<string | undefined>(route.params?.categoryId);
+  const [activeTag, setActiveTag] = useState<string>();
+  useEffect(() => setActiveCategory(route.params?.categoryId), [route.params?.categoryId]);
+  const categoriesQuery = useQuery({ queryKey: catalogKeys.categories, queryFn: productService.fetchCategories });
+  const tagsQuery = useQuery({ queryKey: catalogKeys.tags, queryFn: productService.fetchTags });
+  const productsQuery = useQuery({
+    queryKey: catalogKeys.productsFiltered(activeCategory, activeTag),
+    queryFn: () => productService.fetchProducts({ category: activeCategory, tag: activeTag }),
+  });
+  const { data: products = [], isLoading } = productsQuery;
+  const categoryOptions = useMemo(() => {
+    const categories = categoriesQuery.data ?? [];
+    const roots = rootCategories(categories);
+    const selected = categories.find(category => category.slug === activeCategory);
+    return selected && !roots.some(category => category.id === selected.id) ? [selected, ...roots] : roots;
+  }, [activeCategory, categoriesQuery.data]);
 
   const filtered = useMemo(() => products.filter(product => {
-    const matchesCategory = activeCategory ? product.category.toLowerCase().includes(activeCategory.toLowerCase()) : true;
     const matchesQuery = query.length === 0 || product.name.toLowerCase().includes(query.toLowerCase());
-    return matchesCategory && matchesQuery;
-  }), [products, activeCategory, query]);
+    return matchesQuery;
+  }), [products, query]);
+  const tagButtons = [{ slug: '', label: 'All tags' }, ...(tagsQuery.data ?? [])].map(tag => (
+    <Pressable key={tag.slug} onPress={() => setActiveTag(tag.slug || undefined)} style={[styles.filterChip, activeTag === (tag.slug || undefined) ? styles.filterActive : null]} accessibilityRole="button" accessibilityLabel={tag.label}>
+      <Text style={[styles.filterText, activeTag === (tag.slug || undefined) ? styles.filterTextActive : null]}>{tag.label}</Text>
+    </Pressable>
+  ));
 
-  const categories = ['All', 'Agriculture', 'Fashion', 'Electronics', 'Handmade', 'Home & Living', 'Beauty'];
+  if (productsQuery.isError || categoriesQuery.isError || tagsQuery.isError) return <ErrorState message="Unable to load products." onRetry={() => { void productsQuery.refetch(); void categoriesQuery.refetch(); void tagsQuery.refetch(); }} />;
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Products</Text>
+      {isExpanded ? <Text style={styles.title}>Products</Text> : null}
       <TextInput value={query} onChangeText={setQuery} placeholder="Search products" placeholderTextColor={theme.colors.muted} style={styles.search} accessibilityLabel="Search products" />
-      <View style={styles.filters}>
-        {categories.map(category => (
-          <Pressable key={category} onPress={() => setActiveCategory(category === 'All' ? undefined : category)} style={[styles.filterChip, activeCategory === category && category !== 'All' ? styles.filterActive : null]} accessibilityRole="button" accessibilityLabel={category}>
-            <Text style={[styles.filterText, activeCategory === category && category !== 'All' ? styles.filterTextActive : null]}>{category}</Text>
+      {!isExpanded && <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroller} contentContainerStyle={styles.categoryFilters} accessibilityRole="radiogroup">
+        <Pressable onPress={() => setActiveCategory(undefined)} style={[styles.filterChip, !activeCategory ? styles.filterActive : null]} accessibilityRole="radio" accessibilityState={{ selected: !activeCategory }} accessibilityLabel="All categories">
+          <Text style={[styles.filterText, !activeCategory ? styles.filterTextActive : null]}>All products</Text>
+        </Pressable>
+        {categoryOptions.map(category => (
+          <Pressable key={category.id} onPress={() => setActiveCategory(category.slug)} style={[styles.filterChip, activeCategory === category.slug && styles.filterActive]}
+            accessibilityRole="radio" accessibilityState={{ selected: activeCategory === category.slug }} accessibilityLabel={`Browse ${category.label}`}>
+            <Text numberOfLines={1} style={[styles.filterText, activeCategory === category.slug && styles.filterTextActive]}>{category.label}</Text>
           </Pressable>
         ))}
-      </View>
-      {isLoading ? (
+      </ScrollView>}
+      {isExpanded ? <View style={styles.filters}>{tagButtons}</View> : <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroller} contentContainerStyle={styles.mobileFilters}>{tagButtons}</ScrollView>}
+      {isLoading || categoriesQuery.isLoading || tagsQuery.isLoading ? (
         <View style={styles.skeletonGrid}>
           {Array.from({ length: 6 }).map((_, i) => (
             <View key={i} style={styles.skeletonCard} />
@@ -44,11 +72,12 @@ export const ProductListing: React.FC = () => {
       ) : (
         <FlatList
           data={filtered}
-          numColumns={2}
+          key={productColumns}
+          numColumns={productColumns}
           keyExtractor={item => item.id}
           renderItem={({ item }) => (
-            <View style={styles.cardWrapper}>
-              <ProductCard layout="grid" product={item} onPress={() => navigation.navigate('ProductDetails', { productId: item.id })} />
+            <View style={[styles.cardWrapper, { width: `${100 / productColumns}%` }]}>
+              <ProductCard layout="grid" product={item} onPress={() => item.slug && navigation.navigate('ProductDetails', { productId: item.slug })} />
             </View>
           )}
           ListEmptyComponent={<EmptyState title="No products found" description="Try another search or choose a different category." />}
@@ -74,7 +103,8 @@ const styles = StyleSheet.create({
   },
   search: {
     backgroundColor: theme.colors.white,
-    borderRadius: theme.radii.lg,
+    borderRadius: theme.radii.md,
+    minHeight: 48,
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.sm,
     borderWidth: 1,
@@ -87,6 +117,9 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     marginBottom: theme.spacing.md,
   },
+  filterScroller: { flexGrow: 0, flexShrink: 0, height: 44, marginBottom: theme.spacing.sm },
+  mobileFilters: { paddingRight: theme.spacing.md, alignItems: 'center' },
+  categoryFilters: { paddingRight: theme.spacing.md, alignItems: 'center' },
   filterChip: {
     backgroundColor: theme.colors.white,
     borderRadius: theme.radii.pill,
@@ -96,6 +129,8 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.sm,
     borderWidth: 1,
     borderColor: theme.colors.border,
+    minHeight: 36,
+    justifyContent: 'center',
   },
   filterActive: {
     backgroundColor: theme.colors.primary.DEFAULT,
@@ -110,16 +145,18 @@ const styles = StyleSheet.create({
   },
   list: {
     paddingBottom: theme.spacing.xl,
+    marginHorizontal: -theme.spacing.xs,
   },
   emptyList: {
     flex: 1,
   },
   column: {
-    justifyContent: 'space-between',
+    justifyContent: 'flex-start',
   },
   cardWrapper: {
-    flex: 1,
-    maxWidth: '48%',
+    flexGrow: 0,
+    flexShrink: 0,
+    paddingHorizontal: theme.spacing.xs,
     marginBottom: theme.spacing.md,
   },
   skeletonGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },

@@ -6,6 +6,7 @@ node_modules/
 # Expo
 .expo/
 dist/
+dist-web-auth-check/
 web-build/
 expo-env.d.ts
 
@@ -29,6 +30,12 @@ yarn-error.*
 # macOS
 .DS_Store
 *.pem
+
+# Local IDE and legacy worktree metadata
+.idea/
+/africlay_frontend/
+/africlay_frontend.worktrees/
+/africlay_resources/
 
 # local env files
 .env

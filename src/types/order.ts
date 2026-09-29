@@ -1,24 +1,22 @@
-export type OrderStatus = 'New' | 'Accepted' | 'Packed' | 'Processing' | 'Shipped' | 'Completed' | 'Delivered' | 'Cancelled';
+export type OrderStatus = 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
 
 export interface OrderItem {
   id: string;
-  productId: string;
+  productId?: string;
+  productSlug?: string;
   name: string;
   quantity: number;
   price: number;
-  sellerId: string;
-  thumbnailUrl?: string;
+  sellerId?: string;
 }
 
 export interface Order {
   id: string;
+  buyerId: string;
   date: string;
   status: OrderStatus;
   items: OrderItem[];
   total: number;
-  sellerId: string;
+  currency: string;
   deliveryAddress: string;
-  deliveryFee: number;
-  customerName?: string;
-  acceptanceDeadline?: string;
 }
