@@ -4,7 +4,7 @@ import { ApiError, apiClient } from './api';
 import { productService } from './productService';
 
 const storeSchema = z.object({ id: z.string().uuid(), owner: z.string().uuid(), name: z.string(), slug: z.string(), status: z.string() });
-const kycSchema = z.object({ id: z.string().uuid(), store: z.string().uuid(),
+const kycSchema = z.object({ id: z.number().int().positive(), store: z.string().uuid(),
   status: z.enum(['pending', 'approved', 'rejected']), document_type: z.string(), document: z.string().nullish(),
   rejection_reason: z.string().nullish(), submitted_at: z.string().nullish() });
 export type StoreKYC = z.infer<typeof kycSchema>;

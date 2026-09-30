@@ -28,8 +28,10 @@ export const VerificationPending: React.FC = () => {
       kyc?.status === 'rejected' ? kyc.rejection_reason || 'Please review your documents and resubmit.' :
       kyc ? 'Your documents are awaiting review.' : 'No verification submission was found.'}</Text>
     <View style={styles.notice}><ShieldCheck color={theme.colors.primary.DEFAULT} size={20} /><Text style={styles.noticeText}>Only Django can approve a seller submission.</Text></View>
-    {kyc?.status === 'rejected' || (!kyc && !query.isLoading) ? <Button onPress={() => navigation.navigate('KYCUpload')}>Submit Documents</Button> :
-      <Button variant="outline" onPress={() => { void query.refetch(); if (userId) void client.invalidateQueries({ queryKey: catalogKeys.sellerAccess(userId) }); }}>Refresh Status</Button>}
+    {kyc?.status === 'rejected' || (!kyc && !query.isLoading) ? <Button onPress={() => navigation.navigate('KYCUpload')}>Submit Documents</Button> : <View style={styles.actions}>
+      <Button onPress={() => undefined} disabled>Submit for Verification</Button>
+      <Button variant="outline" onPress={() => { void query.refetch(); if (userId) void client.invalidateQueries({ queryKey: catalogKeys.sellerAccess(userId) }); }}>Refresh Status</Button>
+    </View>}
   </FormFrame>;
 };
 
@@ -40,4 +42,5 @@ const styles = StyleSheet.create({
   copy: { color: theme.colors.muted, lineHeight: 22, textAlign: 'center', marginTop: theme.spacing.sm },
   notice: { flexDirection: 'row', alignItems: 'center', padding: theme.spacing.md, borderRadius: theme.radii.md, backgroundColor: theme.colors.primary.tint, marginVertical: theme.spacing.xl },
   noticeText: { flex: 1, marginLeft: theme.spacing.sm, color: theme.colors.primary.dark },
+  actions: { gap: theme.spacing.sm },
 });

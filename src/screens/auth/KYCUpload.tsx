@@ -25,7 +25,8 @@ export const KYCUpload: React.FC = () => {
   const userId = auth.user?.id ?? '';
   const storeQuery = useQuery({ queryKey: ['owned-store', userId], queryFn: () => storeService.ownStore(userId), enabled: Boolean(userId) });
   const slug = storeQuery.data?.slug ?? '';
-  const kycQuery = useQuery({ queryKey: ['store-kyc', slug], queryFn: () => storeService.kyc(slug), enabled: Boolean(slug) });
+  const kycKey = ['store-kyc', slug] as const;
+  const kycQuery = useQuery({ queryKey: kycKey, queryFn: () => storeService.kyc(slug), enabled: Boolean(slug), refetchOnMount: 'always' });
   const [documentType, setDocumentType] = useState<string>('national_id');
   const [document, setDocument] = useState<ImagePicker.ImagePickerAsset>();
   const [businessName, setBusinessName] = useState('');
@@ -41,6 +42,7 @@ export const KYCUpload: React.FC = () => {
     if (!result.canceled) { setDocument(result.assets[0]); setError(undefined); }
   };
   const submit = async () => {
+    if (kycQuery.data?.status === 'pending' || kycQuery.data?.status === 'approved') return;
     if (!slug || !document || !businessName.trim() || !registrationNumber.trim() || !taxNumber.trim()) {
       setError('Complete the business details and select a document image.'); return;
     }
@@ -48,11 +50,25 @@ export const KYCUpload: React.FC = () => {
     setLoading(true);
     setError(undefined);
     try {
-      await storeService.submitKyc(slug, { businessName, registrationNumber, taxNumber, documentType, document });
-      await client.invalidateQueries({ queryKey: ['store-kyc', slug] });
+      const submitted = await storeService.submitKyc(slug, { businessName, registrationNumber, taxNumber, documentType, document });
+      client.setQueryData(kycKey, submitted);
+      void client.invalidateQueries({ queryKey: kycKey });
       if (userId) void client.invalidateQueries({ queryKey: catalogKeys.sellerAccess(userId) });
       navigation.navigate('VerificationPending');
-    } catch (cause) { setError(getApiErrorMessage(cause, 'Unable to submit verification.')); }
+    } catch (cause) {
+      try {
+        const existing = await storeService.kyc(slug);
+        if (existing?.status === 'pending' || existing?.status === 'approved') {
+          client.setQueryData(kycKey, existing);
+          setError(undefined);
+          navigation.navigate('VerificationPending');
+          return;
+        }
+      } catch {
+        // Preserve the original submission error when status reconciliation fails.
+      }
+      setError(getApiErrorMessage(cause, 'Unable to submit verification.'));
+    }
     finally { setLoading(false); }
   };
 
@@ -62,7 +78,10 @@ export const KYCUpload: React.FC = () => {
   if (kycQuery.data?.status === 'pending' || kycQuery.data?.status === 'approved') return <ScrollView contentContainerStyle={styles.container}>
     <Text style={styles.title}>Verification {kycQuery.data.status}</Text>
     <Text style={styles.copy}>{kycQuery.data.status === 'approved' ? 'Your store is approved.' : 'Your documents are awaiting review.'}</Text>
-    <Button variant="outline" onPress={() => void kycQuery.refetch()}>Refresh status</Button>
+    <View style={styles.actions}>
+      <Button onPress={() => undefined} disabled>Submit for Verification</Button>
+      <Button variant="outline" onPress={() => void kycQuery.refetch()}>Refresh status</Button>
+    </View>
   </ScrollView>;
 
   return <ScrollView contentContainerStyle={styles.container}>
@@ -83,7 +102,7 @@ export const KYCUpload: React.FC = () => {
     </Pressable>
     {document && <Image source={{ uri: document.uri }} style={styles.preview} />}
     {error && <Text style={styles.error} accessibilityRole="alert">{error}</Text>}
-    <Button onPress={() => void submit()} loading={loading} disabled={!document}>Submit for Verification</Button>
+    <Button onPress={() => void submit()} loading={loading} disabled={!document || kycQuery.isFetching}>Submit for Verification</Button>
   </ScrollView>;
 };
 
@@ -103,4 +122,5 @@ const styles = StyleSheet.create({
   uploadCopy: { color: theme.colors.muted, marginTop: theme.spacing.xs },
   preview: { width: 92, height: 92, borderRadius: theme.radii.md, marginVertical: theme.spacing.md },
   error: { color: theme.colors.error, marginVertical: theme.spacing.md },
+  actions: { gap: theme.spacing.sm },
 });
