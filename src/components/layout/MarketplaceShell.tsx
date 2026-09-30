@@ -56,7 +56,7 @@ export const MarketplaceShell = ({ children, route, category, navigate }: Props)
     {isExpanded && !focused && <View style={styles.desktopChrome}><View style={styles.header}>
       <Action label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'} icon={collapsed ? PanelLeftOpen : PanelLeftClose} expanded={!collapsed} onPress={() => setCollapsed(value => !value)} iconOnly />
       <Pressable accessibilityRole="button" accessibilityLabel="AfriClay home" onPress={() => navigate({ tab: 'Home', screen: 'HomeFeed' })} style={styles.brand}>
-        <Image source={require('../../../assets/africlay-brand-v1.png')} style={styles.logo} contentFit="contain" />
+        <Image source={require('../../../assets/africlay-brand-v1.svg')} style={styles.logo} contentFit="contain" />
         <Text style={styles.brandText}>AfriClay</Text>
       </Pressable>
       <View style={styles.search}>

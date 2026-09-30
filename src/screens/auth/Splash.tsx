@@ -6,7 +6,7 @@ import { Image } from 'expo-image';
 export const Splash: React.FC = () => {
   return (
     <View style={styles.container}>
-      <Image source={require('../../../assets/africlay-brand-v1.png')} style={styles.mark} contentFit="cover" />
+      <Image source={require('../../../assets/africlay-brand-v1.svg')} style={styles.mark} contentFit="contain" />
       <Text style={styles.title}>AfriClay</Text>
       <Text style={styles.tagline}>Buy. Sell. Connect.</Text>
       <Text style={styles.subtitle}>Empowering Africa one trade at a time.</Text>
