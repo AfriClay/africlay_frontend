@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { CompositeNavigationProp, NavigationProp, useNavigation } from '@react-navigation/native';
 import { useQuery } from '@tanstack/react-query';
-import { Bell, Menu, Plus, Search, ShoppingCart } from 'lucide-react-native';
+import { Bell, Menu, Plus, ShoppingCart } from 'lucide-react-native';
 import { MotiView } from 'moti';
 import { PromotionalCarousel } from '../../components/domain/PromotionalCarousel';
 import { CategoryCard } from '../../components/domain/CategoryCard';
@@ -25,6 +25,8 @@ import { canAccessSellerTools } from '../../utils/roles';
 import { categoryBranchIds, rootCategories } from '../../utils/categoryTree';
 import { useCart } from '../../hooks/useCart';
 import { notificationKeys, notificationService } from '../../services/notificationService';
+import { SearchTrigger } from '../../components/ui/SearchField';
+import { Button } from '../../components/ui/Button';
 
 type HomeNavigation = CompositeNavigationProp<
   NavigationProp<HomeStackParamList, 'HomeFeed'>,
@@ -81,7 +83,7 @@ export const Home: React.FC = () => {
         <View style={styles.topRow}>
           <View style={styles.mobileBrand}>
             <Pressable accessibilityRole="button" accessibilityLabel="Open menu" onPress={openSideMenu} style={styles.iconButton}><Menu color={theme.colors.ink} size={23} /></Pressable>
-            <Image source={require('../../../assets/africlay-brand-v1.svg')} style={styles.mobileLogo} contentFit="contain" accessibilityLabel="AfriClay" />
+            <View style={styles.mobileLogoViewport}><Image source={require('../../../assets/africlay-brand-v1.svg')} style={styles.mobileLogo} contentFit="contain" accessibilityLabel="AfriClay" /></View>
           </View>
           <View style={styles.headerActions}>
             {user ? <Pressable accessibilityRole="button" accessibilityLabel={`Notifications, ${unreadQuery.data?.length ?? 0} unread`} onPress={openNotifications} style={styles.iconButton}>
@@ -92,10 +94,7 @@ export const Home: React.FC = () => {
             </Pressable>
           </View>
         </View>
-        <Pressable style={styles.searchBar} onPress={openSearch} accessibilityRole="button" accessibilityLabel="Search products and services">
-          <Text style={styles.searchPlaceholder}>Search for products, services...</Text>
-          <View style={styles.searchAction}><Search color={theme.colors.primary.dark} size={22} strokeWidth={1.8} /></View>
-        </Pressable>
+        <SearchTrigger onPress={openSearch} style={styles.searchBar} />
       </Animated.View>}
 
       <Animated.ScrollView
@@ -171,9 +170,7 @@ export const Home: React.FC = () => {
         {!isWeb && canSell && <View style={styles.sellBanner}>
           <Text style={styles.sellTitle}>Sell on AfriClay</Text>
           <Text style={styles.sellText}>Bring your products and services to the AfriClay community.</Text>
-          <Pressable style={[styles.sellCta, isExpanded && styles.desktopSellCta]} accessibilityRole="button" onPress={() => navigation.getParent()?.navigate('Sell')}>
-            <Plus color={theme.colors.white} size={18} /><Text style={styles.sellCtaText}>Start Selling</Text>
-          </Pressable>
+          <Button icon={<Plus color={theme.colors.white} size={18} />} style={[styles.sellCta, isExpanded && styles.desktopSellCta]} onPress={() => navigation.getParent()?.navigate('Sell')}>Start Selling</Button>
         </View>}
       </Animated.ScrollView>
     </SafeAreaView>
@@ -184,13 +181,13 @@ const styles = StyleSheet.create({
   desktopSellBanner: { width: '100%', maxWidth: 560, alignSelf: 'center', padding: theme.spacing.md, marginTop: theme.spacing.md },
   desktopSellCta: { alignSelf: 'flex-start', paddingHorizontal: theme.spacing.lg },
   desktopGrid: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: theme.spacing.lg },
-  searchAction: { width: 40, height: 40, borderRadius: theme.radii.pill, alignItems: 'center', justifyContent: 'center' },
   sellerSpacing: { marginBottom: theme.spacing.sm },
   container: { flex: 1, minHeight: 0, overflow: 'hidden', backgroundColor: theme.colors.cream },
   topArea: { position: 'relative', zIndex: 20, elevation: 4, flexShrink: 0, backgroundColor: theme.colors.white, borderBottomWidth: 1, borderBottomColor: theme.colors.border },
   topRow: { minHeight: 56, paddingHorizontal: theme.spacing.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   mobileBrand: { minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs },
-  mobileLogo: { width: 60, height: 40, flexShrink: 0 },
+  mobileLogoViewport: { width: 44, height: 48, overflow: 'hidden', justifyContent: 'center' },
+  mobileLogo: { width: 104, height: 69, marginLeft: -4, marginTop: -10, flexShrink: 0 },
   headerActions: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs },
   iconButton: { minWidth: 44, minHeight: 44, borderRadius: theme.radii.pill, alignItems: 'center', justifyContent: 'center' },
   countBadge: { position: 'absolute', top: 2, right: 1, minWidth: 18, height: 18, paddingHorizontal: 4, borderRadius: 9, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.secondary.DEFAULT, borderWidth: 2, borderColor: theme.colors.white },
@@ -202,8 +199,7 @@ const styles = StyleSheet.create({
   brandAccent: { color: theme.colors.primary.DEFAULT },
   brandCaption: { ...theme.typography.marketplace.eyebrow, fontSize: 8, lineHeight: 12, letterSpacing: 1, color: theme.colors.muted },
   brand: { color: theme.colors.primary.dark, ...theme.typography.marketplace.brand },
-  searchBar: { marginHorizontal: theme.spacing.md, marginTop: theme.spacing.xs, minHeight: 50, borderRadius: theme.radii.lg, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.cream, paddingLeft: theme.spacing.md, paddingRight: theme.spacing.xs, flexDirection: 'row', alignItems: 'center' },
-  searchPlaceholder: { ...theme.typography.marketplace.body, flex: 1, color: theme.colors.muted, marginHorizontal: theme.spacing.sm },
+  searchBar: { marginHorizontal: theme.spacing.md, marginTop: theme.spacing.xs, backgroundColor: theme.colors.cream },
   contentScroll: { flex: 1, minHeight: 0 },
   content: { width: '100%', maxWidth: 640, alignSelf: 'center', padding: theme.spacing.md, paddingBottom: theme.spacing.xl },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.sm },
@@ -218,6 +214,5 @@ const styles = StyleSheet.create({
   sellBanner: { marginTop: theme.spacing.xl, padding: theme.spacing.lg, borderRadius: theme.radii.lg, backgroundColor: theme.colors.secondary.tint, borderWidth: 1, borderColor: theme.colors.secondary.DEFAULT },
   sellTitle: { color: theme.colors.ink, ...theme.typography.marketplace.heading },
   sellText: { color: theme.colors.muted, marginTop: theme.spacing.xs, marginBottom: theme.spacing.md },
-  sellCta: { minHeight: 44, borderRadius: theme.radii.pill, backgroundColor: theme.colors.primary.DEFAULT, alignSelf: 'flex-start', flexDirection: 'row', gap: theme.spacing.sm, alignItems: 'center', justifyContent: 'center', paddingHorizontal: theme.spacing.lg },
-  sellCtaText: { color: theme.colors.white, fontFamily: 'Inter_600SemiBold' },
+  sellCta: { alignSelf: 'flex-start' },
 });

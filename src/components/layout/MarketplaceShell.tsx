@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useRef, useState, type PropsWithChildren } from 'react';
-import { Animated, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Animated, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { Bell, CircleHelp, Heart, Home, PanelLeftClose, PanelLeftOpen, Plus, Search, Settings, ShoppingCart, User, type LucideIcon } from 'lucide-react-native';
 import { useResponsiveLayout, contentLimit, authRoutes } from '../../contexts/ResponsiveLayoutContext';
@@ -14,6 +14,7 @@ import { Tooltip } from '../ui/Tooltip';
 import { canAccessSellerTools } from '../../utils/roles';
 import { notificationKeys, notificationService } from '../../services/notificationService';
 import { CategoryMegaMenu } from './CategoryMegaMenu';
+import { SearchField } from '../ui/SearchField';
 
 type Destination = { tab?: 'Home' | 'Search' | 'Sell' | 'Profile'; screen?: string; params?: object; root?: 'Cart' };
 type Props = PropsWithChildren<{ route: string; category?: string; navigate: (destination: Destination) => void }>;
@@ -58,11 +59,7 @@ export const MarketplaceShell = ({ children, route, category, navigate }: Props)
       <Pressable accessibilityRole="button" accessibilityLabel="AfriClay home" onPress={() => navigate({ tab: 'Home', screen: 'HomeFeed' })} style={styles.brand}>
         <Image source={require('../../../assets/africlay-brand-v1.svg')} style={styles.logo} contentFit="contain" />
       </Pressable>
-      <View style={styles.search}>
-        <TextInput value={query} onChangeText={setQuery} onSubmitEditing={search} returnKeyType="search"
-          placeholder="Search AfriClay" accessibilityLabel="Search products, services and sellers" style={styles.input} />
-        <Action label="Search" icon={Search} onPress={search} iconOnly />
-      </View>
+      <SearchField value={query} onChangeText={setQuery} onSubmit={search} containerStyle={styles.search} />
       {user && <Action label={`Notifications, ${unreadCount} unread`} icon={Bell} badge={unreadCount} onPress={() => navigate({ tab: 'Profile', screen: 'Notifications' })} iconOnly />}
       <Action label={`Cart, ${cart.itemCount} items`} icon={ShoppingCart} onPress={() => navigate({ root: 'Cart' })} iconOnly />
       <Action label="Account" icon={User} onPress={() => navigate({ tab: 'Profile', screen: 'ProfileOverview' })} iconOnly />
@@ -89,11 +86,9 @@ const styles = StyleSheet.create({
   desktopChrome: { position: 'relative', zIndex: 20, backgroundColor: theme.colors.white },
   header: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm, paddingHorizontal: theme.spacing.md,
     minHeight: 80, backgroundColor: theme.colors.white, borderBottomWidth: 1, borderBottomColor: theme.colors.border },
-  brand: { width: 68, minHeight: 52, alignItems: 'center', justifyContent: 'center' },
-  logo: { width: 64, height: 44 },
-  search: { flex: 1, minWidth: 160, maxWidth: 720, flexDirection: 'row', marginLeft: theme.spacing.sm, marginRight: 'auto',
-    minHeight: 48, alignItems: 'center', borderWidth: 1, borderColor: theme.colors.border, borderRadius: theme.radii.md },
-  input: { flex: 1, minWidth: 0, minHeight: 46, paddingHorizontal: theme.spacing.md, fontSize: 16, color: theme.colors.ink },
+  brand: { width: 48, height: 48, overflow: 'hidden', alignItems: 'flex-start', justifyContent: 'center' },
+  logo: { width: 104, height: 69, marginLeft: -4, marginTop: -10 },
+  search: { flex: 1, minWidth: 160, maxWidth: 720, marginLeft: theme.spacing.sm, marginRight: 'auto' },
   body: { flex: 1, flexDirection: 'row', minHeight: 0 },
   sidebar: { flexGrow: 0, flexShrink: 0, backgroundColor: theme.colors.white, borderRightWidth: 1, borderRightColor: theme.colors.border },
   sidebarContent: { padding: theme.spacing.sm, paddingBottom: theme.spacing.xl },

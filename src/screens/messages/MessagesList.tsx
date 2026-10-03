@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { FlatList, StyleSheet, Text, TextInput, View } from 'react-native';
+import { FlatList, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
 import { messageService } from '../../services/messageService';
@@ -10,9 +10,9 @@ import { useAuth } from '../../hooks/useAuth';
 import { GuestAuthSheet } from '../../components/ui/GuestAuthSheet';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { MessagesStackParamList } from '../../navigation/MessagesStack';
-import { Search } from 'lucide-react-native';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { ErrorState } from '../../components/ui/ErrorState';
+import { SearchField } from '../../components/ui/SearchField';
 
 export const MessagesList: React.FC = () => {
   const navigation = useNavigation<NativeStackNavigationProp<MessagesStackParamList, 'MessagesInbox'>>();
@@ -35,7 +35,7 @@ export const MessagesList: React.FC = () => {
   return (
     <SafeAreaView style={styles.container}>
       <Text style={styles.title}>Messages</Text>
-      <View style={styles.searchBar}><Search color={theme.colors.muted} size={18} /><TextInput value={query} onChangeText={setQuery} placeholder="Search messages…" placeholderTextColor={theme.colors.muted} style={styles.searchInput} accessibilityLabel="Search messages" /></View>
+      <SearchField value={query} onChangeText={setQuery} placeholder="Search messages" accessibilityLabel="Search messages" containerStyle={styles.searchBar} />
       {!userId ? <EmptyState title="Sign in to view messages" description="Conversations belong to your account." /> : conversationsQuery.isError ?
         <ErrorState message="Unable to load conversations." onRetry={() => void conversationsQuery.refetch()} /> : isLoading ? (
         <View style={styles.list}>
@@ -65,8 +65,7 @@ export const MessagesList: React.FC = () => {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.cream },
   title: { fontSize: theme.typography.h2.fontSize, fontWeight: '800', color: theme.colors.ink, margin: theme.spacing.lg },
-  searchBar: { minHeight: 48, marginHorizontal: theme.spacing.lg, marginBottom: theme.spacing.md, paddingHorizontal: theme.spacing.md, borderRadius: theme.radii.lg, backgroundColor: theme.colors.white, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: theme.colors.border },
-  searchInput: { flex: 1, marginLeft: theme.spacing.sm, color: theme.colors.ink, fontSize: theme.typography.body.fontSize },
+  searchBar: { marginHorizontal: theme.spacing.lg, marginBottom: theme.spacing.md },
   list: { paddingHorizontal: theme.spacing.lg },
   emptyList: { flexGrow: 1, paddingHorizontal: theme.spacing.lg },
   skeletonRoot: { marginBottom: theme.spacing.md },

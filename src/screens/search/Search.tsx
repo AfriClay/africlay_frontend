@@ -1,123 +1,273 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { useResponsiveLayout } from '../../contexts/ResponsiveLayoutContext';
-import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  AccessibilityInfo,
+  Keyboard,
+  Pressable,
+  SectionList,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { CatalogImage } from '../../components/ui/CatalogImage';
 import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useQuery } from '@tanstack/react-query';
-import { MapPin, Search as SearchIcon, SlidersHorizontal, Store } from 'lucide-react-native';
+import { Clock3, PackageSearch, Store, Trash2 } from 'lucide-react-native';
+import { CatalogImage } from '../../components/ui/CatalogImage';
+import { Button } from '../../components/ui/Button';
 import { EmptyState } from '../../components/ui/EmptyState';
+import { ErrorState } from '../../components/ui/ErrorState';
+import { SearchField } from '../../components/ui/SearchField';
+import { useAppTheme } from '../../contexts/ThemeContext';
+import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { SearchStackParamList } from '../../navigation/SearchStack';
+import { catalogKeys } from '../../services/catalogQueries';
 import { productService } from '../../services/productService';
 import { theme } from '../../theme';
 import { formatCurrency } from '../../utils/formatCurrency';
-import { ErrorState } from '../../components/ui/ErrorState';
-import { catalogKeys } from '../../services/catalogQueries';
+import { recentSearches } from '../../utils/recentSearches';
 
 type SearchNavigation = NativeStackNavigationProp<SearchStackParamList, 'SearchLanding'>;
-type SearchResult =
-  | { id: string; type: 'product'; title: string; meta: string; imageUrl?: string }
-  | { id: string; type: 'service'; title: string; meta: string; imageUrl?: string }
-  | { id: string; type: 'seller'; title: string; meta: string; imageUrl?: string };
+type SearchResult = {
+  key: string;
+  id: string;
+  type: 'product' | 'seller';
+  title: string;
+  meta: string;
+  imageUrl?: string;
+};
 
-const popularSearches = ['Maasai beads', 'Organic produce', 'Home cleaning', 'African decor'];
+const Match = ({ text, query, color, highlight }: { text: string; query: string; color: string; highlight: string }) => {
+  const index = text.toLocaleLowerCase().indexOf(query.toLocaleLowerCase());
+  if (!query || index < 0) return <Text style={[styles.resultTitle, { color }]}>{text}</Text>;
+  return <Text style={[styles.resultTitle, { color }]}>
+    {text.slice(0, index)}<Text style={{ color: highlight }}>{text.slice(index, index + query.length)}</Text>{text.slice(index + query.length)}
+  </Text>;
+};
 
 export const Search: React.FC = () => {
-  const { isExpanded, isWide } = useResponsiveLayout();
-  const columns = isExpanded ? (isWide ? 3 : 2) : 1;
+  const { width } = useWindowDimensions();
+  const compact = width < 600;
+  const expanded = width >= 840;
   const route = useRoute<RouteProp<SearchStackParamList, 'SearchLanding'>>();
   const navigation = useNavigation<SearchNavigation>();
-  const [query, setQuery] = useState('');
+  const { colors } = useAppTheme();
+  const inputRef = useRef<TextInput>(null);
+  const [query, setQuery] = useState(route.params?.query ?? '');
+  const debouncedQuery = useDebouncedValue(query.trim(), 200);
+  const [recent, setRecent] = useState<string[]>([]);
+  const [availableOnly, setAvailableOnly] = useState(false);
+  const [selectedIndex, setSelectedIndex] = useState(-1);
+  const [slow, setSlow] = useState(false);
+
+  useEffect(() => { void recentSearches.load().then(setRecent); }, []);
   useEffect(() => { if (route.params?.query !== undefined) setQuery(route.params.query); }, [route.params?.query]);
-  const productsQuery = useQuery({ queryKey: catalogKeys.products, queryFn: () => productService.fetchProducts() });
-  const { data: products = [] } = productsQuery;
-  const { data: services = [] } = useQuery({ queryKey: ['services'], queryFn: productService.fetchServices });
-  const sellersQuery = useQuery({ queryKey: catalogKeys.sellers, queryFn: productService.fetchSellers });
-  const { data: sellers = [] } = sellersQuery;
 
-  const results = useMemo<SearchResult[]>(() => {
-    const normalized = query.trim().toLowerCase();
+  const productsQuery = useQuery({ queryKey: catalogKeys.products, queryFn: () => productService.fetchProducts(), staleTime: 60_000 });
+  const sellersQuery = useQuery({ queryKey: catalogKeys.sellers, queryFn: productService.fetchSellers, staleTime: 60_000 });
+  const products = productsQuery.data ?? [];
+  const sellers = sellersQuery.data ?? [];
+  const loading = productsQuery.isPending || sellersQuery.isPending;
+
+  useEffect(() => {
+    if (!loading) { setSlow(false); return; }
+    const timer = setTimeout(() => setSlow(true), 4_000);
+    return () => clearTimeout(timer);
+  }, [loading]);
+
+  const productResults = useMemo<SearchResult[]>(() => {
+    const normalized = debouncedQuery.toLocaleLowerCase();
     if (!normalized) return [];
-    const productResults: SearchResult[] = products
-      .filter(product => `${product.name} ${product.description} ${product.category}`.toLowerCase().includes(normalized))
+    return products
+      .filter(product => !availableOnly || product.availableQuantity > 0)
+      .filter(product => `${product.name} ${product.description} ${product.category}`.toLocaleLowerCase().includes(normalized))
       .filter(product => Boolean(product.slug))
-      .map(product => ({ id: product.slug!, type: 'product', title: product.name, meta: `${formatCurrency(product.price, product.currency)} · ${product.category}`, imageUrl: product.images[0] }));
-    const serviceResults: SearchResult[] = services
-      .filter(service => `${service.title} ${service.description}`.toLowerCase().includes(normalized))
-      .map(service => ({ id: service.slug ?? service.id, type: 'service', title: service.title, meta: `From ${formatCurrency(service.priceFrom)} · Service`, imageUrl: service.images[0] }));
-    const sellerResults: SearchResult[] = sellers
-      .filter(seller => `${seller.name} ${seller.location} ${seller.bio}`.toLowerCase().includes(normalized))
-      .map(seller => ({ id: seller.id, type: 'seller', title: seller.name, meta: `Verified Seller · ${seller.location}`, imageUrl: seller.bannerUrl }));
-    return [...productResults, ...serviceResults, ...sellerResults];
-  }, [products, query, sellers, services]);
+      .map(product => ({
+        key: `product-${product.id}`,
+        id: product.slug!,
+        type: 'product',
+        title: product.name,
+        meta: `${formatCurrency(product.price, product.currency)} · ${product.availableQuantity > 0 ? 'In stock' : 'Out of stock'}`,
+        imageUrl: product.images[0],
+      }));
+  }, [availableOnly, debouncedQuery, products]);
 
+  const sellerResults = useMemo<SearchResult[]>(() => {
+    const normalized = debouncedQuery.toLocaleLowerCase();
+    if (!normalized) return [];
+    return sellers
+      .filter(seller => `${seller.name} ${seller.location} ${seller.bio}`.toLocaleLowerCase().includes(normalized))
+      .map(seller => ({
+        key: `seller-${seller.id}`,
+        id: seller.slug ?? seller.id,
+        type: 'seller',
+        title: seller.name,
+        meta: seller.location || 'AfriClay seller',
+        imageUrl: seller.logoUrl,
+      }));
+  }, [debouncedQuery, sellers]);
+
+  const sections = useMemo(() => [
+    { title: 'Products', data: productResults },
+    { title: 'Sellers', data: sellerResults },
+  ].filter(section => section.data.length > 0), [productResults, sellerResults]);
+  const flatResults = useMemo(() => sections.flatMap(section => section.data), [sections]);
+  const categorySuggestions = useMemo(() => [...new Set(products.map(product => product.category).filter(Boolean))].slice(0, 6), [products]);
+  const hasCachedFailure = (productsQuery.isError && products.length > 0) || (sellersQuery.isError && sellers.length > 0);
+  const hasBlockingFailure = (productsQuery.isError && products.length === 0) || (sellersQuery.isError && sellers.length === 0);
+
+  useEffect(() => {
+    setSelectedIndex(flatResults.length ? 0 : -1);
+    if (debouncedQuery && !loading) AccessibilityInfo.announceForAccessibility(`${flatResults.length} search results`);
+  }, [debouncedQuery, flatResults.length, loading]);
+
+  const remember = async (value: string) => setRecent(await recentSearches.add(value));
   const openResult = (result: SearchResult) => {
+    void remember(query);
     if (result.type === 'product') navigation.navigate('ProductDetails', { productId: result.id });
-    else if (result.type === 'service') navigation.navigate('ServiceDetails', { serviceId: result.id });
     else navigation.navigate('SellerStore', { sellerId: result.id });
   };
+  const submit = () => {
+    if (selectedIndex >= 0 && flatResults[selectedIndex]) openResult(flatResults[selectedIndex]);
+    else if (query.trim()) void remember(query);
+  };
+  const retry = () => { void productsQuery.refetch(); void sellersQuery.refetch(); };
+  const cancel = () => {
+    if (query) setQuery('');
+    else if (navigation.canGoBack()) navigation.goBack();
+    else Keyboard.dismiss();
+  };
 
-  if (productsQuery.isError || sellersQuery.isError) return <ErrorState message="Unable to search the catalog." onRetry={() => { void productsQuery.refetch(); void sellersQuery.refetch(); }} />;
+  if (hasBlockingFailure) return <ErrorState message="Search is unavailable right now. Check your connection and try again." onRetry={retry} />;
 
   return (
-    <SafeAreaView style={styles.container}>
-      <Text style={styles.title}>Discover Africa</Text>
-      <View style={styles.searchBar}>
-        <SearchIcon color={theme.colors.muted} size={19} />
-        <TextInput value={query} onChangeText={setQuery} placeholder="Products, sellers, services" placeholderTextColor={theme.colors.muted} style={styles.input} accessibilityLabel="Search AfriClay" autoFocus={false} />
-        <SlidersHorizontal color={theme.colors.primary.DEFAULT} size={20} />
-      </View>
-      <View style={styles.locationChip}><MapPin color={theme.colors.primary.DEFAULT} size={16} /><Text style={styles.locationText}>Shopping in Kenya</Text></View>
-
-      {!query.trim() ? (
-        <View style={styles.discovery}>
-          <Text style={styles.sectionTitle}>Popular searches</Text>
-          <View style={styles.chips}>
-            {popularSearches.map(item => <Pressable key={item} style={styles.chip} onPress={() => setQuery(item)}><Text style={styles.chipText}>{item}</Text></Pressable>)}
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+      <View style={[styles.shell, expanded && styles.expandedShell]}>
+        <View style={styles.headingRow}>
+          <View>
+            <Text style={[styles.title, { color: colors.text }]}>Search</Text>
+            {!compact ? <Text style={[styles.subtitle, { color: colors.textMuted }]}>Find products and seller stores across AfriClay.</Text> : null}
           </View>
-          <View style={styles.tipCard}><Store color={theme.colors.primary.DEFAULT} size={28} /><Text style={styles.tipTitle}>Search the whole marketplace</Text><Text style={styles.tipText}>Find products, verified sellers, and trusted local services from one search.</Text></View>
+          {__DEV__ ? <Button size="sm" variant="tertiary" onPress={() => navigation.navigate('UiPreview')}>UI preview</Button> : null}
         </View>
-      ) : productsQuery.isLoading || sellersQuery.isLoading ? <Text style={styles.sectionTitle}>Loading results...</Text> : (
-        <FlatList
-          key={columns}
-          numColumns={columns}
-          data={results}
-          keyExtractor={item => `${item.type}-${item.id}`}
-          renderItem={({ item }) => (
-            <Pressable style={[styles.result, isExpanded && { flex: 1, maxWidth: `${100 / columns}%`, marginHorizontal: theme.spacing.xs }]} onPress={() => openResult(item)} accessibilityRole="button">
-              <CatalogImage uri={item.imageUrl} label={item.title} style={styles.resultImage} />
-              <View style={styles.resultCopy}><Text style={styles.resultTitle}>{item.title}</Text><Text style={styles.resultMeta}>{item.meta}</Text></View>
-            </Pressable>
-          )}
-          ListEmptyComponent={<EmptyState title="No results" description="Try a different product, seller, or service." />}
-          contentContainerStyle={results.length ? styles.results : styles.emptyResults}
+        <SearchField
+          ref={inputRef}
+          value={query}
+          onChangeText={setQuery}
+          onSubmit={submit}
+          onCancel={cancel}
+          showCancel={compact}
+          autoFocus={compact}
+          onKeyPress={event => {
+            if (event.nativeEvent.key === 'ArrowDown') setSelectedIndex(current => Math.min(flatResults.length - 1, current + 1));
+            if (event.nativeEvent.key === 'ArrowUp') setSelectedIndex(current => Math.max(0, current - 1));
+            if (event.nativeEvent.key === 'Enter') submit();
+          }}
         />
-      )}
+
+        {!query.trim() ? (
+          <View style={styles.discovery}>
+            {recent.length > 0 ? <View style={styles.block}>
+              <View style={styles.sectionHeadingRow}><Text style={[styles.sectionTitle, { color: colors.text }]}>Recent searches</Text><Button size="sm" variant="tertiary" onPress={() => { void recentSearches.clear(); setRecent([]); }}>Clear all</Button></View>
+              {recent.map(item => <View key={item} style={[styles.recentRow, { borderBottomColor: colors.border }]}>
+                <Pressable style={styles.recentAction} onPress={() => setQuery(item)} accessibilityRole="button" accessibilityLabel={`Search for ${item}`}>
+                  <Clock3 size={18} color={colors.textMuted} /><Text numberOfLines={1} style={[styles.recentText, { color: colors.text }]}>{item}</Text>
+                </Pressable>
+                <Button variant="icon" size="sm" icon={<Trash2 size={17} color={colors.textMuted} />} accessibilityLabel={`Remove ${item} from recent searches`} onPress={() => { void recentSearches.remove(item).then(setRecent); }} />
+              </View>)}
+            </View> : null}
+            <View style={styles.block}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Browse categories</Text>
+              {loading ? <View style={styles.chips}>{Array.from({ length: 4 }).map((_, index) => <View key={index} style={[styles.chipSkeleton, { backgroundColor: colors.skeleton }]} />)}</View> : categorySuggestions.length ? <View style={styles.chips}>
+                {categorySuggestions.map(item => <Pressable key={item} onPress={() => setQuery(item)} style={({ pressed }) => [styles.chip, { backgroundColor: pressed ? colors.accentSoft : colors.surface, borderColor: colors.border }]}><Text style={{ color: colors.text }}>{item}</Text></Pressable>)}
+              </View> : <Text style={[styles.supportingText, { color: colors.textMuted }]}>Categories will appear as products are added.</Text>}
+            </View>
+            <View style={[styles.discoveryCard, { backgroundColor: colors.accentSoft }]}>
+              <PackageSearch size={26} color={colors.accentPressed} />
+              <View style={styles.discoveryCopy}><Text style={[styles.discoveryTitle, { color: colors.text }]}>Search the marketplace</Text><Text style={[styles.supportingText, { color: colors.textMuted }]}>Search product names, descriptions, categories, seller names, and locations.</Text></View>
+            </View>
+          </View>
+        ) : loading ? (
+          <View style={styles.results}>
+            {slow ? <View style={[styles.notice, { backgroundColor: colors.secondarySoft }]}><Text style={[styles.noticeText, { color: colors.text }]}>This is taking longer than usual.</Text><Button size="sm" variant="tertiary" onPress={retry}>Retry</Button></View> : null}
+            {Array.from({ length: 6 }).map((_, index) => <View key={index} style={styles.skeletonRow}><View style={[styles.skeletonImage, { backgroundColor: colors.skeleton }]} /><View style={styles.skeletonCopy}><View style={[styles.skeletonTitle, { backgroundColor: colors.skeleton }]} /><View style={[styles.skeletonMeta, { backgroundColor: colors.skeleton }]} /></View></View>)}
+          </View>
+        ) : (
+          <SectionList
+            sections={sections}
+            keyExtractor={item => item.key}
+            keyboardDismissMode="on-drag"
+            keyboardShouldPersistTaps="handled"
+            stickySectionHeadersEnabled={false}
+            contentContainerStyle={flatResults.length ? styles.results : styles.emptyResults}
+            ListHeaderComponent={<>
+              {hasCachedFailure ? <View style={[styles.notice, { backgroundColor: colors.secondarySoft }]}><Text style={[styles.noticeText, { color: colors.text }]}>Showing saved results. New results could not be loaded.</Text><Button size="sm" variant="tertiary" onPress={retry}>Retry</Button></View> : null}
+              <View style={styles.filterRow}><Pressable accessibilityRole="checkbox" accessibilityState={{ checked: availableOnly }} onPress={() => setAvailableOnly(value => !value)} style={({ pressed }) => [styles.filterChip, { backgroundColor: availableOnly ? colors.accent : pressed ? colors.accentSoft : colors.surface, borderColor: availableOnly ? colors.accent : colors.border }]}><Text style={{ color: availableOnly ? colors.surface : colors.text, fontWeight: '600' }}>In stock only</Text></Pressable><Text style={[styles.resultCount, { color: colors.textMuted }]}>{flatResults.length} result{flatResults.length === 1 ? '' : 's'}</Text></View>
+            </>}
+            renderSectionHeader={({ section }) => <Text style={[styles.sectionHeader, { color: colors.text }]}>{section.title}</Text>}
+            renderItem={({ item }) => {
+              const index = flatResults.findIndex(result => result.key === item.key);
+              const selected = index === selectedIndex;
+              return <Pressable
+                onPress={() => openResult(item)}
+                onFocus={() => setSelectedIndex(index)}
+                accessibilityRole="button"
+                accessibilityState={{ selected }}
+                style={({ pressed }) => [styles.result, { backgroundColor: pressed || selected ? colors.accentSoft : colors.surface, borderColor: selected ? colors.focusRing : colors.border }]}
+              >
+                <CatalogImage uri={item.imageUrl} label={item.title} style={styles.resultImage} />
+                <View style={styles.resultCopy}><View style={styles.resultType}>{item.type === 'seller' ? <Store size={15} color={colors.accent} /> : <PackageSearch size={15} color={colors.accent} />}<Text style={[styles.typeText, { color: colors.accentPressed }]}>{item.type === 'seller' ? 'Seller' : 'Product'}</Text></View><Match text={item.title} query={debouncedQuery} color={colors.text} highlight={colors.accentPressed} /><Text numberOfLines={1} style={[styles.resultMeta, { color: colors.textMuted }]}>{item.meta}</Text></View>
+              </Pressable>;
+            }}
+            ListEmptyComponent={<EmptyState title="No matches found" description="Try a product name, category, seller, or location." />}
+          />
+        )}
+      </View>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: theme.colors.cream, paddingTop: theme.spacing.md },
-  title: { color: theme.colors.ink, fontSize: theme.typography.h2.fontSize, fontWeight: '800', marginHorizontal: theme.spacing.lg, marginBottom: theme.spacing.md },
-  searchBar: { marginHorizontal: theme.spacing.lg, minHeight: 50, borderRadius: theme.radii.lg, borderWidth: 1, borderColor: theme.colors.border, paddingHorizontal: theme.spacing.md, backgroundColor: theme.colors.white, flexDirection: 'row', alignItems: 'center' },
-  input: { flex: 1, marginHorizontal: theme.spacing.sm, color: theme.colors.ink, fontSize: theme.typography.body.fontSize },
-  locationChip: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', marginHorizontal: theme.spacing.lg, marginTop: theme.spacing.sm, paddingHorizontal: theme.spacing.sm, paddingVertical: theme.spacing.xs, borderRadius: theme.radii.pill, backgroundColor: theme.colors.primary.tint },
-  locationText: { color: theme.colors.primary.dark, marginLeft: theme.spacing.xs, fontSize: theme.typography.small.fontSize, fontWeight: '700' },
-  discovery: { padding: theme.spacing.lg },
-  sectionTitle: { color: theme.colors.ink, fontSize: theme.typography.h3.fontSize, fontWeight: '800', marginBottom: theme.spacing.md },
+  container: { flex: 1 },
+  shell: { flex: 1, width: '100%', maxWidth: 760, alignSelf: 'center', paddingHorizontal: theme.spacing.md, paddingTop: theme.spacing.md },
+  expandedShell: { maxWidth: 920, paddingHorizontal: theme.spacing.xl },
+  headingRow: { minHeight: 52, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.md },
+  title: { fontSize: theme.typography.h2.fontSize, lineHeight: theme.typography.h2.lineHeight, fontFamily: 'Inter_800ExtraBold' },
+  subtitle: { marginTop: theme.spacing.xs, fontSize: theme.typography.small.fontSize },
+  discovery: { paddingVertical: theme.spacing.lg, gap: theme.spacing.lg },
+  block: { gap: theme.spacing.sm },
+  sectionHeadingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.md },
+  sectionTitle: { fontFamily: 'Inter_700Bold', fontSize: theme.typography.h3.fontSize, lineHeight: theme.typography.h3.lineHeight },
+  recentRow: { minHeight: 56, flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1 },
+  recentAction: { flex: 1, minWidth: 0, minHeight: 56, flexDirection: 'row', alignItems: 'center', gap: theme.spacing.smd },
+  recentText: { flex: 1, minWidth: 0, fontSize: theme.typography.body.fontSize },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm },
-  chip: { minHeight: 42, justifyContent: 'center', paddingHorizontal: theme.spacing.md, borderRadius: theme.radii.pill, backgroundColor: theme.colors.white, borderWidth: 1, borderColor: theme.colors.border },
-  chipText: { color: theme.colors.ink },
-  tipCard: { marginTop: theme.spacing.xl, padding: theme.spacing.lg, borderRadius: theme.radii.lg, backgroundColor: theme.colors.primary.tint },
-  tipTitle: { color: theme.colors.primary.dark, fontSize: theme.typography.h3.fontSize, fontWeight: '800', marginTop: theme.spacing.md },
-  tipText: { color: theme.colors.muted, marginTop: theme.spacing.xs, lineHeight: 21 },
-  results: { padding: theme.spacing.lg, paddingBottom: theme.spacing.xl },
-  emptyResults: { flexGrow: 1, padding: theme.spacing.lg },
-  result: { minHeight: 82, padding: theme.spacing.sm, borderRadius: theme.radii.lg, backgroundColor: theme.colors.white, marginBottom: theme.spacing.sm, flexDirection: 'row', alignItems: 'center', ...theme.shadows.sm },
-  resultImage: { width: 64, height: 64, borderRadius: theme.radii.md, backgroundColor: theme.colors.border },
-  resultCopy: { flex: 1, marginLeft: theme.spacing.md },
-  resultTitle: { color: theme.colors.ink, fontWeight: '800' },
-  resultMeta: { color: theme.colors.muted, fontSize: theme.typography.small.fontSize, marginTop: theme.spacing.xs },
+  chip: { minHeight: 44, justifyContent: 'center', paddingHorizontal: theme.spacing.md, borderWidth: 1, borderRadius: theme.radii.pill },
+  chipSkeleton: { width: 112, height: 44, borderRadius: theme.radii.pill },
+  discoveryCard: { flexDirection: 'row', alignItems: 'flex-start', gap: theme.spacing.smd, padding: theme.spacing.md, borderRadius: theme.radii.surface },
+  discoveryCopy: { flex: 1, minWidth: 0 },
+  discoveryTitle: { fontFamily: 'Inter_700Bold', fontSize: theme.typography.body.fontSize, marginBottom: theme.spacing.xs },
+  supportingText: { fontSize: theme.typography.small.fontSize, lineHeight: theme.typography.small.lineHeight },
+  results: { paddingTop: theme.spacing.md, paddingBottom: theme.spacing.xl },
+  emptyResults: { flexGrow: 1, paddingTop: theme.spacing.md, paddingBottom: theme.spacing.xl },
+  filterRow: { minHeight: 56, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.md },
+  filterChip: { minHeight: 44, justifyContent: 'center', paddingHorizontal: theme.spacing.md, borderWidth: 1, borderRadius: theme.radii.pill },
+  resultCount: { fontSize: theme.typography.small.fontSize },
+  sectionHeader: { fontFamily: 'Inter_700Bold', fontSize: theme.typography.h3.fontSize, marginTop: theme.spacing.md, marginBottom: theme.spacing.sm },
+  result: { minHeight: 80, padding: theme.spacing.smd, borderRadius: theme.radii.control, borderWidth: 2, marginBottom: theme.spacing.sm, flexDirection: 'row', alignItems: 'center' },
+  resultImage: { width: 58, height: 58, borderRadius: theme.radii.sm },
+  resultCopy: { flex: 1, minWidth: 0, marginLeft: theme.spacing.smd },
+  resultType: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs, marginBottom: 2 },
+  typeText: { fontFamily: 'Inter_600SemiBold', fontSize: 11, textTransform: 'uppercase' },
+  resultTitle: { fontFamily: 'Inter_700Bold', fontSize: theme.typography.body.fontSize, lineHeight: theme.typography.body.lineHeight },
+  resultMeta: { fontSize: theme.typography.small.fontSize, marginTop: 2 },
+  notice: { minHeight: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm, paddingLeft: theme.spacing.md, paddingRight: theme.spacing.xs, borderRadius: theme.radii.control, marginBottom: theme.spacing.md },
+  noticeText: { flex: 1, minWidth: 0, fontSize: theme.typography.small.fontSize },
+  skeletonRow: { minHeight: 80, padding: theme.spacing.smd, flexDirection: 'row', alignItems: 'center', marginBottom: theme.spacing.sm },
+  skeletonImage: { width: 58, height: 58, borderRadius: theme.radii.sm },
+  skeletonCopy: { flex: 1, marginLeft: theme.spacing.smd, gap: theme.spacing.sm },
+  skeletonTitle: { width: '58%', height: 15, borderRadius: theme.radii.sm },
+  skeletonMeta: { width: '38%', height: 12, borderRadius: theme.radii.sm },
 });

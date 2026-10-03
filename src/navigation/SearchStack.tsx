@@ -5,6 +5,7 @@ import { ProductDetails } from '../screens/home/ProductDetails';
 import { SellerStore } from '../screens/home/SellerStore';
 import { ServiceDetails } from '../screens/home/ServiceDetails';
 import { theme } from '../theme';
+import { UiPreview } from '../screens/dev/UiPreview';
 
 export type SearchStackParamList = {
   SearchLanding: { query?: string } | undefined;
@@ -12,6 +13,7 @@ export type SearchStackParamList = {
   ProductDetails: { productId: string };
   SellerStore: { sellerId: string };
   ServiceDetails: { serviceId: string };
+  UiPreview: undefined;
 };
 
 const Stack = createNativeStackNavigator<SearchStackParamList>();
@@ -23,5 +25,6 @@ export const SearchStack = () => (
     <Stack.Screen name="ProductDetails" component={ProductDetails} options={{ title: '' }} />
     <Stack.Screen name="SellerStore" component={SellerStore} options={{ title: 'Seller Store' }} />
     <Stack.Screen name="ServiceDetails" component={ServiceDetails} options={{ title: '' }} />
+    {__DEV__ ? <Stack.Screen name="UiPreview" component={UiPreview} options={{ title: 'UI preview' }} /> : null}
   </Stack.Navigator>
 );

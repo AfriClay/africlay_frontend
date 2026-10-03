@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useResponsiveLayout } from '../../contexts/ResponsiveLayoutContext';
-import { FlatList, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { FlatList, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { productService } from '../../services/productService';
 import { ProductCard } from '../../components/domain/ProductCard';
@@ -12,6 +12,7 @@ import { HomeStackParamList } from '../../navigation/HomeStack';
 import { ErrorState } from '../../components/ui/ErrorState';
 import { catalogKeys } from '../../services/catalogQueries';
 import { rootCategories } from '../../utils/categoryTree';
+import { SearchField } from '../../components/ui/SearchField';
 
 export const ProductListing: React.FC = () => {
   const { isExpanded, productColumns } = useResponsiveLayout();
@@ -50,7 +51,7 @@ export const ProductListing: React.FC = () => {
   return (
     <View style={styles.container}>
       {isExpanded ? <Text style={styles.title}>Products</Text> : null}
-      <TextInput value={query} onChangeText={setQuery} placeholder="Search products" placeholderTextColor={theme.colors.muted} style={styles.search} accessibilityLabel="Search products" />
+      <SearchField value={query} onChangeText={setQuery} placeholder="Search products" accessibilityLabel="Search products" containerStyle={styles.search} />
       {!isExpanded && <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroller} contentContainerStyle={styles.categoryFilters} accessibilityRole="radiogroup">
         <Pressable onPress={() => setActiveCategory(undefined)} style={[styles.filterChip, !activeCategory ? styles.filterActive : null]} accessibilityRole="radio" accessibilityState={{ selected: !activeCategory }} accessibilityLabel="All categories">
           <Text style={[styles.filterText, !activeCategory ? styles.filterTextActive : null]}>All products</Text>
@@ -101,17 +102,7 @@ const styles = StyleSheet.create({
     color: theme.colors.ink,
     marginBottom: theme.spacing.md,
   },
-  search: {
-    backgroundColor: theme.colors.white,
-    borderRadius: theme.radii.md,
-    minHeight: 48,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    marginBottom: theme.spacing.md,
-    color: theme.colors.ink,
-  },
+  search: { marginBottom: theme.spacing.md },
   filters: {
     flexDirection: 'row',
     flexWrap: 'wrap',

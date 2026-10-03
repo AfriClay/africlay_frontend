@@ -1,6 +1,7 @@
 import React from 'react';
 import { Modal as RNModal, Pressable, StyleSheet, View, Text } from 'react-native';
 import { theme } from '../../theme';
+import { Button } from './Button';
 
 interface BottomSheetProps {
   visible: boolean;
@@ -29,13 +30,9 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
       <View style={styles.handle} />
       <Text style={styles.title}>{title}</Text>
       <Text style={styles.description}>{description}</Text>
-      <Pressable onPress={onAction} style={styles.button} accessibilityRole="button">
-        <Text style={styles.buttonText}>{actionLabel}</Text>
-      </Pressable>
+      <Button onPress={onAction} fullWidth>{actionLabel}</Button>
       {secondaryActionLabel && onSecondaryAction ? (
-        <Pressable onPress={onSecondaryAction} style={styles.secondaryButton} accessibilityRole="button">
-          <Text style={styles.secondaryButtonText}>{secondaryActionLabel}</Text>
-        </Pressable>
+        <View style={styles.secondaryButton}><Button onPress={onSecondaryAction} variant="tertiary" fullWidth>{secondaryActionLabel}</Button></View>
       ) : null}
     </View>
   </RNModal>
@@ -71,26 +68,7 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.lg,
     fontSize: theme.typography.body.fontSize,
   },
-  button: {
-    backgroundColor: theme.colors.primary.DEFAULT,
-    paddingVertical: theme.spacing.md,
-    alignItems: 'center',
-    borderRadius: theme.radii.md,
-  },
-  buttonText: {
-    color: theme.colors.white,
-    fontWeight: '700',
-    fontSize: theme.typography.body.fontSize,
-  },
   secondaryButton: {
-    minHeight: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
     marginTop: theme.spacing.sm,
-  },
-  secondaryButtonText: {
-    color: theme.colors.primary.DEFAULT,
-    fontWeight: '700',
-    fontSize: theme.typography.body.fontSize,
   },
 });

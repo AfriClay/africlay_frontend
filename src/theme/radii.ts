@@ -3,4 +3,6 @@ export const radii = {
   md: 12,
   lg: 20,
   pill: 999,
+  control: 12,
+  surface: 16,
 };

@@ -21,3 +21,53 @@ export const colors = {
   error: '#D32F2F',
   border: '#E5E5E5',
 };
+
+export const semanticColors = {
+  light: {
+    background: '#F8F5EF',
+    surface: '#FFFFFF',
+    surfaceElevated: '#FFFFFF',
+    text: '#0D0D0D',
+    textMuted: '#666666',
+    border: '#D8D8D3',
+    accent: '#207F20',
+    accentPressed: '#185F18',
+    accentSoft: '#E8F2EC',
+    secondary: '#CD8032',
+    secondaryPressed: '#A86322',
+    secondarySoft: '#FBF0E1',
+    success: '#207F20',
+    warning: '#9A570F',
+    danger: '#C62828',
+    dangerPressed: '#991F1F',
+    dangerSoft: '#FCE9E8',
+    focusRing: '#176B32',
+    overlay: 'rgba(13,13,13,0.58)',
+    skeleton: '#E9E7E2',
+  },
+  dark: {
+    background: '#111713',
+    surface: '#18201B',
+    surfaceElevated: '#222B25',
+    text: '#F6F4EE',
+    textMuted: '#B8C0BA',
+    border: '#3A463E',
+    accent: '#66C477',
+    accentPressed: '#8AD596',
+    accentSoft: '#203D29',
+    secondary: '#E5A15C',
+    secondaryPressed: '#F0B97F',
+    secondarySoft: '#3D2D1D',
+    success: '#72CB81',
+    warning: '#F0B36C',
+    danger: '#FF8A80',
+    dangerPressed: '#FFB0A8',
+    dangerSoft: '#472522',
+    focusRing: '#9BDEA5',
+    overlay: 'rgba(0,0,0,0.72)',
+    skeleton: '#2B352E',
+  },
+} as const;
+
+export type ThemeMode = keyof typeof semanticColors;
+export type SemanticColors = (typeof semanticColors)[ThemeMode];

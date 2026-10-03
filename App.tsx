@@ -12,6 +12,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useAuth } from './src/hooks/useAuth';
 import { WishlistProvider } from './src/contexts/WishlistContext';
 import { NativeNotificationBridge } from './src/components/notifications/NativeNotificationBridge';
+import { ThemeProvider } from './src/contexts/ThemeContext';
 
 if (Platform.OS !== 'web') {
   SplashScreen.preventAutoHideAsync();
@@ -38,13 +39,15 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <ResponsiveLayoutProvider>
-      <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <AppContent />
-        </AuthProvider>
-      </QueryClientProvider>
-      </ResponsiveLayoutProvider>
+      <ThemeProvider>
+        <ResponsiveLayoutProvider>
+          <QueryClientProvider client={queryClient}>
+            <AuthProvider>
+              <AppContent />
+            </AuthProvider>
+          </QueryClientProvider>
+        </ResponsiveLayoutProvider>
+      </ThemeProvider>
     </SafeAreaProvider>
   );
 }
