@@ -105,7 +105,17 @@ export const AddEditProduct: React.FC = () => {
   const categoryOptions = leafCategoryItems(categories);
   const selectableCategoryIds = new Set(categoryOptions.map(item => item.category.id));
   const categoryById = new Map(categories.map(item => [item.id, item]));
-  const canSave = Boolean(name.trim() && name.length <= 180 && resolvedSlug && resolvedSku && categoryId && selectableCategoryIds.has(categoryId) && numericPrice > 0 && Number.isFinite(numericPrice) && /^\d+$/.test(stock.trim()));
+  const hasValidCategory = Boolean(categoryId && selectableCategoryIds.has(categoryId));
+  const baseDetailsValid = Boolean(name.trim() && name.length <= 180 && resolvedSlug && resolvedSku && numericPrice > 0 && Number.isFinite(numericPrice) && /^\d+$/.test(stock.trim()));
+  const canSave = baseDetailsValid && (status !== 'published' || hasValidCategory);
+  const validationMessage = !name.trim() ? 'Enter a product name to continue.' :
+    name.length > 180 ? 'Keep the product name within 180 characters.' :
+    !Number.isFinite(numericPrice) || numericPrice <= 0 ? 'Enter a price greater than zero.' :
+    !/^\d+$/.test(stock.trim()) ? 'Stock count must be a whole number of zero or more.' :
+    status === 'published' && categoriesQuery.isLoading ? 'Loading product categories...' :
+    status === 'published' && categoriesQuery.isError ? 'Categories could not be loaded. Retry before publishing.' :
+    status === 'published' && categoryOptions.length === 0 ? 'No product categories are available yet. Save as a draft or ask an administrator to add categories.' :
+    status === 'published' && !hasValidCategory ? 'Choose a specific category before publishing.' : undefined;
 
   const save = async () => {
     if (!canSave || saving) return;
@@ -147,24 +157,28 @@ export const AddEditProduct: React.FC = () => {
   if (productId && productQuery.isError) return <ErrorState message="Unable to load this product." onRetry={() => void productQuery.refetch()} />;
   if (productId && productQuery.isLoading) return <Text style={styles.label}>Loading product...</Text>;
   if (productId && !product) return <EmptyState title="Product not found" description="This product can no longer be edited." />;
-  if (categoriesQuery.isError || tagsQuery.isError) return <ErrorState message="Unable to load product options." onRetry={() => { void categoriesQuery.refetch(); void tagsQuery.refetch(); }} />;
-
   return <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
     <Input label="Product name" value={name} onChangeText={setName} placeholder="What are you selling?" accessibilityLabel="Product name" />
     <Text style={styles.label}>Description</Text>
     <TextInput value={description} onChangeText={setDescription} placeholder="Describe the product, materials, and condition" placeholderTextColor={theme.colors.muted} multiline style={styles.description} />
     <Text style={styles.label}>Specific category</Text>
-    <View style={styles.categoryTree}>{categoryOptions.map(({ category, depth }) =>
-      <Pressable key={category.id} onPress={() => setCategoryId(current => current === category.id ? undefined : category.id)}
-        style={[styles.categoryBranch, categoryId === category.id && styles.categoryActive]}
-        accessibilityRole="radio" accessibilityState={{ selected: categoryId === category.id }} accessibilityLabel={`Choose ${category.label}`}>
-        <Text style={[styles.categoryText, categoryId === category.id && styles.categoryTextActive]}>{categoryById.get(category.parent ?? '')?.label ?? 'Other'} / {category.label}</Text>
-      </Pressable>)}</View>
+    {categoriesQuery.isLoading ? <Text style={styles.optionMessage}>Loading categories...</Text> :
+      categoriesQuery.isError ? <Pressable onPress={() => void categoriesQuery.refetch()} accessibilityRole="button" accessibilityLabel="Retry loading product categories"><Text style={styles.optionError}>Unable to load categories. Tap to retry.</Text></Pressable> :
+        categoryOptions.length === 0 ? <Text style={styles.optionMessage}>No categories are available. You can save a draft, but a category is required to publish.</Text> :
+          <View style={styles.categoryTree}>{categoryOptions.map(({ category }) =>
+            <Pressable key={category.id} onPress={() => setCategoryId(current => current === category.id ? undefined : category.id)}
+              style={[styles.categoryBranch, categoryId === category.id && styles.categoryActive]}
+              accessibilityRole="radio" accessibilityState={{ selected: categoryId === category.id }} accessibilityLabel={`Choose ${category.label}`}>
+              <Text style={[styles.categoryText, categoryId === category.id && styles.categoryTextActive]}>{categoryById.get(category.parent ?? '')?.label ?? 'Other'} / {category.label}</Text>
+            </Pressable>)}</View>}
     <Text style={styles.label}>Tags</Text>
-    <View style={styles.categories}>{(tagsQuery.data ?? []).map(item =>
-      <Pressable key={item.id} onPress={() => setTagIds(current => current.includes(item.id) ? current.filter(id => id !== item.id) : [...current, item.id])} style={[styles.category, tagIds.includes(item.id) && styles.categoryActive]} accessibilityRole="button">
-        <Text style={[styles.categoryText, tagIds.includes(item.id) && styles.categoryTextActive]}>{item.label}</Text>
-      </Pressable>)}</View>
+    {tagsQuery.isLoading ? <Text style={styles.optionMessage}>Loading optional tags...</Text> :
+      tagsQuery.isError ? <Pressable onPress={() => void tagsQuery.refetch()} accessibilityRole="button" accessibilityLabel="Retry loading product tags"><Text style={styles.optionError}>Optional tags could not be loaded. Tap to retry.</Text></Pressable> :
+        (tagsQuery.data ?? []).length === 0 ? <Text style={styles.optionMessage}>No optional tags are available.</Text> :
+          <View style={styles.categories}>{(tagsQuery.data ?? []).map(item =>
+            <Pressable key={item.id} onPress={() => setTagIds(current => current.includes(item.id) ? current.filter(id => id !== item.id) : [...current, item.id])} style={[styles.category, tagIds.includes(item.id) && styles.categoryActive]} accessibilityRole="button">
+              <Text style={[styles.categoryText, tagIds.includes(item.id) && styles.categoryTextActive]}>{item.label}</Text>
+            </Pressable>)}</View>}
     <View style={styles.twoColumns}>
       <View style={styles.column}><Input label="Price (KSh)" value={price} onChangeText={setPrice} keyboardType="decimal-pad" placeholder="0" accessibilityLabel="Product price" /></View>
       <View style={styles.column}><Input label="Stock count" value={stock} onChangeText={setStock} keyboardType="number-pad" placeholder="0" accessibilityLabel="Stock count" /></View>
@@ -197,7 +211,8 @@ export const AddEditProduct: React.FC = () => {
       </View>)}
     </View>
     {error && <Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
-    <Button onPress={save} disabled={!canSave || categoriesQuery.isLoading || tagsQuery.isLoading} loading={saving}>
+    {validationMessage && <Text accessibilityLiveRegion="polite" style={styles.validationMessage}>{validationMessage}</Text>}
+    <Button onPress={save} disabled={!canSave} loading={saving}>
       {productId ? 'Save Changes' : status === 'published' ? 'Publish Product' : 'Save Draft'}
     </Button>
   </ScrollView>;
@@ -230,4 +245,7 @@ const styles = StyleSheet.create({
   addImage: { width: 104, height: 104, borderRadius: theme.radii.md, borderWidth: 1, borderStyle: 'dashed', borderColor: theme.colors.primary.DEFAULT, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.white },
   addImageText: { color: theme.colors.primary.DEFAULT, fontWeight: '700', marginTop: theme.spacing.xs, fontSize: theme.typography.small.fontSize, textAlign: 'center' },
   error: { color: theme.colors.error, marginBottom: theme.spacing.md },
+  optionMessage: { color: theme.colors.muted, lineHeight: 20, marginBottom: theme.spacing.md },
+  optionError: { color: theme.colors.error, lineHeight: 20, marginBottom: theme.spacing.md, textDecorationLine: 'underline' },
+  validationMessage: { color: theme.colors.muted, lineHeight: 20, marginBottom: theme.spacing.sm },
 });
