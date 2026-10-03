@@ -1,5 +1,5 @@
-import React, { useMemo } from 'react';
-import { FlatList, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useMemo, useRef } from 'react';
+import { Animated, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CompositeNavigationProp, NavigationProp, useNavigation } from '@react-navigation/native';
 import { useQuery } from '@tanstack/react-query';
@@ -42,6 +42,7 @@ export const Home: React.FC = () => {
   const canSell = canAccessSellerTools(user?.role);
   const { open: openSideMenu } = useSideMenu();
   const reduceMotion = useReducedMotionSafe();
+  const scrollY = useRef(new Animated.Value(0)).current;
   const categoriesQuery = useQuery({ queryKey: catalogKeys.categories, queryFn: productService.fetchCategories });
   const { data: categories = [], isLoading: categoriesLoading } = categoriesQuery;
   const productsQuery = useQuery({ queryKey: catalogKeys.products, queryFn: () => productService.fetchProducts() });
@@ -65,12 +66,17 @@ export const Home: React.FC = () => {
 
   const openSearch = () => navigation.getParent()?.navigate('Search');
   const openNotifications = () => navigation.getParent<any>()?.navigate('Profile', { screen: 'Notifications' });
+  const compactHeaderPadding = reduceMotion ? theme.spacing.md : scrollY.interpolate({
+    inputRange: [0, 40],
+    outputRange: [theme.spacing.md, theme.spacing.sm],
+    extrapolate: 'clamp',
+  });
 
   if (productsQuery.isError || categoriesQuery.isError || sellersQuery.isError) return <ErrorState message="Unable to load the catalog." onRetry={() => { void productsQuery.refetch(); void categoriesQuery.refetch(); void sellersQuery.refetch(); }} />;
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      {isCompact && <View style={styles.topArea}>
+      {isCompact && <Animated.View style={[styles.topArea, { paddingBottom: compactHeaderPadding }]}>
         <View style={styles.topRow}>
           <Pressable accessibilityRole="button" accessibilityLabel="Open menu" onPress={openSideMenu} style={styles.iconButton}><Menu color={theme.colors.ink} size={23} /></Pressable>
           <View style={styles.headerActions}>
@@ -86,9 +92,15 @@ export const Home: React.FC = () => {
           <Text style={styles.searchPlaceholder}>Search for products, services...</Text>
           <View style={styles.searchAction}><Search color={theme.colors.primary.dark} size={22} strokeWidth={1.8} /></View>
         </Pressable>
-      </View>}
+      </Animated.View>}
 
-      <ScrollView contentContainerStyle={[styles.content, isExpanded && { maxWidth: 1440 }]} showsVerticalScrollIndicator={false}>
+      <Animated.ScrollView
+        style={styles.contentScroll}
+        contentContainerStyle={[styles.content, isExpanded && { maxWidth: 1440 }]}
+        showsVerticalScrollIndicator={false}
+        scrollEventThrottle={16}
+        onScroll={reduceMotion ? undefined : Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: false })}
+      >
         <PromotionalCarousel products={featured} loading={productsLoading} onProductPress={productId => {
           const product = products.find(item => item.id === productId);
           if (product?.slug) navigation.navigate('ProductDetails', { productId: product.slug });
@@ -159,7 +171,7 @@ export const Home: React.FC = () => {
             <Plus color={theme.colors.white} size={18} /><Text style={styles.sellCtaText}>Start Selling</Text>
           </Pressable>
         </View>}
-      </ScrollView>
+      </Animated.ScrollView>
     </SafeAreaView>
   );
 };
@@ -170,9 +182,9 @@ const styles = StyleSheet.create({
   desktopGrid: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: theme.spacing.lg },
   searchAction: { width: 40, height: 40, borderRadius: theme.radii.pill, alignItems: 'center', justifyContent: 'center' },
   sellerSpacing: { marginBottom: theme.spacing.sm },
-  container: { flex: 1, backgroundColor: theme.colors.cream },
-  topArea: { backgroundColor: theme.colors.white, paddingBottom: theme.spacing.md, borderBottomWidth: 1, borderBottomColor: theme.colors.border },
-  topRow: { paddingHorizontal: theme.spacing.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  container: { flex: 1, minHeight: 0, overflow: 'hidden', backgroundColor: theme.colors.cream },
+  topArea: { position: 'relative', zIndex: 20, elevation: 4, flexShrink: 0, backgroundColor: theme.colors.white, borderBottomWidth: 1, borderBottomColor: theme.colors.border },
+  topRow: { minHeight: 52, paddingHorizontal: theme.spacing.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   headerActions: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs },
   iconButton: { minWidth: 44, minHeight: 44, borderRadius: theme.radii.pill, alignItems: 'center', justifyContent: 'center' },
   countBadge: { position: 'absolute', top: 2, right: 1, minWidth: 18, height: 18, paddingHorizontal: 4, borderRadius: 9, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.secondary.DEFAULT, borderWidth: 2, borderColor: theme.colors.white },
@@ -186,6 +198,7 @@ const styles = StyleSheet.create({
   brand: { color: theme.colors.primary.dark, ...theme.typography.marketplace.brand },
   searchBar: { marginHorizontal: theme.spacing.md, marginTop: theme.spacing.xs, minHeight: 50, borderRadius: theme.radii.lg, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.cream, paddingLeft: theme.spacing.md, paddingRight: theme.spacing.xs, flexDirection: 'row', alignItems: 'center' },
   searchPlaceholder: { ...theme.typography.marketplace.body, flex: 1, color: theme.colors.muted, marginHorizontal: theme.spacing.sm },
+  contentScroll: { flex: 1, minHeight: 0 },
   content: { width: '100%', maxWidth: 640, alignSelf: 'center', padding: theme.spacing.md, paddingBottom: theme.spacing.xl },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.sm },
   sectionTitle: { flex: 1, color: theme.colors.ink, ...theme.typography.marketplace.heading },
