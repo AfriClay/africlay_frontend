@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { CompositeNavigationProp, NavigationProp, useNavigation } from '@react-navigation/native';
 import { useQuery } from '@tanstack/react-query';
-import { Bell, Menu, Plus, ShoppingCart } from 'lucide-react-native';
+import { Bell, Plus, ShoppingCart } from 'lucide-react-native';
 import { MotiView } from 'moti';
 import { PromotionalCarousel } from '../../components/domain/PromotionalCarousel';
 import { CategoryCard } from '../../components/domain/CategoryCard';
@@ -12,7 +12,6 @@ import { ProductCard } from '../../components/domain/ProductCard';
 import { SellerCard } from '../../components/domain/SellerCard';
 import { ServiceCard } from '../../components/domain/ServiceCard';
 import { useReducedMotionSafe } from '../../hooks/useReducedMotionSafe';
-import { useSideMenu } from '../../contexts/SideMenuContext';
 import { HomeStackParamList } from '../../navigation/HomeStack';
 import { RootStackParamList } from '../../navigation/RootNavigator';
 import { productService } from '../../services/productService';
@@ -25,7 +24,6 @@ import { canAccessSellerTools } from '../../utils/roles';
 import { categoryBranchIds, rootCategories } from '../../utils/categoryTree';
 import { useCart } from '../../hooks/useCart';
 import { notificationKeys, notificationService } from '../../services/notificationService';
-import { SearchTrigger } from '../../components/ui/SearchField';
 import { Button } from '../../components/ui/Button';
 
 type HomeNavigation = CompositeNavigationProp<
@@ -43,7 +41,6 @@ export const Home: React.FC = () => {
   const { user } = useAuth();
   const cart = useCart();
   const canSell = canAccessSellerTools(user?.role);
-  const { open: openSideMenu } = useSideMenu();
   const reduceMotion = useReducedMotionSafe();
   const scrollY = useRef(new Animated.Value(0)).current;
   const categoriesQuery = useQuery({ queryKey: catalogKeys.categories, queryFn: productService.fetchCategories });
@@ -67,7 +64,6 @@ export const Home: React.FC = () => {
 
   const openCategory = (slug: string) => navigation.navigate('ProductListing', { categoryId: slug });
 
-  const openSearch = () => navigation.getParent()?.navigate('Search');
   const openNotifications = () => navigation.getParent<any>()?.navigate('Profile', { screen: 'Notifications' });
   const compactHeaderPadding = reduceMotion ? theme.spacing.md : scrollY.interpolate({
     inputRange: [0, 40],
@@ -82,7 +78,6 @@ export const Home: React.FC = () => {
       {isCompact && <Animated.View style={[styles.topArea, { paddingBottom: compactHeaderPadding }]}>
         <View style={styles.topRow}>
           <View style={styles.mobileBrand}>
-            <Button variant="icon" size="sm" accessibilityLabel="Open menu" onPress={openSideMenu} icon={<Menu color={theme.colors.ink} size={23} />} />
             <View style={styles.mobileLogoViewport}><Image source={require('../../../assets/africlay-brand-v1.svg')} style={styles.mobileLogo} contentFit="contain" accessibilityLabel="AfriClay" /></View>
           </View>
           <View style={styles.headerActions}>
@@ -90,7 +85,6 @@ export const Home: React.FC = () => {
             <Button variant="icon" size="sm" accessibilityLabel={`Cart, ${cart.itemCount} items`} onPress={() => navigation.navigate('Cart')} icon={<View><ShoppingCart color={theme.colors.primary.dark} size={23} /><CountBadge count={cart.itemCount} /></View>} />
           </View>
         </View>
-        <SearchTrigger onPress={openSearch} style={styles.searchBar} />
       </Animated.View>}
 
       <Animated.ScrollView
@@ -194,7 +188,6 @@ const styles = StyleSheet.create({
   brandAccent: { color: theme.colors.primary.DEFAULT },
   brandCaption: { ...theme.typography.marketplace.eyebrow, fontSize: 8, lineHeight: 12, letterSpacing: 1, color: theme.colors.muted },
   brand: { color: theme.colors.primary.dark, ...theme.typography.marketplace.brand },
-  searchBar: { marginHorizontal: theme.spacing.md, marginTop: theme.spacing.xs, backgroundColor: theme.colors.cream },
   contentScroll: { flex: 1, minHeight: 0 },
   content: { width: '100%', maxWidth: 640, alignSelf: 'center', padding: theme.spacing.md, paddingBottom: theme.spacing.xl },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.sm },

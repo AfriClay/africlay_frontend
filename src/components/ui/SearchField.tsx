@@ -49,6 +49,7 @@ export const SearchField = forwardRef<TextInput, Props>(({ value, onChangeText, 
           placeholder={placeholder}
           placeholderTextColor={colors.textMuted}
           accessibilityLabel={accessibilityLabel}
+          accessibilityRole="search"
           autoFocus={autoFocus}
           autoCapitalize="none"
           autoCorrect={false}

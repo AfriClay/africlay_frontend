@@ -1,8 +1,10 @@
-import { useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { BottomTabBarProps, createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { Home, Plus, Search, User } from 'lucide-react-native';
+import { Home, Menu, Plus, Search, User, type LucideIcon } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { HomeStack } from './HomeStack';
 import { SearchStack } from './SearchStack';
 import { SellTab } from './SellTab';
@@ -13,6 +15,9 @@ import { theme } from '../theme';
 import { useResponsiveLayout } from '../contexts/ResponsiveLayoutContext';
 import { useAuth } from '../hooks/useAuth';
 import { canAccessSellerTools } from '../utils/roles';
+import { useSideMenu } from '../contexts/SideMenuContext';
+import { CompactSearchPanel } from '../components/search/CompactSearchPanel';
+import type { RootStackParamList } from './RootNavigator';
 
 export type AppTabParamList = {
   Home: undefined;
@@ -23,14 +28,26 @@ export type AppTabParamList = {
 
 const Tab = createBottomTabNavigator<AppTabParamList>();
 
-const tabItems = [
+type CompactItem = {
+  name: 'SearchAction' | 'Home' | 'MenuAction' | 'Sell' | 'Profile';
+  label: string;
+  icon: LucideIcon;
+};
+
+const compactItems: CompactItem[] = [
+  { name: 'SearchAction', label: 'Search', icon: Search },
   { name: 'Home', label: 'Home', icon: Home },
-  { name: 'Search', label: 'Search', icon: Search },
+  { name: 'MenuAction', label: 'Menu', icon: Menu },
   { name: 'Sell', label: 'Sell', icon: Plus },
   { name: 'Profile', label: 'Profile', icon: User },
-] as const;
+];
 
-const AppTabsNavigator = () => {
+const AppTabsNavigator = ({ onOpenSearch, onOpenMenu, searchOpen, menuOpen }: {
+  onOpenSearch: () => void;
+  onOpenMenu: () => void;
+  searchOpen: boolean;
+  menuOpen: boolean;
+}) => {
   const insets = useSafeAreaInsets();
   const { isCompact } = useResponsiveLayout();
   const { user } = useAuth();
@@ -38,14 +55,18 @@ const AppTabsNavigator = () => {
 
   const TabBar = useCallback(({ state, navigation }: BottomTabBarProps) => (
     <View style={[styles.tabBar, { height: 72 + insets.bottom, paddingBottom: insets.bottom }]}>
-      {tabItems.filter(item => item.name !== 'Sell' || canSell).map(item => {
-        const isFocused = state.routes[state.index]?.name === item.name;
+      {compactItems.filter(item => item.name !== 'Sell' || canSell).map(item => {
+        const isAction = item.name === 'SearchAction' || item.name === 'MenuAction';
+        const routeName = isAction ? undefined : item.name;
+        const isFocused = item.name === 'SearchAction' ? searchOpen || state.routes[state.index]?.name === 'Search' : item.name === 'MenuAction' ? menuOpen : state.routes[state.index]?.name === routeName;
         const Icon = item.icon;
-        const route = state.routes.find(route => route.name === item.name);
+        const route = routeName ? state.routes.find(route => route.name === routeName) : undefined;
         const onPress = () => {
+          if (item.name === 'SearchAction') { onOpenSearch(); return; }
+          if (item.name === 'MenuAction') { onOpenMenu(); return; }
           if (!route) return;
           const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
-          if (!isFocused && !event.defaultPrevented) navigation.navigate(item.name);
+          if (!isFocused && !event.defaultPrevented && routeName) navigation.navigate(routeName);
         };
         const onLongPress = () => { if (route) navigation.emit({ type: 'tabLongPress', target: route.key }); };
 
@@ -59,14 +80,14 @@ const AppTabsNavigator = () => {
         }
 
         return (
-          <Pressable key={item.name} onPress={onPress} onLongPress={onLongPress} style={({ pressed }) => [styles.tabItem, pressed && { opacity: 0.7 }]} accessibilityRole="tab" accessibilityLabel={item.label} accessibilityState={{ selected: isFocused }}>
+          <Pressable key={item.name} onPress={onPress} onLongPress={onLongPress} style={({ pressed }) => [styles.tabItem, pressed && styles.pressed]} accessibilityRole={isAction ? 'button' : 'tab'} accessibilityLabel={item.label} accessibilityState={{ selected: isFocused }}>
             <View style={[styles.iconPill, isFocused && styles.iconPillActive]}><Icon color={isFocused ? theme.colors.primary.DEFAULT : theme.colors.muted} size={22} strokeWidth={1.8} /></View>
-            <Text style={[styles.tabLabel, isFocused ? styles.tabLabelActive : null]}>{item.label}</Text>
+            <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75} maxFontSizeMultiplier={2} style={[styles.tabLabel, isFocused ? styles.tabLabelActive : null]}>{item.label}</Text>
           </Pressable>
         );
       })}
     </View>
-  ), [canSell, insets.bottom]);
+  ), [canSell, insets.bottom, menuOpen, onOpenMenu, onOpenSearch, searchOpen]);
 
   return (
     <Tab.Navigator backBehavior="history" screenOptions={{ headerShown: false }} tabBar={isCompact ? TabBar : () => null}>
@@ -78,17 +99,45 @@ const AppTabsNavigator = () => {
   );
 };
 
-export const AppTabs = () => {
+const AppTabsContent = () => {
   const { isCompact } = useResponsiveLayout();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList, 'AppTabs'>>();
+  const sideMenu = useSideMenu();
+  const [searchOpen, setSearchOpen] = useState(false);
+
+  useEffect(() => {
+    if (isCompact) return;
+    setSearchOpen(false);
+    sideMenu.close();
+  }, [isCompact, sideMenu.close]);
+
+  const openSearch = useCallback(() => {
+    sideMenu.close();
+    setSearchOpen(true);
+  }, [sideMenu]);
+  const openMenu = useCallback(() => {
+    setSearchOpen(false);
+    sideMenu.open();
+  }, [sideMenu]);
+  const openProduct = useCallback((productId: string) => navigation.navigate('AppTabs', {
+    screen: 'Home', params: { screen: 'ProductDetails', params: { productId } },
+  }), [navigation]);
+  const openSeller = useCallback((sellerId: string) => navigation.navigate('AppTabs', {
+    screen: 'Home', params: { screen: 'SellerStore', params: { sellerId } },
+  }), [navigation]);
+
   return (
-  <SideMenuProvider>
     <View style={styles.appRoot}>
-      <AppTabsNavigator />
+      <View style={styles.appRoot} accessibilityElementsHidden={isCompact && searchOpen} importantForAccessibility={isCompact && searchOpen ? 'no-hide-descendants' : 'auto'}>
+        <AppTabsNavigator onOpenSearch={openSearch} onOpenMenu={openMenu} searchOpen={searchOpen} menuOpen={sideMenu.isOpen} />
+      </View>
       {isCompact && <SideMenu />}
+      {isCompact && <CompactSearchPanel visible={searchOpen} onClose={() => setSearchOpen(false)} onOpenProduct={openProduct} onOpenSeller={openSeller} />}
     </View>
-  </SideMenuProvider>
   );
 };
+
+export const AppTabs = () => <SideMenuProvider><AppTabsContent /></SideMenuProvider>;
 
 const styles = StyleSheet.create({
   appRoot: { flex: 1 },
@@ -102,4 +151,5 @@ const styles = StyleSheet.create({
   sellLabel: { marginTop: 2, color: theme.colors.primary.DEFAULT, ...theme.typography.marketplace.navigation },
   iconPill: { width: 48, height: 30, borderRadius: theme.radii.pill, alignItems: 'center', justifyContent: 'center' },
   iconPillActive: { backgroundColor: theme.colors.primary.tint },
+  pressed: { opacity: 0.68 },
 });

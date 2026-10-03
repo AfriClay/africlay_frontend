@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   AccessibilityInfo,
+  InteractionManager,
   Keyboard,
   Pressable,
   SectionList,
@@ -30,6 +31,13 @@ import { formatCurrency } from '../../utils/formatCurrency';
 import { recentSearches } from '../../utils/recentSearches';
 
 type SearchNavigation = NativeStackNavigationProp<SearchStackParamList, 'SearchLanding'>;
+type SearchProps = {
+  presentation?: 'screen' | 'overlay';
+  focusRequest?: number;
+  onDismiss?: () => void;
+  onOpenProduct?: (productId: string) => void;
+  onOpenSeller?: (sellerId: string) => void;
+};
 type SearchResult = {
   key: string;
   id: string;
@@ -47,7 +55,7 @@ const Match = ({ text, query, color, highlight }: { text: string; query: string;
   </Text>;
 };
 
-export const Search: React.FC = () => {
+export const Search: React.FC<SearchProps> = ({ presentation = 'screen', focusRequest = 0, onDismiss, onOpenProduct, onOpenSeller }) => {
   const { width } = useWindowDimensions();
   const compact = width < 600;
   const expanded = width >= 840;
@@ -55,7 +63,7 @@ export const Search: React.FC = () => {
   const navigation = useNavigation<SearchNavigation>();
   const { colors } = useAppTheme();
   const inputRef = useRef<TextInput>(null);
-  const [query, setQuery] = useState(route.params?.query ?? '');
+  const [query, setQuery] = useState(presentation === 'screen' ? route.params?.query ?? '' : '');
   const debouncedQuery = useDebouncedValue(query.trim(), 200);
   const [recent, setRecent] = useState<string[]>([]);
   const [availableOnly, setAvailableOnly] = useState(false);
@@ -63,7 +71,17 @@ export const Search: React.FC = () => {
   const [slow, setSlow] = useState(false);
 
   useEffect(() => { void recentSearches.load().then(setRecent); }, []);
-  useEffect(() => { if (route.params?.query !== undefined) setQuery(route.params.query); }, [route.params?.query]);
+  useEffect(() => {
+    if (presentation === 'screen' && route.params?.query !== undefined) setQuery(route.params.query);
+  }, [presentation, route.params?.query]);
+
+  useEffect(() => {
+    if (!focusRequest) return;
+    const task = InteractionManager.runAfterInteractions(() => {
+      requestAnimationFrame(() => inputRef.current?.focus());
+    });
+    return () => task.cancel();
+  }, [focusRequest]);
 
   const productsQuery = useQuery({ queryKey: catalogKeys.products, queryFn: () => productService.fetchProducts(), staleTime: 60_000 });
   const sellersQuery = useQuery({ queryKey: catalogKeys.sellers, queryFn: productService.fetchSellers, staleTime: 60_000 });
@@ -82,15 +100,14 @@ export const Search: React.FC = () => {
     if (!normalized) return [];
     return products
       .filter(product => !availableOnly || product.availableQuantity > 0)
-      .filter(product => `${product.name} ${product.description} ${product.category}`.toLocaleLowerCase().includes(normalized))
+      .filter(product => `${product.name} ${product.description}`.toLocaleLowerCase().includes(normalized))
       .filter(product => Boolean(product.slug))
       .map(product => ({
         key: `product-${product.id}`,
         id: product.slug!,
         type: 'product',
         title: product.name,
-        meta: `${formatCurrency(product.price, product.currency)} · ${product.availableQuantity > 0 ? 'In stock' : 'Out of stock'}`,
-        imageUrl: product.images[0],
+        meta: `${formatCurrency(product.price, product.currency)} - ${product.availableQuantity > 0 ? 'In stock' : 'Out of stock'}`,
       }));
   }, [availableOnly, debouncedQuery, products]);
 
@@ -114,7 +131,6 @@ export const Search: React.FC = () => {
     { title: 'Sellers', data: sellerResults },
   ].filter(section => section.data.length > 0), [productResults, sellerResults]);
   const flatResults = useMemo(() => sections.flatMap(section => section.data), [sections]);
-  const categorySuggestions = useMemo(() => [...new Set(products.map(product => product.category).filter(Boolean))].slice(0, 6), [products]);
   const hasCachedFailure = (productsQuery.isError && products.length > 0) || (sellersQuery.isError && sellers.length > 0);
   const hasBlockingFailure = (productsQuery.isError && products.length === 0) || (sellersQuery.isError && sellers.length === 0);
 
@@ -126,7 +142,12 @@ export const Search: React.FC = () => {
   const remember = async (value: string) => setRecent(await recentSearches.add(value));
   const openResult = (result: SearchResult) => {
     void remember(query);
-    if (result.type === 'product') navigation.navigate('ProductDetails', { productId: result.id });
+    if (result.type === 'product') {
+      if (onOpenProduct) onOpenProduct(result.id);
+      else navigation.navigate('ProductDetails', { productId: result.id });
+      return;
+    }
+    if (onOpenSeller) onOpenSeller(result.id);
     else navigation.navigate('SellerStore', { sellerId: result.id });
   };
   const submit = () => {
@@ -135,15 +156,23 @@ export const Search: React.FC = () => {
   };
   const retry = () => { void productsQuery.refetch(); void sellersQuery.refetch(); };
   const cancel = () => {
+    if (presentation === 'overlay' && onDismiss) {
+      Keyboard.dismiss();
+      onDismiss();
+      return;
+    }
     if (query) setQuery('');
     else if (navigation.canGoBack()) navigation.goBack();
     else Keyboard.dismiss();
   };
 
-  if (hasBlockingFailure) return <ErrorState message="Search is unavailable right now. Check your connection and try again." onRetry={retry} />;
+  if (hasBlockingFailure) return <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'bottom']}>
+    {presentation === 'overlay' && onDismiss ? <View style={styles.errorHeader}><Button variant="tertiary" size="sm" onPress={onDismiss}>Cancel</Button></View> : null}
+    <ErrorState message="Search is unavailable right now. Check your connection and try again." onRetry={retry} />
+  </SafeAreaView>;
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={presentation === 'overlay' ? ['top', 'bottom'] : ['top']}>
       <View style={[styles.shell, expanded && styles.expandedShell]}>
         <View style={styles.headingRow}>
           <View>
@@ -158,9 +187,10 @@ export const Search: React.FC = () => {
           onChangeText={setQuery}
           onSubmit={submit}
           onCancel={cancel}
-          showCancel={compact}
-          autoFocus={compact}
+          showCancel={presentation === 'overlay' || compact}
+          autoFocus={presentation === 'screen' && compact}
           onKeyPress={event => {
+            if (event.nativeEvent.key === 'Escape') { cancel(); return; }
             if (event.nativeEvent.key === 'ArrowDown') setSelectedIndex(current => Math.min(flatResults.length - 1, current + 1));
             if (event.nativeEvent.key === 'ArrowUp') setSelectedIndex(current => Math.max(0, current - 1));
             if (event.nativeEvent.key === 'Enter') submit();
@@ -178,15 +208,9 @@ export const Search: React.FC = () => {
                 <Button variant="icon" size="sm" icon={<Trash2 size={17} color={colors.textMuted} />} accessibilityLabel={`Remove ${item} from recent searches`} onPress={() => { void recentSearches.remove(item).then(setRecent); }} />
               </View>)}
             </View> : null}
-            <View style={styles.block}>
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>Browse categories</Text>
-              {loading ? <View style={styles.chips}>{Array.from({ length: 4 }).map((_, index) => <View key={index} style={[styles.chipSkeleton, { backgroundColor: colors.skeleton }]} />)}</View> : categorySuggestions.length ? <View style={styles.chips}>
-                {categorySuggestions.map(item => <Pressable key={item} onPress={() => setQuery(item)} style={({ pressed }) => [styles.chip, { backgroundColor: pressed ? colors.accentSoft : colors.surface, borderColor: colors.border }]}><Text style={{ color: colors.text }}>{item}</Text></Pressable>)}
-              </View> : <Text style={[styles.supportingText, { color: colors.textMuted }]}>Categories will appear as products are added.</Text>}
-            </View>
             <View style={[styles.discoveryCard, { backgroundColor: colors.accentSoft }]}>
               <PackageSearch size={26} color={colors.accentPressed} />
-              <View style={styles.discoveryCopy}><Text style={[styles.discoveryTitle, { color: colors.text }]}>Search the marketplace</Text><Text style={[styles.supportingText, { color: colors.textMuted }]}>Search product names, descriptions, categories, seller names, and locations.</Text></View>
+              <View style={styles.discoveryCopy}><Text style={[styles.discoveryTitle, { color: colors.text }]}>Search the marketplace</Text><Text style={[styles.supportingText, { color: colors.textMuted }]}>Search product names, descriptions, seller names, and locations.</Text></View>
             </View>
           </View>
         ) : loading ? (
@@ -217,11 +241,11 @@ export const Search: React.FC = () => {
                 accessibilityState={{ selected }}
                 style={({ pressed }) => [styles.result, { backgroundColor: pressed || selected ? colors.accentSoft : colors.surface, borderColor: selected ? colors.focusRing : colors.border }]}
               >
-                <CatalogImage uri={item.imageUrl} label={item.title} style={styles.resultImage} />
+                {item.imageUrl ? <CatalogImage uri={item.imageUrl} label={item.title} style={styles.resultImage} /> : <View style={[styles.resultIcon, { backgroundColor: colors.accentSoft }]}>{item.type === 'seller' ? <Store size={22} color={colors.accent} /> : <PackageSearch size={22} color={colors.accent} />}</View>}
                 <View style={styles.resultCopy}><View style={styles.resultType}>{item.type === 'seller' ? <Store size={15} color={colors.accent} /> : <PackageSearch size={15} color={colors.accent} />}<Text style={[styles.typeText, { color: colors.accentPressed }]}>{item.type === 'seller' ? 'Seller' : 'Product'}</Text></View><Match text={item.title} query={debouncedQuery} color={colors.text} highlight={colors.accentPressed} /><Text numberOfLines={1} style={[styles.resultMeta, { color: colors.textMuted }]}>{item.meta}</Text></View>
               </Pressable>;
             }}
-            ListEmptyComponent={<EmptyState title="No matches found" description="Try a product name, category, seller, or location." />}
+            ListEmptyComponent={<EmptyState title="No matches found" description="Try a product name, seller, or location." />}
           />
         )}
       </View>
@@ -231,6 +255,7 @@ export const Search: React.FC = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  errorHeader: { minHeight: 56, alignItems: 'flex-end', justifyContent: 'center', paddingHorizontal: theme.spacing.md },
   shell: { flex: 1, width: '100%', maxWidth: 760, alignSelf: 'center', paddingHorizontal: theme.spacing.md, paddingTop: theme.spacing.md },
   expandedShell: { maxWidth: 920, paddingHorizontal: theme.spacing.xl },
   headingRow: { minHeight: 52, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.md },
@@ -243,9 +268,6 @@ const styles = StyleSheet.create({
   recentRow: { minHeight: 56, flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1 },
   recentAction: { flex: 1, minWidth: 0, minHeight: 56, flexDirection: 'row', alignItems: 'center', gap: theme.spacing.smd },
   recentText: { flex: 1, minWidth: 0, fontSize: theme.typography.body.fontSize },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm },
-  chip: { minHeight: 44, justifyContent: 'center', paddingHorizontal: theme.spacing.md, borderWidth: 1, borderRadius: theme.radii.pill },
-  chipSkeleton: { width: 112, height: 44, borderRadius: theme.radii.pill },
   discoveryCard: { flexDirection: 'row', alignItems: 'flex-start', gap: theme.spacing.smd, padding: theme.spacing.md, borderRadius: theme.radii.surface },
   discoveryCopy: { flex: 1, minWidth: 0 },
   discoveryTitle: { fontFamily: 'Inter_700Bold', fontSize: theme.typography.body.fontSize, marginBottom: theme.spacing.xs },
@@ -258,6 +280,7 @@ const styles = StyleSheet.create({
   sectionHeader: { fontFamily: 'Inter_700Bold', fontSize: theme.typography.h3.fontSize, marginTop: theme.spacing.md, marginBottom: theme.spacing.sm },
   result: { minHeight: 80, padding: theme.spacing.smd, borderRadius: theme.radii.control, borderWidth: 2, marginBottom: theme.spacing.sm, flexDirection: 'row', alignItems: 'center' },
   resultImage: { width: 58, height: 58, borderRadius: theme.radii.sm },
+  resultIcon: { width: 58, height: 58, borderRadius: theme.radii.sm, alignItems: 'center', justifyContent: 'center' },
   resultCopy: { flex: 1, minWidth: 0, marginLeft: theme.spacing.smd },
   resultType: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs, marginBottom: 2 },
   typeText: { fontFamily: 'Inter_600SemiBold', fontSize: 11, textTransform: 'uppercase' },
