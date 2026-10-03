@@ -13,6 +13,7 @@ import { ROUTES } from '../../constants/routes';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../../navigation/AuthStack';
 import { getAuthErrorMessage } from '../../services/authService';
+import { Check } from 'lucide-react-native';
 
 type RegisterForm = {
   name: string;
@@ -99,12 +100,12 @@ export const Register: React.FC = () => {
         accessibilityRole="checkbox"
         accessibilityState={{ checked: acceptTerms }}
       >
-        <View style={[styles.checkbox, acceptTerms ? styles.checkboxChecked : null]}>{acceptTerms ? <Text style={styles.checkmark}>?</Text> : null}</View>
+        <View style={[styles.checkbox, acceptTerms ? styles.checkboxChecked : null]}>{acceptTerms ? <Check size={16} color={theme.colors.white} strokeWidth={3} /> : null}</View>
         <Text style={styles.checkboxLabel}>I agree to the Terms</Text>
       </Pressable>
       {submitError ? <Text style={styles.error}>{submitError}</Text> : null}
-      <Button onPress={handleSubmit(onSubmit)} disabled={!acceptTerms || auth.loading} loading={auth.loading} accessibilityLabel="Create Account">Create Account</Button>
-      <Text style={styles.footer}>Already have an account? <Text style={styles.link} onPress={() => navigation.navigate(ROUTES.Login)}>Log In</Text></Text>
+      <Button fullWidth onPress={handleSubmit(onSubmit)} disabled={!acceptTerms || auth.loading} loading={auth.loading} loadingLabel="Creating account" accessibilityLabel="Create Account">Create Account</Button>
+      <View style={styles.footer}><Text style={styles.footerText}>Already have an account?</Text><Button variant="tertiary" size="sm" onPress={() => navigation.navigate(ROUTES.Login)}>Log in</Button></View>
     </FormFrame>
   );
 };
@@ -112,7 +113,7 @@ export const Register: React.FC = () => {
 const styles = StyleSheet.create({
   roleLabel: { color: theme.colors.ink, fontWeight: '700', marginBottom: theme.spacing.sm },
   roleRow: { flexDirection: 'row', gap: theme.spacing.sm, marginBottom: theme.spacing.lg },
-  roleOption: { flex: 1, borderWidth: 1, borderColor: theme.colors.border, padding: theme.spacing.sm, alignItems: 'center' },
+  roleOption: { flex: 1, minHeight: 48, borderWidth: 1, borderColor: theme.colors.border, borderRadius: theme.radii.control, padding: theme.spacing.sm, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.white },
   roleSelected: { borderColor: theme.colors.primary.DEFAULT, backgroundColor: theme.colors.primary.tint },
   roleText: { color: theme.colors.ink, fontWeight: '700' },
   container: {
@@ -151,18 +152,16 @@ const styles = StyleSheet.create({
     color: theme.colors.ink,
     fontSize: theme.typography.body.fontSize,
   },
-  checkmark: {
-    color: theme.colors.white,
-    fontWeight: '700',
-  },
   footer: {
     marginTop: theme.spacing.lg,
-    textAlign: 'center',
-    color: theme.colors.muted,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: theme.spacing.xs,
   },
-  link: {
-    color: theme.colors.primary.DEFAULT,
-    fontWeight: '700',
+  footerText: {
+    color: theme.colors.muted,
   },
   error: {
     color: theme.colors.error,

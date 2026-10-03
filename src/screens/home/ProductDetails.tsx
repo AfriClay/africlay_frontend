@@ -25,6 +25,7 @@ import { catalogKeys } from '../../services/catalogQueries';
 import { getApiErrorMessage } from '../../services/api';
 import { WishlistToggle } from '../../components/domain/WishlistToggle';
 import { ReviewSection } from '../../components/domain/ReviewSection';
+import { Button } from '../../components/ui/Button';
 
 type ProductDetailsRoute = RouteProp<HomeStackParamList, 'ProductDetails'>;
 type ProductDetailsNavigation = CompositeNavigationProp<
@@ -50,18 +51,22 @@ export const ProductDetails: React.FC = () => {
   const auth = useAuth();
   const [authSheetVisible, setAuthSheetVisible] = useState(false);
   const [cartError, setCartError] = useState<string>();
+  const [pendingAction, setPendingAction] = useState<'cart' | 'buy'>();
 
   const handleAddToCart = async () => {
     if (!auth.user) { setAuthSheetVisible(true); return; }
     if (product && !cart.mutating) {
+      setPendingAction('cart');
       setCartError(undefined);
       try {
         await cart.addItem(product.id);
       } catch (error) {
         setCartError(getApiErrorMessage(error, 'Unable to add this item.'));
+        setPendingAction(undefined);
         return;
       }
       setCartEvent(event => event + 1);
+      setPendingAction(undefined);
     }
   };
 
@@ -71,13 +76,16 @@ export const ProductDetails: React.FC = () => {
       return;
     }
     if (product && !cart.mutating) {
+      setPendingAction('buy');
       setCartError(undefined);
       try {
         await cart.addItem(product.id);
       } catch (error) {
         setCartError(getApiErrorMessage(error, 'Unable to add this item.'));
+        setPendingAction(undefined);
         return;
       }
+      setPendingAction(undefined);
       (navigation as any).navigate('Checkout');
     }
   };
@@ -88,11 +96,8 @@ export const ProductDetails: React.FC = () => {
 
   const actions = <View onLayout={event => setActionHeight(event.nativeEvent.layout.height)} style={[styles.actions, isExpanded && styles.desktopActions]}>
     <View style={styles.buttonRow}>
-      <Pressable style={styles.outlineButton} onPress={() => void handleAddToCart()} disabled={cart.mutating} accessibilityRole="button">
-        <ShoppingCart color={theme.colors.primary.DEFAULT} size={20} />
-        <Text style={styles.outlineText}>Add to Cart</Text>
-      </Pressable>
-      <Pressable style={styles.primaryButton} onPress={() => void buyNow()} disabled={cart.mutating} accessibilityRole="button"><Text style={styles.primaryText}>Buy Now</Text></Pressable>
+      <Button style={styles.actionButton} variant="secondary" icon={<ShoppingCart color={theme.colors.primary.DEFAULT} size={20} />} onPress={() => void handleAddToCart()} disabled={cart.mutating} loading={pendingAction === 'cart'} loadingLabel="Adding">Add to cart</Button>
+      <Button style={styles.actionButton} onPress={() => void buyNow()} disabled={cart.mutating} loading={pendingAction === 'buy'} loadingLabel="Preparing">Buy now</Button>
     </View>
   </View>;
 
@@ -231,36 +236,10 @@ const styles = StyleSheet.create({
   },
   buttonRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    gap: theme.spacing.sm,
   },
-  outlineButton: {
+  actionButton: {
     flex: 1,
-    backgroundColor: theme.colors.white,
-    borderRadius: theme.radii.md,
-    borderWidth: 1,
-    borderColor: theme.colors.primary.DEFAULT,
-    padding: theme.spacing.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: theme.spacing.sm,
-    flexDirection: 'row',
-  },
-  outlineText: {
-    marginLeft: theme.spacing.xs,
-    color: theme.colors.primary.DEFAULT,
-    fontWeight: '700',
-  },
-  primaryButton: {
-    flex: 1,
-    backgroundColor: theme.colors.primary.DEFAULT,
-    borderRadius: theme.radii.md,
-    padding: theme.spacing.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  primaryText: {
-    color: theme.colors.white,
-    fontWeight: '700',
   },
   loading: {
     color: theme.colors.muted,

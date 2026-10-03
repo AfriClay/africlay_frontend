@@ -163,7 +163,7 @@ export const AddEditProduct: React.FC = () => {
     <TextInput value={description} onChangeText={setDescription} placeholder="Describe the product, materials, and condition" placeholderTextColor={theme.colors.muted} multiline style={styles.description} />
     <Text style={styles.label}>Specific category</Text>
     {categoriesQuery.isLoading ? <Text style={styles.optionMessage}>Loading categories...</Text> :
-      categoriesQuery.isError ? <Pressable onPress={() => void categoriesQuery.refetch()} accessibilityRole="button" accessibilityLabel="Retry loading product categories"><Text style={styles.optionError}>Unable to load categories. Tap to retry.</Text></Pressable> :
+      categoriesQuery.isError ? <View style={styles.optionFailure}><Text style={styles.optionError}>Unable to load categories.</Text><Button size="sm" variant="tertiary" onPress={() => void categoriesQuery.refetch()} accessibilityLabel="Retry loading product categories">Retry</Button></View> :
         categoryOptions.length === 0 ? <Text style={styles.optionMessage}>No categories are available. You can save a draft, but a category is required to publish.</Text> :
           <View style={styles.categoryTree}>{categoryOptions.map(({ category }) =>
             <Pressable key={category.id} onPress={() => setCategoryId(current => current === category.id ? undefined : category.id)}
@@ -173,7 +173,7 @@ export const AddEditProduct: React.FC = () => {
             </Pressable>)}</View>}
     <Text style={styles.label}>Tags</Text>
     {tagsQuery.isLoading ? <Text style={styles.optionMessage}>Loading optional tags...</Text> :
-      tagsQuery.isError ? <Pressable onPress={() => void tagsQuery.refetch()} accessibilityRole="button" accessibilityLabel="Retry loading product tags"><Text style={styles.optionError}>Optional tags could not be loaded. Tap to retry.</Text></Pressable> :
+      tagsQuery.isError ? <View style={styles.optionFailure}><Text style={styles.optionError}>Optional tags could not be loaded.</Text><Button size="sm" variant="tertiary" onPress={() => void tagsQuery.refetch()} accessibilityLabel="Retry loading product tags">Retry</Button></View> :
         (tagsQuery.data ?? []).length === 0 ? <Text style={styles.optionMessage}>No optional tags are available.</Text> :
           <View style={styles.categories}>{(tagsQuery.data ?? []).map(item =>
             <Pressable key={item.id} onPress={() => setTagIds(current => current.includes(item.id) ? current.filter(id => id !== item.id) : [...current, item.id])} style={[styles.category, tagIds.includes(item.id) && styles.categoryActive]} accessibilityRole="button">
@@ -207,7 +207,7 @@ export const AddEditProduct: React.FC = () => {
       {existingImages.map(uri => <Image key={uri} source={{ uri }} style={styles.image} />)}
       {images.map(asset => <View key={asset.uri}>
         <Image source={{ uri: asset.uri }} style={styles.image} />
-        <Pressable style={styles.removeImage} onPress={() => { pendingUploads.current = pendingUploads.current.filter(image => image.uri !== asset.uri); setImages(current => current.filter(image => image.uri !== asset.uri)); }} accessibilityRole="button" accessibilityLabel="Remove selected image"><X color={theme.colors.white} size={15} /></Pressable>
+        <Button variant="icon" size="sm" style={styles.removeImage} onPress={() => { pendingUploads.current = pendingUploads.current.filter(image => image.uri !== asset.uri); setImages(current => current.filter(image => image.uri !== asset.uri)); }} accessibilityLabel="Remove selected image" icon={<X color={theme.colors.white} size={15} />} />
       </View>)}
     </View>
     {error && <Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
@@ -241,11 +241,12 @@ const styles = StyleSheet.create({
   statusSummary: { color: theme.colors.muted, fontSize: theme.typography.small.fontSize, marginTop: theme.spacing.xs, marginBottom: theme.spacing.md },
   imageGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm, paddingBottom: theme.spacing.md },
   image: { width: 104, height: 104, borderRadius: theme.radii.md },
-  removeImage: { position: 'absolute', top: 5, right: 5, width: 26, height: 26, borderRadius: 13, backgroundColor: theme.colors.error, alignItems: 'center', justifyContent: 'center' },
+  removeImage: { position: 'absolute', top: 4, right: 4, width: 40, height: 40, minWidth: 40, minHeight: 40, borderRadius: 20, backgroundColor: theme.colors.error, borderColor: theme.colors.error },
   addImage: { width: 104, height: 104, borderRadius: theme.radii.md, borderWidth: 1, borderStyle: 'dashed', borderColor: theme.colors.primary.DEFAULT, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.white },
   addImageText: { color: theme.colors.primary.DEFAULT, fontWeight: '700', marginTop: theme.spacing.xs, fontSize: theme.typography.small.fontSize, textAlign: 'center' },
   error: { color: theme.colors.error, marginBottom: theme.spacing.md },
   optionMessage: { color: theme.colors.muted, lineHeight: 20, marginBottom: theme.spacing.md },
-  optionError: { color: theme.colors.error, lineHeight: 20, marginBottom: theme.spacing.md, textDecorationLine: 'underline' },
+  optionFailure: { alignItems: 'flex-start', marginBottom: theme.spacing.md },
+  optionError: { color: theme.colors.error, lineHeight: 20 },
   validationMessage: { color: theme.colors.muted, lineHeight: 20, marginBottom: theme.spacing.sm },
 });

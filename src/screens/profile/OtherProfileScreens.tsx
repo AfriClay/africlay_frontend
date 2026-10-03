@@ -49,9 +49,9 @@ export const MyAddresses: React.FC = () => {
           <MapPin color={theme.colors.primary.DEFAULT} size={20} />
           <View style={styles.rowContent}><Text style={styles.name}>{item.street_address}{item.is_default ? ' (Default)' : ''}</Text>
             <Text style={styles.note}>{[item.city, item.postal_code, item.country].filter(Boolean).join(', ')}</Text>
-            <View style={styles.actions}><Pressable accessibilityRole="button" accessibilityLabel={`Edit ${item.street_address}`} onPress={() => setEditing(item)}><Text style={styles.link}>Edit</Text></Pressable>
-              {deleteId === item.id ? <><Pressable accessibilityRole="button" onPress={() => void remove(item.id)} disabled={deleting}><Text style={styles.error}>Confirm delete</Text></Pressable><Pressable accessibilityRole="button" onPress={() => setDeleteId(undefined)}><Text style={styles.link}>Cancel</Text></Pressable></> :
-                <Pressable accessibilityRole="button" accessibilityLabel={`Delete ${item.street_address}`} onPress={() => setDeleteId(item.id)}><Text style={styles.link}>Delete</Text></Pressable>}
+            <View style={styles.actions}><Button size="sm" variant="tertiary" accessibilityLabel={`Edit ${item.street_address}`} onPress={() => setEditing(item)}>Edit</Button>
+              {deleteId === item.id ? <><Button size="sm" variant="destructive" onPress={() => void remove(item.id)} loading={deleting} loadingLabel="Deleting">Confirm delete</Button><Button size="sm" variant="tertiary" onPress={() => setDeleteId(undefined)} disabled={deleting}>Cancel</Button></> :
+                <Button size="sm" variant="tertiary" accessibilityLabel={`Delete ${item.street_address}`} onPress={() => setDeleteId(item.id)}>Delete</Button>}
             </View>
           </View>
         </View>}
@@ -133,7 +133,6 @@ const styles = StyleSheet.create({
   name: { color: theme.colors.ink, fontWeight: '700' },
   note: { color: theme.colors.muted, marginVertical: theme.spacing.xs },
   actions: { flexDirection: 'row', gap: theme.spacing.lg, marginTop: theme.spacing.sm },
-  link: { color: theme.colors.primary.DEFAULT, fontWeight: '700' },
   error: { color: theme.colors.error, marginVertical: theme.spacing.sm },
   success: { color: theme.colors.success, marginVertical: theme.spacing.sm },
 });

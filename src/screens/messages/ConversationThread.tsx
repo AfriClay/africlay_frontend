@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, useState } from 'react';
-import { FlatList, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { FlatList, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { RouteProp, useRoute } from '@react-navigation/native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -12,6 +12,7 @@ import { getApiErrorMessage } from '../../services/api';
 import { messageService } from '../../services/messageService';
 import { theme } from '../../theme';
 import { Message } from '../../types/message';
+import { Button } from '../../components/ui/Button';
 
 export const ConversationThread: React.FC = () => {
   const { params } = useRoute<RouteProp<MessagesStackParamList, 'ConversationThread'>>();
@@ -58,10 +59,7 @@ export const ConversationThread: React.FC = () => {
       <View style={styles.composer}>
         <TextInput value={text} onChangeText={setText} placeholder="Write a message..." placeholderTextColor={theme.colors.muted}
           style={styles.input} accessibilityLabel="Message input" returnKeyType="send" onSubmitEditing={() => void send()} />
-        <Pressable onPress={() => void send()} disabled={sending || !text.trim() || !userId} style={styles.sendButton}
-          accessibilityRole="button" accessibilityState={{ disabled: sending || !text.trim() || !userId }}>
-          <Text style={styles.sendText}>{sending ? 'Sending...' : 'Send'}</Text>
-        </Pressable>
+        <Button onPress={() => void send()} disabled={!text.trim() || !userId} loading={sending} loadingLabel="Sending" style={styles.sendButton}>Send</Button>
       </View>
     </KeyboardAvoidingView>
     <GuestAuthSheet visible={authSheet} onClose={() => setAuthSheet(false)} description="Log in to message sellers." />
@@ -76,9 +74,7 @@ const styles = StyleSheet.create({
   composer: { flexDirection: 'row', padding: theme.spacing.md, borderTopWidth: 1, borderTopColor: theme.colors.border, backgroundColor: theme.colors.white },
   input: { flex: 1, minHeight: 48, paddingHorizontal: theme.spacing.md, paddingVertical: theme.spacing.sm, color: theme.colors.ink,
     backgroundColor: theme.colors.cream, borderWidth: 1, borderColor: theme.colors.border, borderRadius: theme.radii.md, marginRight: theme.spacing.sm },
-  sendButton: { minWidth: 76, minHeight: 48, backgroundColor: theme.colors.primary.DEFAULT, paddingHorizontal: theme.spacing.md,
-    borderRadius: theme.radii.md, alignItems: 'center', justifyContent: 'center' },
-  sendText: { color: theme.colors.white, fontWeight: '700', textAlign: 'center' },
+  sendButton: { minWidth: 88 },
   notice: { color: theme.colors.muted, padding: theme.spacing.lg },
   error: { color: theme.colors.error, padding: theme.spacing.md },
 });

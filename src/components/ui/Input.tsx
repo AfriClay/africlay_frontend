@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, TextInput, TextInputProps, View, Pressable } from 'react-native';
+import { StyleSheet, Text, TextInput, TextInputProps, View } from 'react-native';
 import { theme } from '../../theme';
 import { Eye, EyeOff } from 'lucide-react-native';
+import { Button } from './Button';
 
 interface InputProps {
   label?: string;
@@ -52,14 +53,14 @@ export const Input: React.FC<InputProps> = ({
           onBlur={() => setFocused(false)}
         />
         {secureTextEntry ? (
-          <Pressable
+          <Button
+            variant="icon"
+            size="sm"
             onPress={() => setVisible(v => !v)}
-            accessibilityRole="button"
             accessibilityLabel={visible ? 'Hide password' : 'Show password'}
             style={styles.eyeButton}
-          >
-            {visible ? <Eye color={theme.colors.muted} size={18} /> : <EyeOff color={theme.colors.muted} size={18} />}
-          </Pressable>
+            icon={visible ? <Eye color={theme.colors.muted} size={18} /> : <EyeOff color={theme.colors.muted} size={18} />}
+          />
         ) : null}
       </View>
       {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -95,10 +96,7 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.body.fontSize,
   },
   eyeButton: {
-    width: 44,
-    height: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexShrink: 0,
   },
   inputFocused: {
     borderColor: theme.colors.primary.DEFAULT,

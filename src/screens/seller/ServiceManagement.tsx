@@ -103,11 +103,11 @@ export const ServiceManagement: React.FC = () => {
       {!servicesQuery.isLoading && !servicesQuery.data?.length && <Text style={styles.note}>No services yet.</Text>}
       {servicesQuery.data?.map(service => <View key={service.id} style={styles.row}>
         <View style={styles.rowText}><Text style={styles.name}>{service.title}</Text><Text style={styles.note}>{service.status}</Text></View>
-        <Pressable onPress={() => open(service)} accessibilityRole="button" accessibilityLabel={`Edit ${service.title}`}><Text style={styles.link}>Edit</Text></Pressable>
+        <Button size="sm" variant="tertiary" onPress={() => open(service)} accessibilityLabel={`Edit ${service.title}`}>Edit</Button>
         {deleteId === service.id ? <>
-          <Pressable onPress={() => void remove(service.id)} disabled={busy} accessibilityRole="button"><Text style={styles.error}>Confirm delete</Text></Pressable>
-          <Pressable onPress={() => setDeleteId(undefined)} accessibilityRole="button"><Text style={styles.link}>Cancel</Text></Pressable>
-        </> : <Pressable onPress={() => setDeleteId(service.id)} accessibilityRole="button" accessibilityLabel={`Delete ${service.title}`}><Text style={styles.error}>Delete</Text></Pressable>}
+          <Button size="sm" variant="destructive" onPress={() => void remove(service.id)} loading={busy} loadingLabel="Deleting">Confirm delete</Button>
+          <Button size="sm" variant="tertiary" onPress={() => setDeleteId(undefined)} disabled={busy}>Cancel</Button>
+        </> : <Button size="sm" variant="tertiary" onPress={() => setDeleteId(service.id)} accessibilityLabel={`Delete ${service.title}`}>Delete</Button>}
       </View>)}
     </View>}
   </ScrollView>;
@@ -123,6 +123,5 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md, padding: theme.spacing.md, backgroundColor: theme.colors.white, marginTop: theme.spacing.sm },
   rowText: { flex: 1 }, name: { color: theme.colors.ink, fontWeight: '700' },
   note: { color: theme.colors.muted, marginTop: theme.spacing.xs },
-  link: { color: theme.colors.primary.DEFAULT, fontWeight: '700' },
   error: { color: theme.colors.error, marginVertical: theme.spacing.sm },
 });

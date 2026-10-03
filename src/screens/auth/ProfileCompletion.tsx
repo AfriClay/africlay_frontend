@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text } from 'react-native';
 import { theme } from '../../theme';
 import { Button } from '../../components/ui/Button';
 import { useAuth } from '../../hooks/useAuth';
@@ -36,10 +36,8 @@ export const ProfileCompletion: React.FC = () => {
       <Input label="Full name" value={name} onChangeText={setName} placeholder="Your name" accessibilityLabel="Full name" />
       <Input label="Phone" value={phone} onChangeText={setPhone} placeholder="Phone number" keyboardType="phone-pad" accessibilityLabel="Phone number" />
       {error && <Text style={styles.copy} accessibilityRole="alert">{error}</Text>}
-      <Button onPress={() => void handleSave()} loading={saving} accessibilityLabel="Save and Continue">Save & Continue</Button>
-      <Pressable onPress={handleSkip} accessibilityRole="button">
-        <Text style={styles.skip}>Skip for now</Text>
-      </Pressable>
+      <Button fullWidth onPress={() => void handleSave()} loading={saving} loadingLabel="Saving" accessibilityLabel="Save and Continue">Save & Continue</Button>
+      <Button fullWidth variant="tertiary" onPress={handleSkip} disabled={saving}>Skip for now</Button>
     </ScrollView>
   );
 };
@@ -73,11 +71,5 @@ const styles = StyleSheet.create({
     color: theme.colors.muted,
     fontSize: theme.typography.body.fontSize,
     textAlign: 'center',
-  },
-  skip: {
-    marginTop: theme.spacing.md,
-    textAlign: 'center',
-    color: theme.colors.primary.DEFAULT,
-    fontSize: theme.typography.body.fontSize,
   },
 });

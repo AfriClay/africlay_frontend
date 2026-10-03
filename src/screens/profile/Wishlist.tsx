@@ -8,6 +8,7 @@ import { Trash2 } from 'lucide-react-native';
 import { CatalogImage } from '../../components/ui/CatalogImage';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { ErrorState } from '../../components/ui/ErrorState';
+import { Button } from '../../components/ui/Button';
 import { useAuth } from '../../hooks/useAuth';
 import { useWishlist } from '../../hooks/useWishlist';
 import { ProfileStackParamList } from '../../navigation/ProfileStack';
@@ -64,18 +65,14 @@ export const Wishlist: React.FC = () => {
             <CatalogImage uri={product?.images?.[0]} label={item.productName} style={styles.image} />
             <View style={styles.copy}><Text style={styles.name} numberOfLines={2}>{item.productName}</Text><Text style={styles.price}>{formatCurrency(item.productPrice, product?.currency ?? 'KES')}</Text></View>
           </Pressable>
-          <Pressable
+          <Button
+            variant="icon"
+            size="sm"
             onPress={() => void removeItem(item.productId)}
             disabled={removing}
-            accessibilityRole="button"
             accessibilityLabel={`Remove ${item.productName} from wishlist`}
-            accessibilityState={{ busy: removing, disabled: removing }}
-            style={({ pressed }) => [styles.remove, pressed && styles.pressed]}
-          >
-            {removing
-              ? <ActivityIndicator size="small" color={theme.colors.error} />
-              : <Trash2 size={20} color={theme.colors.error} />}
-          </Pressable>
+            icon={removing ? <ActivityIndicator size="small" color={theme.colors.error} /> : <Trash2 size={20} color={theme.colors.error} />}
+          />
         </View>;
       }}
     />
@@ -93,7 +90,6 @@ const styles = StyleSheet.create({
   copy: { flex: 1, minWidth: 0, marginHorizontal: theme.spacing.md },
   name: { color: theme.colors.ink, fontWeight: '800' },
   price: { color: theme.colors.secondary.dark, fontWeight: '800', marginTop: theme.spacing.xs },
-  remove: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   pressed: { opacity: 0.7 },
   error: { color: theme.colors.error, marginBottom: theme.spacing.md },
 });

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
 import { OTPInput } from '../../components/ui/OTPInput';
 import { Button } from '../../components/ui/Button';
 import { useNavigation } from '@react-navigation/native';
@@ -72,10 +72,8 @@ export const OTPVerification: React.FC = () => {
       <Text style={styles.copy}>Enter the 6-digit code sent to {pendingEmail ?? 'your email'}.</Text>
       <OTPInput value={code} onChange={setCode} onComplete={handleComplete} error={error} accessibilityLabel="Email verification code" />
       {notice ? <Text style={styles.notice}>{notice}</Text> : null}
-      <Pressable onPress={handleResend} disabled={!canResend || resending} accessibilityRole="button">
-        <Text style={[styles.resend, !canResend || resending ? styles.resendDisabled : null]}>Resend code {canResend ? '' : `(${timer}s)`}</Text>
-      </Pressable>
-      <Button onPress={handleComplete} disabled={code.length !== 6 || verifying} loading={verifying} accessibilityLabel="Verify email">Verify Email</Button>
+      <Button fullWidth variant="tertiary" onPress={handleResend} disabled={!canResend || resending} loading={resending} loadingLabel="Sending code">Resend code {canResend ? '' : `(${timer}s)`}</Button>
+      <Button fullWidth onPress={handleComplete} disabled={code.length !== 6 || verifying} loading={verifying} loadingLabel="Verifying" accessibilityLabel="Verify email">Verify Email</Button>
     </FormFrame>
   );
 };
@@ -102,13 +100,5 @@ const styles = StyleSheet.create({
     color: theme.colors.primary.DEFAULT,
     textAlign: 'center',
     marginBottom: theme.spacing.sm,
-  },
-  resend: {
-    color: theme.colors.primary.DEFAULT,
-    textAlign: 'center',
-    marginBottom: theme.spacing.lg,
-  },
-  resendDisabled: {
-    color: theme.colors.muted,
   },
 });

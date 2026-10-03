@@ -1,9 +1,10 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { Pencil, Trash2 } from 'lucide-react-native';
 import { theme } from '../../theme';
 import { Review } from '../../types/review';
 import { RatingBadge } from '../ui/RatingBadge';
+import { Button } from '../ui/Button';
 
 interface ReviewCardProps {
   review: Review;
@@ -22,8 +23,8 @@ export const ReviewCard: React.FC<ReviewCardProps> = ({ review, onEdit, onDelete
     <View style={styles.footer}>
       <Text style={styles.date}>{new Date(review.createdAt).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' })}</Text>
       {(onEdit || onDelete) && <View style={styles.actions}>
-        {onEdit && <Pressable onPress={onEdit} accessibilityRole="button" accessibilityLabel="Edit review" style={styles.iconButton}><Pencil size={17} color={theme.colors.primary.DEFAULT} /></Pressable>}
-        {onDelete && <Pressable onPress={onDelete} disabled={deleting} accessibilityRole="button" accessibilityLabel="Delete review" style={styles.iconButton}><Trash2 size={17} color={theme.colors.error} /></Pressable>}
+        {onEdit && <Button variant="icon" size="sm" onPress={onEdit} accessibilityLabel="Edit review" icon={<Pencil size={17} color={theme.colors.primary.DEFAULT} />} />}
+        {onDelete && <Button variant="icon" size="sm" onPress={onDelete} disabled={deleting} accessibilityLabel="Delete review" icon={<Trash2 size={17} color={theme.colors.error} />} />}
       </View>}
     </View>
   </View>
@@ -57,5 +58,4 @@ const styles = StyleSheet.create({
   },
   footer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   actions: { flexDirection: 'row', gap: theme.spacing.xs },
-  iconButton: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
 });

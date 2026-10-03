@@ -1,5 +1,5 @@
 import React from 'react';
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -43,9 +43,7 @@ export const ProductManagement: React.FC = () => {
             </View>
           <Text style={[styles.stock, lowStock ? styles.lowStock : null]}>{item.availableQuantity} in stock{lowStock ? ' · Low stock' : ''}</Text>
           </View>
-          <View style={styles.actions}>
-            <Pressable onPress={() => navigation.navigate('AddEditProduct', { productId: item.id })} style={styles.action} accessibilityRole="button"><Pencil color={theme.colors.primary.DEFAULT} size={17} /><Text style={styles.edit}>Edit</Text></Pressable>
-          </View>
+          <Button size="sm" variant="tertiary" icon={<Pencil color={theme.colors.primary.DEFAULT} size={17} />} onPress={() => navigation.navigate('AddEditProduct', { productId: item.id })}>Edit</Button>
         </View>
       </View>
     );
@@ -55,7 +53,7 @@ export const ProductManagement: React.FC = () => {
     <SafeAreaView style={styles.container} edges={['bottom']}>
       <View style={styles.header}>
         <Text style={styles.summary}>{products.length} product{products.length === 1 ? '' : 's'}</Text>
-        <Pressable style={styles.addIcon} onPress={() => navigation.navigate('AddEditProduct')} accessibilityRole="button"><PackagePlus color={theme.colors.white} size={21} /></Pressable>
+        <Button variant="icon" icon={<PackagePlus color={theme.colors.primary.DEFAULT} size={21} />} onPress={() => navigation.navigate('AddEditProduct')} accessibilityLabel="Add product" />
       </View>
       {isLoading ? <Text style={styles.loading}>Loading products…</Text> : (
         <FlatList
@@ -74,7 +72,6 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.cream },
   header: { paddingHorizontal: theme.spacing.lg, paddingVertical: theme.spacing.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   summary: { color: theme.colors.muted },
-  addIcon: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.primary.DEFAULT },
   list: { padding: theme.spacing.lg, paddingTop: 0, paddingBottom: theme.spacing.xxl },
   emptyList: { flexGrow: 1, padding: theme.spacing.lg },
   row: { padding: theme.spacing.sm, borderRadius: theme.radii.lg, backgroundColor: theme.colors.white, marginBottom: theme.spacing.md, ...theme.shadows.sm },
@@ -90,10 +87,6 @@ const styles = StyleSheet.create({
   statusArchivedText: { color: theme.colors.muted },
   stock: { color: theme.colors.muted, fontSize: theme.typography.small.fontSize },
   lowStock: { color: theme.colors.error, fontWeight: '700' },
-  actions: { flexDirection: 'row', gap: theme.spacing.md },
-  action: { minHeight: 36, flexDirection: 'row', alignItems: 'center', paddingHorizontal: theme.spacing.xs },
-  edit: { color: theme.colors.primary.DEFAULT, fontWeight: '700', marginLeft: theme.spacing.xs },
-  delete: { color: theme.colors.error, fontWeight: '700', marginLeft: theme.spacing.xs },
   loading: { color: theme.colors.muted, padding: theme.spacing.lg },
   empty: { flex: 1, justifyContent: 'center' },
 });

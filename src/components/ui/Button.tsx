@@ -8,6 +8,7 @@ import {
   Text,
   View,
   type StyleProp,
+  type AccessibilityState,
   type ViewStyle,
 } from 'react-native';
 import { AlertCircle, CheckCircle2 } from 'lucide-react-native';
@@ -34,6 +35,7 @@ export interface ButtonProps {
   iconPosition?: 'start' | 'end';
   fullWidth?: boolean;
   accessibilityLabel?: string;
+  accessibilityState?: AccessibilityState;
   style?: StyleProp<ViewStyle>;
   testID?: string;
 }
@@ -53,6 +55,7 @@ export const Button: React.FC<ButtonProps> = ({
   iconPosition = 'start',
   fullWidth = false,
   accessibilityLabel,
+  accessibilityState,
   style,
   testID,
 }) => {
@@ -103,7 +106,7 @@ export const Button: React.FC<ButtonProps> = ({
       onPress={onPress}
       disabled={blocked}
       accessibilityRole="button"
-      accessibilityState={{ disabled: blocked, busy: loading }}
+      accessibilityState={{ ...accessibilityState, disabled: blocked, busy: loading }}
       accessibilityLabel={accessibilityLabel}
       accessibilityLiveRegion={loading || status !== 'idle' ? 'polite' : 'none'}
       onFocus={() => setFocused(true)}

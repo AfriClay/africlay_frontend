@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { theme } from '../../theme';
 import { FormFrame } from '../../components/layout/FormFrame';
 import { Button } from '../../components/ui/Button';
@@ -18,12 +18,10 @@ export const GetStarted: React.FC = () => {
       <Text style={styles.title}>Support Local. Buy African. Grow Africa.</Text>
       <Text style={styles.copy}>A secure marketplace for authentic products, services, and trusted sellers across Africa.</Text>
       <View style={styles.actions}>
-        <Button onPress={() => navigation.navigate(ROUTES.Login)} accessibilityLabel="Login">Login</Button>
-        <Button variant="outline" onPress={() => navigation.navigate(ROUTES.Register)} accessibilityLabel="Create Account">Create Account</Button>
+        <Button fullWidth onPress={() => navigation.navigate(ROUTES.Login)} accessibilityLabel="Login">Login</Button>
+        <Button fullWidth variant="secondary" onPress={() => navigation.navigate(ROUTES.Register)} accessibilityLabel="Create Account">Create Account</Button>
       </View>
-      <Pressable onPress={auth.continueAsGuest} accessibilityRole="button">
-        <Text style={styles.guestLink}>Continue as Guest</Text>
-      </Pressable>
+      <Button fullWidth variant="tertiary" onPress={auth.continueAsGuest}>Continue as guest</Button>
     </FormFrame>
   );
 };
@@ -49,11 +47,5 @@ const styles = StyleSheet.create({
   actions: {
     gap: theme.spacing.md,
     marginBottom: theme.spacing.md,
-  },
-  guestLink: {
-    color: theme.colors.primary.DEFAULT,
-    fontSize: theme.typography.body.fontSize,
-    textAlign: 'center',
-    marginTop: theme.spacing.sm,
   },
 });

@@ -4,6 +4,7 @@ import { ChevronDown, X } from 'lucide-react-native';
 import { CatalogCategory } from '../../services/productService';
 import { theme } from '../../theme';
 import { rootCategories } from '../../utils/categoryTree';
+import { Button } from '../ui/Button';
 
 type Props = {
   categories: CatalogCategory[];
@@ -92,7 +93,7 @@ export const CategoryMegaMenu = ({ categories, activeSlug, onSelect }: Props) =>
         <Pressable onPress={() => select(renderedRoot)} accessibilityRole="button" accessibilityLabel={`Shop all ${renderedRoot.label}`} style={styles.shopAll}>
           <Text style={styles.panelTitle}>{renderedRoot.label}</Text><Text style={styles.shopAllText}>Shop all</Text>
         </Pressable>
-        <Pressable onPress={close} accessibilityRole="button" accessibilityLabel="Close category menu" style={styles.close}><X size={20} color={theme.colors.ink} /></Pressable>
+        <Button variant="icon" size="sm" onPress={close} accessibilityLabel="Close category menu" icon={<X size={20} color={theme.colors.ink} />} />
       </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.columns}>
         {(children.get(renderedRoot.id) ?? []).map(branch => <View key={branch.id} style={styles.column}>
@@ -121,7 +122,6 @@ const styles = StyleSheet.create({
   shopAll: { flex: 1, minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md },
   panelTitle: { color: theme.colors.ink, fontSize: 18, fontWeight: '800' },
   shopAllText: { color: theme.colors.primary.DEFAULT, fontWeight: '700' },
-  close: { width: 48, height: 48, alignItems: 'center', justifyContent: 'center' },
   columns: { padding: theme.spacing.md, gap: theme.spacing.lg },
   column: { width: 210, flexShrink: 0 },
   branchButton: { minHeight: 40, justifyContent: 'center', borderBottomWidth: 1, borderBottomColor: theme.colors.border },

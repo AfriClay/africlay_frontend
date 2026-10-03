@@ -14,6 +14,7 @@ import { confirmLogout } from '../../utils/confirmLogout';
 import { useQuery } from '@tanstack/react-query';
 import { orderService } from '../../services/orderService';
 import { useWishlist } from '../../hooks/useWishlist';
+import { Button } from '../../components/ui/Button';
 
 type ProfileNavigation = NativeStackNavigationProp<ProfileStackParamList, 'ProfileOverview'>;
 type ProfileRouteName = 'MyOrders' | 'MyAddresses' | 'Wishlist' | 'Notifications' | 'MyBookings' | 'Settings' | 'SupportHelp';
@@ -74,16 +75,11 @@ export const Profile: React.FC = () => {
               </Pressable>
             );
           })}
-          {auth.user ? (
-            <Pressable style={[styles.menuRow, isExpanded && styles.desktopRow]} onPress={requestLogout} accessibilityRole="button">
-              <View style={styles.menuIcon}><LogOut color={theme.colors.error} size={20} /></View>
-              <Text style={styles.logoutLabel}>Logout</Text>
-            </Pressable>
+          <View style={styles.accountAction}>{auth.user ? (
+            <Button fullWidth variant="destructive" icon={<LogOut color={theme.colors.white} size={19} />} onPress={requestLogout}>Log out</Button>
           ) : (
-            <Pressable style={styles.signInButton} onPress={() => setAuthSheetVisible(true)} accessibilityRole="button">
-              <Text style={styles.signInText}>Create Account or Log In</Text>
-            </Pressable>
-          )}
+            <Button fullWidth onPress={() => setAuthSheetVisible(true)}>Create account or log in</Button>
+          )}</View>
         </View>
       </ScrollView>
       <GuestAuthSheet visible={authSheetVisible} onClose={() => setAuthSheetVisible(false)} description="Create an account to keep your orders, bookings, and saved items in one place." />
@@ -109,7 +105,5 @@ const styles = StyleSheet.create({
   menuRow: { minHeight: 54, flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: theme.colors.border },
   menuIcon: { width: 34, alignItems: 'flex-start' },
   menuLabel: { flex: 1, color: theme.colors.ink, fontSize: theme.typography.body.fontSize },
-  logoutLabel: { color: theme.colors.error, fontSize: theme.typography.body.fontSize, fontWeight: '700' },
-  signInButton: { minHeight: 50, borderRadius: theme.radii.md, backgroundColor: theme.colors.primary.DEFAULT, alignItems: 'center', justifyContent: 'center', marginTop: theme.spacing.lg },
-  signInText: { color: theme.colors.white, fontWeight: '800' },
+  accountAction: { width: '100%', marginTop: theme.spacing.lg },
 });

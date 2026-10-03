@@ -75,7 +75,7 @@ export const ForgotPassword: React.FC = () => {
         <OTPInput value={code} onChange={setCode} onComplete={() => undefined} error={submitError ?? undefined} accessibilityLabel="Password reset code" />
         <Input label="New password" value={password} onChangeText={setPassword} secureTextEntry placeholder="New password" accessibilityLabel="New password" />
         <Input label="Confirm password" value={confirmPassword} onChangeText={setConfirmPassword} secureTextEntry placeholder="Repeat new password" accessibilityLabel="Confirm new password" />
-        <Button onPress={handleReset} loading={loading} disabled={loading} accessibilityLabel="Reset password">Reset Password</Button>
+        <Button fullWidth onPress={handleReset} loading={loading} loadingLabel="Resetting password" disabled={loading} accessibilityLabel="Reset password">Reset Password</Button>
       </FormFrame>
     );
   }
@@ -102,7 +102,7 @@ export const ForgotPassword: React.FC = () => {
         )}
       />
       {submitError ? <Text style={styles.error}>{submitError}</Text> : null}
-      <Button onPress={handleSubmit(onSubmit)} loading={loading} accessibilityLabel="Send reset link">Send Reset Link</Button>
+      <Button fullWidth onPress={handleSubmit(onSubmit)} loading={loading} loadingLabel="Sending reset link" accessibilityLabel="Send reset link">Send Reset Link</Button>
     </FormFrame>
   );
 };

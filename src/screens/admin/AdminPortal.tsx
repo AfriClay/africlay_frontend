@@ -152,7 +152,7 @@ export const AdminPortal: React.FC = () => {
 
   const Overview = () => <View style={styles.page}>
     <View style={styles.pageHeading}><View><Text style={styles.eyebrow}>OPERATIONS</Text><Text style={styles.pageTitle}>Dashboard overview</Text></View></View>
-    {loadError && <View style={styles.errorBand}><Text style={styles.errorText}>Some dashboard data could not be loaded.</Text><Pressable onPress={() => void refresh()} accessibilityRole="button"><Text style={styles.retryText}>Retry</Text></Pressable></View>}
+    {loadError && <View style={styles.errorBand}><Text style={styles.errorText}>Some dashboard data could not be loaded.</Text><Button size="sm" variant="tertiary" onPress={() => void refresh()}>Retry</Button></View>}
     <View style={styles.metrics}>
       <Metric label="Pending KYC" value={kycQuery.isLoading ? '...' : pending.length} icon={ShieldCheck} />
       <Metric label="Active stores" value={storesQuery.isLoading ? '...' : storesQuery.data?.length ?? 0} icon={Store} />
@@ -161,7 +161,7 @@ export const AdminPortal: React.FC = () => {
     </View>
     <View style={[styles.overviewColumns, !isExpanded && styles.stack]}>
       <View style={styles.sectionPanel}>
-        <View style={styles.panelHeading}><Text style={styles.panelTitle}>Pending KYC</Text><Pressable onPress={() => setSection('kyc')} accessibilityRole="button"><Text style={styles.textAction}>View queue</Text></Pressable></View>
+        <View style={styles.panelHeading}><Text style={styles.panelTitle}>Pending KYC</Text><Button size="sm" variant="tertiary" onPress={() => setSection('kyc')}>View queue</Button></View>
         {kycQuery.isLoading ? <Text style={styles.emptyText}>Loading review queue...</Text> : pending.length === 0 ? <Text style={styles.emptyText}>No pending submissions.</Text> : pending.slice(0, 5).map(item => (
           <Pressable key={item.id} style={styles.listRow} onPress={() => openKyc(item.id)} accessibilityRole="button" accessibilityLabel={`Review ${item.storeName}`}>
             <View style={styles.rowMain}><Text style={styles.rowTitle}>{item.storeName}</Text><Text style={styles.rowMeta}>{item.document_type.replace('_', ' ')} - {formatDate(item.submitted_at)}</Text></View>
@@ -170,7 +170,7 @@ export const AdminPortal: React.FC = () => {
         ))}
       </View>
       <View style={styles.sectionPanel}>
-        <View style={styles.panelHeading}><Text style={styles.panelTitle}>Catalog structure</Text><Pressable onPress={() => setSection('taxonomy')} accessibilityRole="button"><Text style={styles.textAction}>Manage</Text></Pressable></View>
+        <View style={styles.panelHeading}><Text style={styles.panelTitle}>Catalog structure</Text><Button size="sm" variant="tertiary" onPress={() => setSection('taxonomy')}>Manage</Button></View>
         <View style={styles.countRow}><Text style={styles.countLabel}>Product categories</Text><Text style={styles.countValue}>{productCategoriesQuery.data?.length ?? 0}</Text></View>
         <View style={styles.countRow}><Text style={styles.countLabel}>Product tags</Text><Text style={styles.countValue}>{tagsQuery.data?.length ?? 0}</Text></View>
         <View style={styles.countRow}><Text style={styles.countLabel}>Service categories</Text><Text style={styles.countValue}>{serviceCategoriesQuery.data?.length ?? 0}</Text></View>
@@ -200,8 +200,8 @@ export const AdminPortal: React.FC = () => {
           </View>
           {selectedKyc.rejection_reason ? <View style={styles.rejectionBand}><Text style={styles.fieldLabel}>Rejection reason</Text><Text style={styles.fieldValue}>{selectedKyc.rejection_reason}</Text></View> : null}
           <View style={styles.detailActions}>
-            <Pressable disabled={!selectedKyc.documentUrl} onPress={() => selectedKyc.documentUrl && void Linking.openURL(selectedKyc.documentUrl)} accessibilityRole="link" accessibilityState={{ disabled: !selectedKyc.documentUrl }} style={[styles.secondaryButton, !selectedKyc.documentUrl && styles.disabled]}><ExternalLink size={17} color={colors.ink} /><Text style={styles.secondaryButtonText}>{selectedKyc.documentUrl ? 'Open document' : 'No document'}</Text></Pressable>
-            {selectedKyc.status === 'pending' && <><Pressable onPress={() => { setReviewDecision('rejected'); setReviewError(undefined); }} accessibilityRole="button" style={styles.rejectButton}><XCircle size={17} color={colors.red} /><Text style={styles.rejectText}>Reject</Text></Pressable><Pressable onPress={() => { setReviewDecision('approved'); setReviewError(undefined); }} accessibilityRole="button" style={styles.approveButton}><CheckCircle2 size={17} color="#FFFFFF" /><Text style={styles.approveText}>Approve</Text></Pressable></>}
+            <Button size="sm" variant="secondary" disabled={!selectedKyc.documentUrl} onPress={() => selectedKyc.documentUrl && void Linking.openURL(selectedKyc.documentUrl)} icon={<ExternalLink size={17} color={colors.ink} />}>{selectedKyc.documentUrl ? 'Open document' : 'No document'}</Button>
+            {selectedKyc.status === 'pending' && <><Button size="sm" variant="destructive" onPress={() => { setReviewDecision('rejected'); setReviewError(undefined); }} icon={<XCircle size={17} color="#FFFFFF" />}>Reject</Button><Button size="sm" onPress={() => { setReviewDecision('approved'); setReviewError(undefined); }} icon={<CheckCircle2 size={17} color="#FFFFFF" />}>Approve</Button></>}
           </View>
         </> : <Text style={styles.emptyText}>Select a submission to review.</Text>}</View>
       </View>}
@@ -211,15 +211,15 @@ export const AdminPortal: React.FC = () => {
     const isTag = taxonomyKind === 'product-tags';
     const recordsForKind = taxonomyQuery.data ?? [];
     return <View style={styles.page}>
-      <View style={styles.pageHeading}><View><Text style={styles.eyebrow}>CATALOG GOVERNANCE</Text><Text style={styles.pageTitle}>Taxonomy</Text></View><Pressable onPress={() => openEditor('new')} accessibilityRole="button" style={styles.primaryCompact}><Text style={styles.approveText}>Add record</Text></Pressable></View>
+      <View style={styles.pageHeading}><View><Text style={styles.eyebrow}>CATALOG GOVERNANCE</Text><Text style={styles.pageTitle}>Taxonomy</Text></View><Button size="sm" onPress={() => openEditor('new')}>Add record</Button></View>
       <View style={styles.segmented}>{(Object.keys(taxonomyLabels) as TaxonomyKind[]).map(kind => <Pressable key={kind} onPress={() => { setTaxonomyKind(kind); setEditor(undefined); }} accessibilityRole="tab" accessibilityState={{ selected: taxonomyKind === kind }} style={[styles.segment, taxonomyKind === kind && styles.segmentActive]}><Text style={[styles.segmentText, taxonomyKind === kind && styles.segmentTextActive]}>{taxonomyLabels[kind]}</Text></Pressable>)}</View>
       {taxonomyQuery.isError ? <ErrorState message="Unable to load taxonomy records." onRetry={() => void taxonomyQuery.refetch()} /> : <View style={[styles.taxonomyLayout, !isExpanded && styles.stack]}>
         <View style={styles.taxonomyList}>
           <View style={styles.tableHeader}><Text style={[styles.tableHeaderText, styles.tableName]}>Name</Text><Text style={[styles.tableHeaderText, styles.tableSlug]}>Slug</Text><Text style={styles.tableAction}>Action</Text></View>
-          {taxonomyQuery.isLoading ? <Text style={styles.emptyText}>Loading records...</Text> : recordsForKind.length === 0 ? <Text style={styles.emptyText}>No records yet.</Text> : recordsForKind.map(item => <View key={item.id} style={styles.tableRow}><View style={styles.tableName}><Text style={styles.rowTitle}>{item.name}</Text>{!isTag && item.parent ? <Text style={styles.rowMeta}>Child category</Text> : null}</View><Text style={[styles.rowMeta, styles.tableSlug]} numberOfLines={1}>{item.slug}</Text><Pressable onPress={() => openEditor(item)} accessibilityRole="button" accessibilityLabel={`Edit ${item.name}`} style={styles.tableAction}><Text style={styles.textAction}>Edit</Text></Pressable></View>)}
+          {taxonomyQuery.isLoading ? <Text style={styles.emptyText}>Loading records...</Text> : recordsForKind.length === 0 ? <Text style={styles.emptyText}>No records yet.</Text> : recordsForKind.map(item => <View key={item.id} style={styles.tableRow}><View style={styles.tableName}><Text style={styles.rowTitle}>{item.name}</Text>{!isTag && item.parent ? <Text style={styles.rowMeta}>Child category</Text> : null}</View><Text style={[styles.rowMeta, styles.tableSlug]} numberOfLines={1}>{item.slug}</Text><Button size="sm" variant="tertiary" onPress={() => openEditor(item)} accessibilityLabel={`Edit ${item.name}`}>Edit</Button></View>)}
         </View>
         <View style={styles.editorPane}>{editor ? <>
-          <View style={styles.panelHeading}><Text style={styles.panelTitle}>{editor === 'new' ? `New ${isTag ? 'tag' : 'category'}` : 'Edit record'}</Text><Pressable onPress={() => setEditor(undefined)} accessibilityRole="button" accessibilityLabel="Close editor" style={styles.iconButton}><X size={18} color={colors.ink} /></Pressable></View>
+          <View style={styles.panelHeading}><Text style={styles.panelTitle}>{editor === 'new' ? `New ${isTag ? 'tag' : 'category'}` : 'Edit record'}</Text><Button variant="icon" size="sm" onPress={() => setEditor(undefined)} accessibilityLabel="Close editor" icon={<X size={18} color={colors.ink} />} /></View>
           <Input label="Name" accessibilityLabel="Taxonomy name" value={draft.name} onChangeText={name => setDraft(value => ({ ...value, name, ...(editor === 'new' && !value.slug ? { slug: slugify(name) } : {}) }))} />
           <Input label="Slug" accessibilityLabel="Taxonomy slug" value={draft.slug} onChangeText={slug => setDraft(value => ({ ...value, slug }))} autoCapitalize="none" />
           {!isTag && <><Input label="Description" accessibilityLabel="Taxonomy description" value={draft.description ?? ''} onChangeText={description => setDraft(value => ({ ...value, description }))} />
@@ -250,17 +250,17 @@ export const AdminPortal: React.FC = () => {
       {isExpanded && <View style={styles.sidebar}>
         <View style={styles.brand}><View style={styles.brandMark}><Text style={styles.brandLetter}>A</Text></View><View><Text style={styles.brandName}>AfriClay</Text><Text style={styles.brandSub}>Admin console</Text></View></View>
         <View style={styles.nav}>{navItems.map(item => { const Icon = item.icon; return <Pressable key={item.key} onPress={() => setSection(item.key)} accessibilityRole="tab" accessibilityState={{ selected: section === item.key }} style={[styles.navItem, section === item.key && styles.navItemActive]}><Icon size={19} color={section === item.key ? '#FFFFFF' : colors.shellMuted} /><Text style={[styles.navText, section === item.key && styles.navTextActive]}>{item.label}</Text></Pressable>; })}</View>
-        <View style={styles.account}><Text style={styles.accountLabel}>SIGNED IN AS</Text><Text style={styles.accountName} numberOfLines={1}>{auth.user?.email}</Text><Text style={styles.accountRole}>{auth.user?.role.replace('_', ' ')}</Text><Pressable onPress={() => confirmLogout(() => void auth.logout())} accessibilityRole="button" style={styles.logout}><LogOut size={18} color={colors.shellMuted} /><Text style={styles.logoutText}>Log out</Text></Pressable></View>
+        <View style={styles.account}><Text style={styles.accountLabel}>SIGNED IN AS</Text><Text style={styles.accountName} numberOfLines={1}>{auth.user?.email}</Text><Text style={styles.accountRole}>{auth.user?.role.replace('_', ' ')}</Text><Button size="sm" variant="secondary" style={styles.logout} onPress={() => confirmLogout(() => void auth.logout())} icon={<LogOut size={18} color={colors.ink} />}>Log out</Button></View>
       </View>}
       <View style={styles.workspace}>
-        <View style={styles.topbar}><View><Text style={styles.mobileTitle}>{isExpanded ? title : 'AfriClay Admin'}</Text>{!isExpanded && <Text style={styles.mobileSection}>{title}</Text>}</View><Pressable onPress={() => void refresh()} accessibilityRole="button" accessibilityLabel="Refresh admin data" style={styles.iconButton}><RefreshCw size={19} color={colors.ink} /></Pressable>{!isExpanded && <Pressable onPress={() => confirmLogout(() => void auth.logout())} accessibilityRole="button" accessibilityLabel="Log out" style={styles.iconButton}><LogOut size={19} color={colors.red} /></Pressable>}</View>
+        <View style={styles.topbar}><View><Text style={styles.mobileTitle}>{isExpanded ? title : 'AfriClay Admin'}</Text>{!isExpanded && <Text style={styles.mobileSection}>{title}</Text>}</View><View style={styles.topbarActions}><Button variant="icon" size="sm" onPress={() => void refresh()} accessibilityLabel="Refresh admin data" icon={<RefreshCw size={19} color={colors.ink} />} />{!isExpanded && <Button variant="icon" size="sm" onPress={() => confirmLogout(() => void auth.logout())} accessibilityLabel="Log out" icon={<LogOut size={19} color={colors.red} />} />}</View></View>
         {!isExpanded && <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.mobileNav} contentContainerStyle={styles.mobileNavContent}>{navItems.map(item => { const Icon = item.icon; return <Pressable key={item.key} onPress={() => setSection(item.key)} accessibilityRole="tab" accessibilityState={{ selected: section === item.key }} style={[styles.mobileNavItem, section === item.key && styles.mobileNavActive]}><Icon size={17} color={section === item.key ? colors.green : colors.muted} /><Text style={[styles.mobileNavText, section === item.key && styles.mobileNavTextActive]}>{item.label}</Text></Pressable>; })}</ScrollView>}
         <ScrollView style={styles.scroller} contentContainerStyle={styles.scrollerContent}>{section === 'overview' ? <Overview /> : section === 'kyc' ? <KycReview /> : section === 'taxonomy' ? <Taxonomy /> : <Stores />}</ScrollView>
       </View>
     </View>
     {reviewDecision && <Modal visible transparent animationType="fade" onRequestClose={() => setReviewDecision(undefined)}>
       <View style={styles.modalBackdrop}><View style={styles.modal} accessibilityViewIsModal>
-        <View style={styles.panelHeading}><Text style={styles.modalTitle}>{reviewDecision === 'approved' ? 'Approve KYC submission' : 'Reject KYC submission'}</Text><Pressable onPress={() => setReviewDecision(undefined)} accessibilityRole="button" accessibilityLabel="Close review dialog" style={styles.iconButton}><X size={18} color={colors.ink} /></Pressable></View>
+        <View style={styles.panelHeading}><Text style={styles.modalTitle}>{reviewDecision === 'approved' ? 'Approve KYC submission' : 'Reject KYC submission'}</Text><Button variant="icon" size="sm" onPress={() => setReviewDecision(undefined)} accessibilityLabel="Close review dialog" icon={<X size={18} color={colors.ink} />} /></View>
         <Text style={styles.modalCopy}>{selectedKyc?.storeName}</Text>
         {reviewDecision === 'rejected' && <><Text style={styles.fieldLabel}>Rejection reason</Text><TextInput multiline value={reviewReason} onChangeText={setReviewReason} accessibilityLabel="Rejection reason" placeholder="State what the seller must correct" style={styles.reasonInput} /></>}
         {reviewError && <Text style={styles.errorText} accessibilityRole="alert">{reviewError}</Text>}
@@ -283,9 +283,10 @@ const styles = StyleSheet.create({
   navItemActive: { backgroundColor: colors.green }, navText: { color: colors.shellMuted, fontSize: 14, fontWeight: '600' }, navTextActive: { color: '#FFFFFF' },
   account: { marginTop: 'auto', borderTopWidth: 1, borderTopColor: '#2A3931', paddingTop: 16 }, accountLabel: { color: colors.shellMuted, fontSize: 10, fontWeight: '700' },
   accountName: { color: '#FFFFFF', fontSize: 13, marginTop: 5 }, accountRole: { color: colors.shellMuted, fontSize: 12, marginTop: 3, textTransform: 'capitalize' },
-  logout: { minHeight: 42, flexDirection: 'row', alignItems: 'center', gap: 9, marginTop: 13 }, logoutText: { color: colors.shellMuted, fontWeight: '600' },
+  logout: { marginTop: 13 },
   workspace: { flex: 1, minWidth: 0, backgroundColor: colors.canvas },
   topbar: { minHeight: 64, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 22, borderBottomWidth: 1, borderBottomColor: colors.border, backgroundColor: colors.panel },
+  topbarActions: { marginLeft: 'auto', flexDirection: 'row', alignItems: 'center', gap: 8 },
   mobileTitle: { color: colors.ink, fontSize: 17, fontWeight: '700' }, mobileSection: { color: colors.muted, fontSize: 12, marginTop: 2 },
   iconButton: { width: 40, height: 40, marginLeft: 'auto', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.border, borderRadius: 5, backgroundColor: colors.panel },
   mobileNav: { flexGrow: 0, backgroundColor: colors.panel, borderBottomWidth: 1, borderBottomColor: colors.border }, mobileNavContent: { paddingHorizontal: 12, gap: 4 },

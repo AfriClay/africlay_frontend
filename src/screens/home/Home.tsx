@@ -1,5 +1,5 @@
 import React, { useMemo, useRef } from 'react';
-import { Animated, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, FlatList, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { CompositeNavigationProp, NavigationProp, useNavigation } from '@react-navigation/native';
@@ -82,16 +82,12 @@ export const Home: React.FC = () => {
       {isCompact && <Animated.View style={[styles.topArea, { paddingBottom: compactHeaderPadding }]}>
         <View style={styles.topRow}>
           <View style={styles.mobileBrand}>
-            <Pressable accessibilityRole="button" accessibilityLabel="Open menu" onPress={openSideMenu} style={styles.iconButton}><Menu color={theme.colors.ink} size={23} /></Pressable>
+            <Button variant="icon" size="sm" accessibilityLabel="Open menu" onPress={openSideMenu} icon={<Menu color={theme.colors.ink} size={23} />} />
             <View style={styles.mobileLogoViewport}><Image source={require('../../../assets/africlay-brand-v1.svg')} style={styles.mobileLogo} contentFit="contain" accessibilityLabel="AfriClay" /></View>
           </View>
           <View style={styles.headerActions}>
-            {user ? <Pressable accessibilityRole="button" accessibilityLabel={`Notifications, ${unreadQuery.data?.length ?? 0} unread`} onPress={openNotifications} style={styles.iconButton}>
-              <Bell color={theme.colors.primary.dark} size={22} /><CountBadge count={unreadQuery.data?.length ?? 0} />
-            </Pressable> : null}
-            <Pressable accessibilityRole="button" accessibilityLabel={`Cart, ${cart.itemCount} items`} onPress={() => navigation.navigate('Cart')} style={styles.iconButton}>
-              <ShoppingCart color={theme.colors.primary.dark} size={23} /><CountBadge count={cart.itemCount} />
-            </Pressable>
+            {user ? <Button variant="icon" size="sm" accessibilityLabel={`Notifications, ${unreadQuery.data?.length ?? 0} unread`} onPress={openNotifications} icon={<View><Bell color={theme.colors.primary.dark} size={22} /><CountBadge count={unreadQuery.data?.length ?? 0} /></View>} /> : null}
+            <Button variant="icon" size="sm" accessibilityLabel={`Cart, ${cart.itemCount} items`} onPress={() => navigation.navigate('Cart')} icon={<View><ShoppingCart color={theme.colors.primary.dark} size={23} /><CountBadge count={cart.itemCount} /></View>} />
           </View>
         </View>
         <SearchTrigger onPress={openSearch} style={styles.searchBar} />
@@ -111,7 +107,7 @@ export const Home: React.FC = () => {
 
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Explore categories</Text>
-          <Text accessibilityRole="button" style={styles.seeAll} onPress={() => navigation.navigate('ProductListing')}>See all</Text>
+          <Button variant="tertiary" size="sm" onPress={() => navigation.navigate('ProductListing')}>See all</Button>
         </View>
         <MotiView
           from={reduceMotion ? undefined : { opacity: 0, translateY: 10 }}
@@ -128,7 +124,7 @@ export const Home: React.FC = () => {
 
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Picked for your everyday</Text>
-          <Text accessibilityRole="button" style={styles.seeAll} onPress={() => navigation.navigate('ProductListing')}>See all</Text>
+          <Button variant="tertiary" size="sm" onPress={() => navigation.navigate('ProductListing')}>See all</Button>
         </View>
         {productsLoading ? <View style={styles.productSkeleton} /> : isExpanded ? (
           <View style={styles.desktopGrid}>{products.slice(0, 12).map(product => <View key={product.id} style={{ width: `${100 / productColumns}%`, padding: theme.spacing.sm }}>
@@ -148,9 +144,9 @@ export const Home: React.FC = () => {
 
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Services for you</Text>
-          <Text accessibilityRole="button" style={styles.seeAll} onPress={() => navigation.navigate('Services')}>See all</Text>
+          <Button variant="tertiary" size="sm" onPress={() => navigation.navigate('Services')}>See all</Button>
         </View>
-        {serviceQuery.isError ? <Pressable onPress={() => void serviceQuery.refetch()} accessibilityRole="button"><Text style={styles.sellText}>Unable to load services. Retry</Text></Pressable> :
+        {serviceQuery.isError ? <View><Text style={styles.sellText}>Unable to load services.</Text><Button variant="tertiary" size="sm" onPress={() => void serviceQuery.refetch()}>Retry</Button></View> :
         serviceQuery.isLoading ? <Text style={styles.sellText}>Loading services...</Text> :
         recommendedServices.length === 0 ? <Text style={styles.sellText}>No services available yet.</Text> :
         isExpanded ? <View style={styles.desktopGrid}>{recommendedServices.map(service => <ServiceCard key={service.id} marketplace service={service} onPress={() => navigation.navigate('ServiceDetails', { serviceId: service.slug ?? service.id })} />)}</View> : <FlatList
@@ -189,7 +185,6 @@ const styles = StyleSheet.create({
   mobileLogoViewport: { width: 44, height: 48, overflow: 'hidden', justifyContent: 'center' },
   mobileLogo: { width: 104, height: 69, marginLeft: -4, marginTop: -10, flexShrink: 0 },
   headerActions: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs },
-  iconButton: { minWidth: 44, minHeight: 44, borderRadius: theme.radii.pill, alignItems: 'center', justifyContent: 'center' },
   countBadge: { position: 'absolute', top: 2, right: 1, minWidth: 18, height: 18, paddingHorizontal: 4, borderRadius: 9, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.secondary.DEFAULT, borderWidth: 2, borderColor: theme.colors.white },
   countBadgeText: { color: theme.colors.white, fontSize: 9, lineHeight: 11, fontWeight: '800' },
   brandLockup: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm, paddingVertical: theme.spacing.sm },
@@ -204,7 +199,6 @@ const styles = StyleSheet.create({
   content: { width: '100%', maxWidth: 640, alignSelf: 'center', padding: theme.spacing.md, paddingBottom: theme.spacing.xl },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.sm },
   sectionTitle: { flex: 1, color: theme.colors.ink, ...theme.typography.marketplace.heading },
-  seeAll: { color: theme.colors.primary.DEFAULT, ...theme.typography.marketplace.label, paddingVertical: theme.spacing.md },
   categoryGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: theme.spacing.sm, marginBottom: theme.spacing.md },
   desktopCategoryGrid: { justifyContent: 'flex-start', columnGap: theme.spacing.lg, maxWidth: 760 },
   categorySkeleton: { width: '22%', height: 96, borderRadius: theme.radii.lg, backgroundColor: theme.colors.border },

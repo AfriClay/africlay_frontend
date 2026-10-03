@@ -17,6 +17,7 @@ import { canAccessSellerTools } from '../utils/roles';
 import { rootCategories } from '../utils/categoryTree';
 import { useCart } from '../hooks/useCart';
 import { notificationKeys, notificationService } from '../services/notificationService';
+import { Button } from './ui/Button';
 
 export const SideMenu: React.FC = () => {
   const { width } = useWindowDimensions();
@@ -97,7 +98,7 @@ export const SideMenu: React.FC = () => {
             </Pressable> : null}
             <View style={styles.divider} />
             <Text style={styles.sectionTitle}>Shop by Category</Text>
-            {categoriesQuery.isError ? <Pressable onPress={() => void categoriesQuery.refetch()} accessibilityRole="button"><Text style={styles.categoryLabel}>Retry categories</Text></Pressable> : categoryItems.map(category => {
+            {categoriesQuery.isError ? <Button fullWidth size="sm" variant="tertiary" onPress={() => void categoriesQuery.refetch()}>Retry categories</Button> : categoryItems.map(category => {
               const Icon = categoryIconMap[category.icon] ?? Tag;
               return (
                 <Pressable key={category.id} style={styles.categoryRow} onPress={() => goTo('Home', { screen: 'ProductListing', params: { categoryId: category.slug } })} accessibilityRole="button" accessibilityLabel={`Browse ${category.label}`}>
@@ -112,7 +113,7 @@ export const SideMenu: React.FC = () => {
             <Pressable style={styles.menuRow} onPress={() => goTo('Profile', { screen: 'SupportHelp' })}><CircleHelp color={theme.colors.ink} size={20} /><Text style={styles.menuLabel}>Help & Support</Text></Pressable>
             <Pressable style={styles.menuRow} onPress={() => goTo('Profile', { screen: 'ProfileOverview' })}><User color={theme.colors.ink} size={20} /><Text style={styles.menuLabel}>Profile</Text></Pressable>
             <View style={styles.divider} />
-            {auth.user ? <Pressable style={styles.menuRow} onPress={requestLogout}><LogOut color={theme.colors.error} size={20} /><Text style={styles.logout}>Logout</Text></Pressable> : null}
+            {auth.user ? <Button fullWidth variant="destructive" icon={<LogOut color={theme.colors.white} size={20} />} onPress={requestLogout}>Log out</Button> : null}
           </ScrollView>
         </SafeAreaView>
       </Animated.View>
@@ -140,5 +141,4 @@ const styles = StyleSheet.create({
   menuLabel: { color: theme.colors.ink, marginLeft: theme.spacing.md, fontSize: theme.typography.body.fontSize },
   countBadge: { minWidth: 22, height: 22, borderRadius: 11, paddingHorizontal: 6, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.primary.DEFAULT },
   countText: { color: theme.colors.white, fontSize: 11, fontWeight: '800' },
-  logout: { color: theme.colors.error, marginLeft: theme.spacing.md, fontWeight: '800' },
 });

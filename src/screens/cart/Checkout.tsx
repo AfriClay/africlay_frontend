@@ -90,7 +90,7 @@ export const Checkout: React.FC = () => {
   </SafeAreaView>;
 
   const header = <>
-    <View style={styles.header}><Text style={styles.title}>Checkout</Text><Pressable onPress={() => navigation.goBack()} accessibilityRole="button" accessibilityLabel="Close checkout" style={styles.close}><X color={theme.colors.ink} size={22} /></Pressable></View>
+    <View style={styles.header}><Text style={styles.title}>Checkout</Text><Button variant="icon" icon={<X color={theme.colors.ink} size={22} />} onPress={() => navigation.goBack()} accessibilityLabel="Close checkout" /></View>
     <Text style={styles.sectionTitle}>Delivery Address</Text>
     {addressesQuery.isLoading ? <Text style={styles.note}>Loading addresses...</Text> : addressesQuery.isError ?
       <View><Text style={styles.error}>Unable to load addresses.</Text><Button variant="outline" onPress={() => void addressesQuery.refetch()}>Retry</Button></View> :
@@ -119,7 +119,6 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.cream },
   content: { padding: theme.spacing.lg, paddingBottom: theme.spacing.xl },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  close: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
   title: { fontSize: theme.typography.h2.fontSize, fontWeight: '800', color: theme.colors.ink },
   sectionTitle: { fontSize: theme.typography.h3.fontSize, fontWeight: '800', color: theme.colors.ink, marginTop: theme.spacing.lg, marginBottom: theme.spacing.sm },
   address: { padding: theme.spacing.md, backgroundColor: theme.colors.white, borderWidth: 1, borderColor: theme.colors.border, borderRadius: theme.radii.md, marginBottom: theme.spacing.sm },

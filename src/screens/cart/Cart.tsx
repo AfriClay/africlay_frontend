@@ -39,8 +39,8 @@ export const Cart: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}><Text style={styles.title}>Cart</Text><Pressable style={styles.closeButton} onPress={() => navigation.goBack()} accessibilityRole="button" accessibilityLabel="Close cart"><X color={theme.colors.ink} size={22} /></Pressable></View>
-      {cart.error && <View style={styles.message}><Text style={styles.error} accessibilityRole="alert">{cart.error}</Text><Pressable accessibilityRole="button" onPress={() => void cart.refresh().catch(() => {})}><Text style={styles.retry}>Retry</Text></Pressable></View>}
+      <View style={styles.header}><Text style={styles.title}>Cart</Text><Button variant="icon" icon={<X color={theme.colors.ink} size={22} />} onPress={() => navigation.goBack()} accessibilityLabel="Close cart" /></View>
+      {cart.error && <View style={styles.message}><Text style={styles.error} accessibilityRole="alert">{cart.error}</Text><Button size="sm" variant="tertiary" onPress={() => void cart.refresh().catch(() => {})}>Retry</Button></View>}
       {cart.loading ? <View style={styles.empty}><Text style={styles.emptyText}>Loading cart...</Text></View> : cart.error && cart.itemCount === 0 ? (
         <View style={[styles.empty, isExpanded && styles.desktopEmpty]}><Text style={styles.emptyText}>Cart unavailable. Retry to load your items.</Text></View>
       ) : cart.itemCount === 0 ? (
@@ -55,10 +55,10 @@ export const Cart: React.FC = () => {
               {item.productSlug && <ChevronRight color={theme.colors.primary.dark} size={20} />}
             </Pressable>
             <View style={styles.quantityRow}>
-              <Pressable onPress={() => void cart.updateQuantity(item.id, item.quantity - 1).catch(() => {})} disabled={cart.mutating || item.quantity <= 1} style={styles.quantityButton} accessibilityRole="button" accessibilityLabel={`Decrease ${item.name} quantity`}><Text style={styles.quantityLabel}>-</Text></Pressable>
+              <Button variant="icon" size="sm" onPress={() => void cart.updateQuantity(item.id, item.quantity - 1).catch(() => {})} disabled={cart.mutating || item.quantity <= 1} style={styles.quantityButton} accessibilityLabel={`Decrease ${item.name} quantity`} icon={<Text style={styles.quantityLabel}>-</Text>} />
               <Text style={styles.quantityValue}>{item.quantity}</Text>
-              <Pressable onPress={() => void cart.updateQuantity(item.id, item.quantity + 1).catch(() => {})} disabled={cart.mutating} style={styles.quantityButton} accessibilityRole="button" accessibilityLabel={`Increase ${item.name} quantity`}><Text style={styles.quantityLabel}>+</Text></Pressable>
-              <Pressable onPress={() => void cart.removeItem(item.id).catch(() => {})} disabled={cart.mutating} style={styles.removeButton} accessibilityRole="button" accessibilityLabel={`Remove ${item.name}`}><Trash2 color={theme.colors.error} size={18} /></Pressable>
+              <Button variant="icon" size="sm" onPress={() => void cart.updateQuantity(item.id, item.quantity + 1).catch(() => {})} disabled={cart.mutating} style={styles.quantityButton} accessibilityLabel={`Increase ${item.name} quantity`} icon={<Text style={styles.quantityLabel}>+</Text>} />
+              <Button variant="icon" size="sm" icon={<Trash2 color={theme.colors.error} size={18} />} onPress={() => void cart.removeItem(item.id).catch(() => {})} disabled={cart.mutating} accessibilityLabel={`Remove ${item.name}`} />
             </View>
           </View>
         )} contentContainerStyle={styles.list} />
@@ -80,7 +80,6 @@ const styles = StyleSheet.create({
   desktopFooter: { gap: theme.spacing.md, marginTop: theme.spacing.md },
   message: { paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.sm },
   error: { color: theme.colors.error },
-  retry: { color: theme.colors.primary.DEFAULT, fontWeight: '700', paddingVertical: theme.spacing.sm },
   container: {
     flex: 1,
     backgroundColor: theme.colors.cream,
@@ -99,12 +98,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: theme.spacing.lg,
-  },
-  closeButton: {
-    minWidth: 44,
-    minHeight: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   thumbnail: {
     width: 70,
@@ -154,17 +147,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  removeButton: {
-    minWidth: 40,
-    minHeight: 40,
+  quantityButton: {
+    minWidth: 48,
+    minHeight: 48,
     alignItems: 'center',
     justifyContent: 'center',
-    marginLeft: theme.spacing.xs,
-  },
-  quantityButton: {
     backgroundColor: theme.colors.primary.tint,
-    borderRadius: theme.radii.sm,
-    padding: theme.spacing.sm,
+    borderRadius: theme.radii.pill,
   },
   quantityLabel: {
     color: theme.colors.primary.dark,

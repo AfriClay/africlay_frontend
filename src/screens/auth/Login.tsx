@@ -80,9 +80,9 @@ export const Login: React.FC = () => {
         )}
       />
       {errorMessage ? <Text style={styles.error}>{errorMessage}</Text> : null}
-      <Text style={styles.forgot} onPress={() => navigation.navigate(ROUTES.ForgotPassword)}>Forgot Password?</Text>
-      <Button onPress={handleSubmit(onSubmit)} loading={auth.loading} accessibilityLabel="Log In">Log In</Button>
-      <Text style={styles.footer}>Don&apos;t have an account? <Text style={styles.link} onPress={() => navigation.navigate(ROUTES.Register)}>Create Account</Text></Text>
+      <Button variant="tertiary" size="sm" style={styles.forgot} onPress={() => navigation.navigate(ROUTES.ForgotPassword)}>Forgot password?</Button>
+      <Button fullWidth onPress={handleSubmit(onSubmit)} loading={auth.loading} loadingLabel="Logging in" accessibilityLabel="Log In">Log In</Button>
+      <View style={styles.footer}><Text style={styles.footerText}>Don&apos;t have an account?</Text><Button variant="tertiary" size="sm" onPress={() => navigation.navigate(ROUTES.Register)}>Create account</Button></View>
     </FormFrame>
   );
 };
@@ -101,18 +101,19 @@ const styles = StyleSheet.create({
     color: theme.colors.ink,
   },
   forgot: {
-    color: theme.colors.primary.DEFAULT,
     marginBottom: theme.spacing.lg,
-    textAlign: 'right',
+    alignSelf: 'flex-end',
   },
   footer: {
     marginTop: theme.spacing.lg,
-    textAlign: 'center',
-    color: theme.colors.muted,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: theme.spacing.xs,
   },
-  link: {
-    color: theme.colors.primary.DEFAULT,
-    fontWeight: '700',
+  footerText: {
+    color: theme.colors.muted,
   },
   error: {
     color: theme.colors.error,
