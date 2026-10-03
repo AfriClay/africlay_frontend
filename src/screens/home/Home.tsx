@@ -1,6 +1,7 @@
 import React, { useMemo, useRef } from 'react';
 import { Animated, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Image } from 'expo-image';
 import { CompositeNavigationProp, NavigationProp, useNavigation } from '@react-navigation/native';
 import { useQuery } from '@tanstack/react-query';
 import { Bell, Menu, Plus, Search, ShoppingCart } from 'lucide-react-native';
@@ -78,7 +79,10 @@ export const Home: React.FC = () => {
     <SafeAreaView style={styles.container} edges={['top']}>
       {isCompact && <Animated.View style={[styles.topArea, { paddingBottom: compactHeaderPadding }]}>
         <View style={styles.topRow}>
-          <Pressable accessibilityRole="button" accessibilityLabel="Open menu" onPress={openSideMenu} style={styles.iconButton}><Menu color={theme.colors.ink} size={23} /></Pressable>
+          <View style={styles.mobileBrand}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Open menu" onPress={openSideMenu} style={styles.iconButton}><Menu color={theme.colors.ink} size={23} /></Pressable>
+            <Image source={require('../../../assets/africlay-brand-v1.svg')} style={styles.mobileLogo} contentFit="contain" accessibilityLabel="AfriClay" />
+          </View>
           <View style={styles.headerActions}>
             {user ? <Pressable accessibilityRole="button" accessibilityLabel={`Notifications, ${unreadQuery.data?.length ?? 0} unread`} onPress={openNotifications} style={styles.iconButton}>
               <Bell color={theme.colors.primary.dark} size={22} /><CountBadge count={unreadQuery.data?.length ?? 0} />
@@ -184,7 +188,9 @@ const styles = StyleSheet.create({
   sellerSpacing: { marginBottom: theme.spacing.sm },
   container: { flex: 1, minHeight: 0, overflow: 'hidden', backgroundColor: theme.colors.cream },
   topArea: { position: 'relative', zIndex: 20, elevation: 4, flexShrink: 0, backgroundColor: theme.colors.white, borderBottomWidth: 1, borderBottomColor: theme.colors.border },
-  topRow: { minHeight: 52, paddingHorizontal: theme.spacing.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  topRow: { minHeight: 56, paddingHorizontal: theme.spacing.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  mobileBrand: { minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs },
+  mobileLogo: { width: 60, height: 40, flexShrink: 0 },
   headerActions: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs },
   iconButton: { minWidth: 44, minHeight: 44, borderRadius: theme.radii.pill, alignItems: 'center', justifyContent: 'center' },
   countBadge: { position: 'absolute', top: 2, right: 1, minWidth: 18, height: 18, paddingHorizontal: 4, borderRadius: 9, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.secondary.DEFAULT, borderWidth: 2, borderColor: theme.colors.white },

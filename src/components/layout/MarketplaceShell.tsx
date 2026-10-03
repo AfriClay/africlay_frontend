@@ -57,7 +57,6 @@ export const MarketplaceShell = ({ children, route, category, navigate }: Props)
       <Action label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'} icon={collapsed ? PanelLeftOpen : PanelLeftClose} expanded={!collapsed} onPress={() => setCollapsed(value => !value)} iconOnly />
       <Pressable accessibilityRole="button" accessibilityLabel="AfriClay home" onPress={() => navigate({ tab: 'Home', screen: 'HomeFeed' })} style={styles.brand}>
         <Image source={require('../../../assets/africlay-brand-v1.svg')} style={styles.logo} contentFit="contain" />
-        <Text style={styles.brandText}>AfriClay</Text>
       </Pressable>
       <View style={styles.search}>
         <TextInput value={query} onChangeText={setQuery} onSubmitEditing={search} returnKeyType="search"
@@ -90,9 +89,8 @@ const styles = StyleSheet.create({
   desktopChrome: { position: 'relative', zIndex: 20, backgroundColor: theme.colors.white },
   header: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm, paddingHorizontal: theme.spacing.md,
     minHeight: 80, backgroundColor: theme.colors.white, borderBottomWidth: 1, borderBottomColor: theme.colors.border },
-  brand: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm, minHeight: 44 },
-  logo: { width: 36, height: 36 },
-  brandText: { fontSize: 24, fontWeight: '800', color: theme.colors.primary.dark },
+  brand: { width: 68, minHeight: 52, alignItems: 'center', justifyContent: 'center' },
+  logo: { width: 64, height: 44 },
   search: { flex: 1, minWidth: 160, maxWidth: 720, flexDirection: 'row', marginLeft: theme.spacing.sm, marginRight: 'auto',
     minHeight: 48, alignItems: 'center', borderWidth: 1, borderColor: theme.colors.border, borderRadius: theme.radii.md },
   input: { flex: 1, minWidth: 0, minHeight: 46, paddingHorizontal: theme.spacing.md, fontSize: 16, color: theme.colors.ink },
