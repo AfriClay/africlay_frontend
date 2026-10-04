@@ -175,7 +175,7 @@ export const Search: React.FC<SearchProps> = ({ presentation = 'screen', focusRe
     onSubmit={submit}
     onCancel={cancel}
     showCancel={inline || compact}
-    cancelAsIcon={inline && width < 360}
+    cancelAsIcon={inline}
     autoFocus={presentation === 'screen' && compact}
     onKeyPress={event => {
       if (event.nativeEvent.key === 'Escape') { cancel(); return; }
@@ -195,10 +195,10 @@ export const Search: React.FC<SearchProps> = ({ presentation = 'screen', focusRe
         <Button variant="icon" size="sm" icon={<Trash2 size={17} color={colors.textMuted} />} accessibilityLabel={`Remove ${item} from recent searches`} onPress={() => { void recentSearches.remove(item).then(setRecent); }} />
       </View>)}
     </View> : null}
-    <View style={[styles.discoveryCard, { backgroundColor: colors.accentSoft }]}>
+    {!inline ? <View style={[styles.discoveryCard, { backgroundColor: colors.accentSoft }]}>
       <PackageSearch size={26} color={colors.accentPressed} />
       <View style={styles.discoveryCopy}><Text style={[styles.discoveryTitle, { color: colors.text }]}>Search the marketplace</Text><Text style={[styles.supportingText, { color: colors.textMuted }]}>Search product names, descriptions, seller names, and locations.</Text></View>
-    </View>
+    </View> : null}
   </View>;
 
   const loadingContent = <View style={styles.results}>
@@ -244,11 +244,13 @@ export const Search: React.FC<SearchProps> = ({ presentation = 'screen', focusRe
     inline ? <ScrollView style={styles.inlineList} keyboardShouldPersistTaps="handled">{loadingContent}</ScrollView> : loadingContent
   ) : resultList;
 
+  const showInlineResults = Boolean(query.trim()) || recent.length > 0;
+
   if (inline) return <View style={styles.inlineContainer}>
     {searchField}
-    <View style={[styles.inlineResults, { height: Math.min(420, Math.max(240, height * 0.5)), backgroundColor: colors.surface, borderColor: colors.border }]}>
+    {showInlineResults ? <View style={[styles.inlineResults, { height: Math.min(420, Math.max(240, height * 0.5)), backgroundColor: colors.surface, borderColor: colors.border }]}>
       {searchContent}
-    </View>
+    </View> : null}
   </View>;
 
   if (hasBlockingFailure) return <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
