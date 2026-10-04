@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Image } from 'expo-image';
 import { ArrowRight, ImageOff } from 'lucide-react-native';
-import { Animated, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Animated, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { theme } from '../../theme';
 import { Product } from '../../types/product';
 import { formatCurrency } from '../../utils/formatCurrency';
@@ -15,7 +15,6 @@ interface PromotionalCarouselProps {
 }
 
 export const PromotionalCarousel = ({ products, loading, onProductPress }: PromotionalCarouselProps) => {
-  const { fontScale } = useWindowDimensions();
   const { isExpanded, isWeb } = useResponsiveLayout();
   const [width, setWidth] = useState(0);
   const [active, setActive] = useState(0);
@@ -62,11 +61,11 @@ export const PromotionalCarousel = ({ products, loading, onProductPress }: Promo
             <View key={product.id} style={{ width, paddingHorizontal: theme.spacing.xs }}>
               <Pressable accessibilityRole="button" accessibilityLabel={`Shop ${product.name}, ${formatCurrency(product.price, product.currency)}`}
                 onPress={() => onProductPress(product.id)}
-                style={({ pressed }) => [styles.card, { minHeight: (isExpanded ? Math.min(400, Math.max(260, width / 2.8)) : Math.max(196, width / 1.85)) * Math.max(1, fontScale) }, pressed && styles.pressed]}>
+                style={({ pressed }) => [styles.card, { minHeight: isExpanded ? Math.min(400, Math.max(260, width / 2.8)) : 220 }, pressed && styles.pressed]}>
                 <View style={styles.copy}>
                   <Text style={styles.eyebrow}>{product.category}</Text>
-                  <Text style={styles.title}>{product.name}</Text>
-                  <Text style={styles.price}>{formatCurrency(product.price, product.currency)}</Text>
+                  <Text numberOfLines={3} adjustsFontSizeToFit minimumFontScale={0.75} style={styles.title}>{product.name}</Text>
+                  <Text numberOfLines={1} style={styles.price}>{formatCurrency(product.price, product.currency)}</Text>
                   <View style={styles.cta}><Text style={styles.ctaText}>Shop now</Text><ArrowRight size={16} strokeWidth={1.8} color={theme.colors.white} /></View>
                 </View>
                 <View style={styles.imageArea}>

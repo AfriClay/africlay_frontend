@@ -25,6 +25,8 @@ import { categoryBranchIds, rootCategories } from '../../utils/categoryTree';
 import { useCart } from '../../hooks/useCart';
 import { notificationKeys, notificationService } from '../../services/notificationService';
 import { Button } from '../../components/ui/Button';
+import { SearchTrigger } from '../../components/ui/SearchField';
+import { useCompactSearch } from '../../contexts/CompactSearchContext';
 
 type HomeNavigation = CompositeNavigationProp<
   NavigationProp<HomeStackParamList, 'HomeFeed'>,
@@ -41,6 +43,7 @@ export const Home: React.FC = () => {
   const { user } = useAuth();
   const cart = useCart();
   const canSell = canAccessSellerTools(user?.role);
+  const compactSearch = useCompactSearch();
   const reduceMotion = useReducedMotionSafe();
   const scrollY = useRef(new Animated.Value(0)).current;
   const categoriesQuery = useQuery({ queryKey: catalogKeys.categories, queryFn: productService.fetchCategories });
@@ -85,6 +88,7 @@ export const Home: React.FC = () => {
             <Button variant="icon" size="sm" accessibilityLabel={`Cart, ${cart.itemCount} items`} onPress={() => navigation.navigate('Cart')} icon={<View><ShoppingCart color={theme.colors.primary.dark} size={23} /><CountBadge count={cart.itemCount} /></View>} />
           </View>
         </View>
+        <SearchTrigger onPress={compactSearch.open} style={styles.searchBar} />
       </Animated.View>}
 
       <Animated.ScrollView
@@ -107,13 +111,24 @@ export const Home: React.FC = () => {
           from={reduceMotion ? undefined : { opacity: 0, translateY: 10 }}
           animate={{ opacity: 1, translateY: 0 }}
           transition={{ type: 'timing', duration: reduceMotion ? 0 : 350, delay: reduceMotion ? 0 : 90 }}
-          style={[styles.categoryGrid, isExpanded && styles.desktopCategoryGrid]}
+          style={isExpanded ? [styles.categoryGrid, styles.desktopCategoryGrid] : styles.categoryRailShell}
         >
           {categoriesLoading
-            ? Array.from({ length: 8 }).map((_, index) => <View key={index} style={[styles.categorySkeleton, isExpanded && styles.desktopCategorySkeleton]} />)
-            : mainCategories.map(category => (
-              <CategoryCard key={category.id} label={category.label} icon={category.icon} imageUri={products.find(product => product.categoryId && categoryBranchIds(categories, category.id).has(product.categoryId))?.images[0]} onPress={() => openCategory(category.slug)} />
-            ))}
+            ? isExpanded
+              ? Array.from({ length: 8 }).map((_, index) => <View key={index} style={[styles.categorySkeleton, styles.desktopCategorySkeleton]} />)
+              : <View style={styles.categoryRail}>{Array.from({ length: 4 }).map((_, index) => <View key={index} style={styles.categorySkeleton} />)}</View>
+            : isExpanded
+              ? mainCategories.map(category => (
+                <CategoryCard key={category.id} label={category.label} icon={category.icon} imageUri={products.find(product => product.categoryId && categoryBranchIds(categories, category.id).has(product.categoryId))?.images[0]} onPress={() => openCategory(category.slug)} />
+              ))
+              : <FlatList
+                  data={mainCategories}
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  keyExtractor={category => category.id}
+                  renderItem={({ item: category }) => <CategoryCard label={category.label} icon={category.icon} imageUri={products.find(product => product.categoryId && categoryBranchIds(categories, category.id).has(product.categoryId))?.images[0]} onPress={() => openCategory(category.slug)} />}
+                  contentContainerStyle={styles.categoryRail}
+                />}
         </MotiView>
 
         <View style={styles.sectionHeader}>
@@ -179,6 +194,7 @@ const styles = StyleSheet.create({
   mobileLogoViewport: { width: 44, height: 48, overflow: 'hidden', justifyContent: 'center' },
   mobileLogo: { width: 104, height: 69, marginLeft: -4, marginTop: -10, flexShrink: 0 },
   headerActions: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs },
+  searchBar: { marginHorizontal: theme.spacing.md, backgroundColor: theme.colors.cream },
   countBadge: { position: 'absolute', top: 2, right: 1, minWidth: 18, height: 18, paddingHorizontal: 4, borderRadius: 9, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.secondary.DEFAULT, borderWidth: 2, borderColor: theme.colors.white },
   countBadgeText: { color: theme.colors.white, fontSize: 9, lineHeight: 11, fontWeight: '800' },
   brandLockup: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm, paddingVertical: theme.spacing.sm },
@@ -194,7 +210,9 @@ const styles = StyleSheet.create({
   sectionTitle: { flex: 1, color: theme.colors.ink, ...theme.typography.marketplace.heading },
   categoryGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: theme.spacing.sm, marginBottom: theme.spacing.md },
   desktopCategoryGrid: { justifyContent: 'flex-start', columnGap: theme.spacing.lg, maxWidth: 760 },
-  categorySkeleton: { width: '22%', height: 96, borderRadius: theme.radii.lg, backgroundColor: theme.colors.border },
+  categoryRailShell: { marginHorizontal: -theme.spacing.md, marginBottom: theme.spacing.md },
+  categoryRail: { gap: theme.spacing.smd, paddingHorizontal: theme.spacing.md, paddingBottom: theme.spacing.sm },
+  categorySkeleton: { width: 72, height: 94, borderRadius: theme.radii.lg, backgroundColor: theme.colors.border },
   desktopCategorySkeleton: { width: 116, height: 158 },
   horizontalList: { paddingBottom: theme.spacing.xl },
   productSkeleton: { width: 180, height: 230, borderRadius: theme.radii.lg, backgroundColor: theme.colors.border, marginBottom: theme.spacing.xl },
