@@ -175,6 +175,7 @@ export const Search: React.FC<SearchProps> = ({ presentation = 'screen', focusRe
     onSubmit={submit}
     onCancel={cancel}
     showCancel={inline || compact}
+    cancelAsIcon={inline && width < 360}
     autoFocus={presentation === 'screen' && compact}
     onKeyPress={event => {
       if (event.nativeEvent.key === 'Escape') { cancel(); return; }

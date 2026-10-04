@@ -46,6 +46,7 @@ export const Home: React.FC = () => {
   const searchProgress = useRef(new Animated.Value(0)).current;
   const [searchExpanded, setSearchExpanded] = useState(false);
   const [focusRequest, setFocusRequest] = useState(0);
+  const [searchHostWidth, setSearchHostWidth] = useState(0);
   const categoriesQuery = useQuery({ queryKey: catalogKeys.categories, queryFn: productService.fetchCategories });
   const { data: categories = [], isLoading: categoriesLoading } = categoriesQuery;
   const productsQuery = useQuery({ queryKey: catalogKeys.products, queryFn: () => productService.fetchProducts() });
@@ -127,42 +128,46 @@ export const Home: React.FC = () => {
     return () => window.removeEventListener('keydown', onKeyDown, true);
   }, [closeSearch, searchExpanded]);
 
-  const searchIconWidth = searchProgress.interpolate({ inputRange: [0, 1], outputRange: [48, 0] });
-  const searchRowOffset = searchProgress.interpolate({ inputRange: [0, 1], outputRange: [-8, 0] });
-  const searchPadding = searchProgress.interpolate({ inputRange: [0, 1], outputRange: [0, 76] });
+  const collapsedSearchScale = searchHostWidth > 0 ? Math.min(1, 48 / searchHostWidth) : 0.25;
+  const searchFieldScale = searchProgress.interpolate({ inputRange: [0, 1], outputRange: [collapsedSearchScale, 1] });
+  const searchFieldOffset = searchProgress.interpolate({ inputRange: [0, 1], outputRange: [searchHostWidth * (1 - collapsedSearchScale) / 2, 0] });
+  const brandWidth = searchProgress.interpolate({ inputRange: [0, 1], outputRange: [44, 40] });
+  const brandOffset = searchProgress.interpolate({ inputRange: [0, 1], outputRange: [0, 4] });
 
   if (productsQuery.isError || categoriesQuery.isError || sellersQuery.isError) return <ErrorState message="Unable to load the catalog." onRetry={() => { void productsQuery.refetch(); void categoriesQuery.refetch(); void sellersQuery.refetch(); }} />;
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      {isCompact && <Animated.View style={[styles.topArea, { paddingBottom: searchPadding }]}>
+      {isCompact && <Animated.View style={styles.topArea}>
         <View style={styles.topRow}>
-          <View style={styles.mobileBrand}>
+          <Animated.View style={[styles.mobileBrand, { width: brandWidth, transform: [{ translateX: brandOffset }] }]}>
             <View style={styles.mobileLogoViewport}><Image source={require('../../../assets/africlay-brand-v1.svg')} style={styles.mobileLogo} contentFit="contain" accessibilityLabel="AfriClay" /></View>
-          </View>
-          <View style={styles.headerActions}>
+          </Animated.View>
+          <View style={styles.searchHost} onLayout={event => setSearchHostWidth(event.nativeEvent.layout.width)}>
             <Animated.View
               pointerEvents={searchExpanded ? 'none' : 'auto'}
               accessibilityElementsHidden={searchExpanded}
               importantForAccessibility={searchExpanded ? 'no-hide-descendants' : 'auto'}
               aria-hidden={searchExpanded}
-              style={[styles.searchIconSlot, { width: searchIconWidth, opacity: searchProgress.interpolate({ inputRange: [0, 1], outputRange: [1, 0] }) }]}
+              style={[styles.searchTriggerSlot, { opacity: searchProgress.interpolate({ inputRange: [0, 1], outputRange: [1, 0] }) }]}
             >
               <Button variant="icon" size="sm" accessibilityLabel="Open search" onPress={openSearch} icon={<SearchIcon color={theme.colors.primary.dark} size={22} />} />
             </Animated.View>
+            <Animated.View
+              pointerEvents={searchExpanded ? 'auto' : 'none'}
+              accessibilityElementsHidden={!searchExpanded}
+              importantForAccessibility={searchExpanded ? 'auto' : 'no-hide-descendants'}
+              aria-hidden={!searchExpanded}
+              style={[styles.inlineSearch, { opacity: searchProgress, transform: [{ translateX: searchFieldOffset }, { scaleX: searchFieldScale }] }]}
+            >
+              <Search presentation="inline" focusRequest={focusRequest} onDismiss={closeSearch} onOpenProduct={openSearchProduct} onOpenSeller={openSearchSeller} />
+            </Animated.View>
+          </View>
+          <View style={styles.headerActions}>
             {user ? <Button variant="icon" size="sm" accessibilityLabel={`Notifications, ${unreadQuery.data?.length ?? 0} unread`} onPress={() => { closeSearch(); openNotifications(); }} icon={<View><Bell color={theme.colors.primary.dark} size={22} /><CountBadge count={unreadQuery.data?.length ?? 0} /></View>} /> : null}
             <Button variant="icon" size="sm" accessibilityLabel={`Cart, ${cart.itemCount} items`} onPress={() => { closeSearch(); navigation.navigate('Cart'); }} icon={<View><ShoppingCart color={theme.colors.primary.dark} size={23} /><CountBadge count={cart.itemCount} /></View>} />
           </View>
         </View>
-        <Animated.View
-          pointerEvents={searchExpanded ? 'auto' : 'none'}
-          accessibilityElementsHidden={!searchExpanded}
-          importantForAccessibility={searchExpanded ? 'auto' : 'no-hide-descendants'}
-          aria-hidden={!searchExpanded}
-          style={[styles.inlineSearch, { opacity: searchProgress, transform: [{ translateY: searchRowOffset }] }]}
-        >
-          <Search presentation="inline" focusRequest={focusRequest} onDismiss={closeSearch} onOpenProduct={openSearchProduct} onOpenSeller={openSearchSeller} />
-        </Animated.View>
       </Animated.View>}
 
       {isCompact && searchExpanded ? <Pressable accessible={false} onPress={closeSearch} style={styles.searchBackdrop} /> : null}
@@ -264,13 +269,14 @@ const styles = StyleSheet.create({
   sellerSpacing: { marginBottom: theme.spacing.sm },
   container: { flex: 1, minHeight: 0, overflow: 'hidden', backgroundColor: theme.colors.cream },
   topArea: { position: 'relative', zIndex: 30, elevation: 6, flexShrink: 0, overflow: 'visible', backgroundColor: theme.colors.white, borderBottomWidth: 1, borderBottomColor: theme.colors.border },
-  topRow: { minHeight: 56, paddingHorizontal: theme.spacing.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  mobileBrand: { minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs },
+  topRow: { minHeight: 56, paddingHorizontal: theme.spacing.md, flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs },
+  mobileBrand: { minWidth: 0, height: 48, flexDirection: 'row', alignItems: 'center', overflow: 'hidden' },
   mobileLogoViewport: { width: 44, height: 48, overflow: 'hidden', justifyContent: 'center' },
   mobileLogo: { width: 104, height: 69, marginLeft: -4, marginTop: -10, flexShrink: 0 },
   headerActions: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs },
-  searchIconSlot: { height: 48, overflow: 'hidden' },
-  inlineSearch: { position: 'absolute', top: 56, left: theme.spacing.md, right: theme.spacing.md, zIndex: 40 },
+  searchHost: { flex: 1, minWidth: 0, height: 52, position: 'relative', zIndex: 40 },
+  searchTriggerSlot: { position: 'absolute', top: 2, right: 0, width: 48, height: 48 },
+  inlineSearch: { position: 'absolute', top: 0, right: 0, left: 0, zIndex: 40 },
   searchBackdrop: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, zIndex: 20, backgroundColor: 'transparent' },
   countBadge: { position: 'absolute', top: 2, right: 1, minWidth: 18, height: 18, paddingHorizontal: 4, borderRadius: 9, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.secondary.DEFAULT, borderWidth: 2, borderColor: theme.colors.white },
   countBadgeText: { color: theme.colors.white, fontSize: 9, lineHeight: 11, fontWeight: '800' },

@@ -25,13 +25,14 @@ type Props = {
   accessibilityLabel?: string;
   autoFocus?: boolean;
   showCancel?: boolean;
+  cancelAsIcon?: boolean;
   containerStyle?: StyleProp<ViewStyle>;
   onKeyPress?: (event: NativeSyntheticEvent<TextInputKeyPressEventData>) => void;
 };
 
 export const SearchField = forwardRef<TextInput, Props>(({ value, onChangeText, onSubmit, onCancel,
   placeholder = 'Search products and sellers', accessibilityLabel = 'Search products and sellers', autoFocus,
-  showCancel = false, containerStyle, onKeyPress }, ref) => {
+  showCancel = false, cancelAsIcon = false, containerStyle, onKeyPress }, ref) => {
   const { colors } = useAppTheme();
   const [focused, setFocused] = useState(false);
   return (
@@ -60,7 +61,9 @@ export const SearchField = forwardRef<TextInput, Props>(({ value, onChangeText, 
         />
         {value.length > 0 ? <Button variant="icon" size="sm" icon={<X size={19} color={colors.textMuted} />} onPress={() => onChangeText('')} accessibilityLabel="Clear search" /> : null}
       </View>
-      {showCancel && onCancel ? <Button variant="tertiary" size="sm" onPress={onCancel}>Cancel</Button> : null}
+      {showCancel && onCancel ? cancelAsIcon
+        ? <Button variant="icon" size="sm" icon={<X size={20} color={colors.text} />} onPress={onCancel} accessibilityLabel="Close search" />
+        : <Button variant="tertiary" size="sm" onPress={onCancel}>Cancel</Button> : null}
     </View>
   );
 });
