@@ -1,10 +1,10 @@
-import React, { useMemo, useRef } from 'react';
-import { Animated, FlatList, StyleSheet, Text, View } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Animated, BackHandler, FlatList, Keyboard, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { CompositeNavigationProp, NavigationProp, useNavigation } from '@react-navigation/native';
 import { useQuery } from '@tanstack/react-query';
-import { Bell, Plus, ShoppingCart } from 'lucide-react-native';
+import { Bell, Plus, Search as SearchIcon, ShoppingCart } from 'lucide-react-native';
 import { MotiView } from 'moti';
 import { PromotionalCarousel } from '../../components/domain/PromotionalCarousel';
 import { CategoryCard } from '../../components/domain/CategoryCard';
@@ -25,8 +25,7 @@ import { categoryBranchIds, rootCategories } from '../../utils/categoryTree';
 import { useCart } from '../../hooks/useCart';
 import { notificationKeys, notificationService } from '../../services/notificationService';
 import { Button } from '../../components/ui/Button';
-import { SearchTrigger } from '../../components/ui/SearchField';
-import { useCompactSearch } from '../../contexts/CompactSearchContext';
+import { Search } from '../search/Search';
 
 type HomeNavigation = CompositeNavigationProp<
   NavigationProp<HomeStackParamList, 'HomeFeed'>,
@@ -43,9 +42,10 @@ export const Home: React.FC = () => {
   const { user } = useAuth();
   const cart = useCart();
   const canSell = canAccessSellerTools(user?.role);
-  const compactSearch = useCompactSearch();
   const reduceMotion = useReducedMotionSafe();
-  const scrollY = useRef(new Animated.Value(0)).current;
+  const searchProgress = useRef(new Animated.Value(0)).current;
+  const [searchExpanded, setSearchExpanded] = useState(false);
+  const [focusRequest, setFocusRequest] = useState(0);
   const categoriesQuery = useQuery({ queryKey: catalogKeys.categories, queryFn: productService.fetchCategories });
   const { data: categories = [], isLoading: categoriesLoading } = categoriesQuery;
   const productsQuery = useQuery({ queryKey: catalogKeys.products, queryFn: () => productService.fetchProducts() });
@@ -68,35 +68,110 @@ export const Home: React.FC = () => {
   const openCategory = (slug: string) => navigation.navigate('ProductListing', { categoryId: slug });
 
   const openNotifications = () => navigation.getParent<any>()?.navigate('Profile', { screen: 'Notifications' });
-  const compactHeaderPadding = reduceMotion ? theme.spacing.md : scrollY.interpolate({
-    inputRange: [0, 40],
-    outputRange: [theme.spacing.md, theme.spacing.sm],
-    extrapolate: 'clamp',
-  });
+  const animateSearch = useCallback((expanded: boolean) => {
+    searchProgress.stopAnimation();
+    if (expanded) setSearchExpanded(true);
+    if (reduceMotion) {
+      searchProgress.setValue(expanded ? 1 : 0);
+      if (expanded) requestAnimationFrame(() => setFocusRequest(value => value + 1));
+      else setSearchExpanded(false);
+      return;
+    }
+    Animated.timing(searchProgress, {
+      toValue: expanded ? 1 : 0,
+      duration: expanded ? 190 : 150,
+      useNativeDriver: false,
+    }).start(({ finished }) => {
+      if (!finished) return;
+      if (expanded) setFocusRequest(value => value + 1);
+      else setSearchExpanded(false);
+    });
+  }, [reduceMotion, searchProgress]);
+  const openSearch = useCallback(() => animateSearch(true), [animateSearch]);
+  const closeSearch = useCallback(() => {
+    Keyboard.dismiss();
+    animateSearch(false);
+  }, [animateSearch]);
+  const openSearchProduct = useCallback((productId: string) => {
+    navigation.navigate('ProductDetails', { productId });
+    closeSearch();
+  }, [closeSearch, navigation]);
+  const openSearchSeller = useCallback((sellerId: string) => {
+    navigation.navigate('SellerStore', { sellerId });
+    closeSearch();
+  }, [closeSearch, navigation]);
+
+  useEffect(() => {
+    if (isCompact || !searchExpanded) return;
+    searchProgress.setValue(0);
+    setSearchExpanded(false);
+  }, [isCompact, searchExpanded, searchProgress]);
+
+  useEffect(() => {
+    if (!searchExpanded) return;
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      closeSearch();
+      return true;
+    });
+    return () => subscription.remove();
+  }, [closeSearch, searchExpanded]);
+
+  useEffect(() => {
+    if (Platform.OS !== 'web' || !searchExpanded || typeof window === 'undefined') return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      closeSearch();
+    };
+    window.addEventListener('keydown', onKeyDown, true);
+    return () => window.removeEventListener('keydown', onKeyDown, true);
+  }, [closeSearch, searchExpanded]);
+
+  const searchIconWidth = searchProgress.interpolate({ inputRange: [0, 1], outputRange: [48, 0] });
+  const searchRowOffset = searchProgress.interpolate({ inputRange: [0, 1], outputRange: [-8, 0] });
+  const searchPadding = searchProgress.interpolate({ inputRange: [0, 1], outputRange: [0, 76] });
 
   if (productsQuery.isError || categoriesQuery.isError || sellersQuery.isError) return <ErrorState message="Unable to load the catalog." onRetry={() => { void productsQuery.refetch(); void categoriesQuery.refetch(); void sellersQuery.refetch(); }} />;
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      {isCompact && <Animated.View style={[styles.topArea, { paddingBottom: compactHeaderPadding }]}>
+      {isCompact && <Animated.View style={[styles.topArea, { paddingBottom: searchPadding }]}>
         <View style={styles.topRow}>
           <View style={styles.mobileBrand}>
             <View style={styles.mobileLogoViewport}><Image source={require('../../../assets/africlay-brand-v1.svg')} style={styles.mobileLogo} contentFit="contain" accessibilityLabel="AfriClay" /></View>
           </View>
           <View style={styles.headerActions}>
-            {user ? <Button variant="icon" size="sm" accessibilityLabel={`Notifications, ${unreadQuery.data?.length ?? 0} unread`} onPress={openNotifications} icon={<View><Bell color={theme.colors.primary.dark} size={22} /><CountBadge count={unreadQuery.data?.length ?? 0} /></View>} /> : null}
-            <Button variant="icon" size="sm" accessibilityLabel={`Cart, ${cart.itemCount} items`} onPress={() => navigation.navigate('Cart')} icon={<View><ShoppingCart color={theme.colors.primary.dark} size={23} /><CountBadge count={cart.itemCount} /></View>} />
+            <Animated.View
+              pointerEvents={searchExpanded ? 'none' : 'auto'}
+              accessibilityElementsHidden={searchExpanded}
+              importantForAccessibility={searchExpanded ? 'no-hide-descendants' : 'auto'}
+              aria-hidden={searchExpanded}
+              style={[styles.searchIconSlot, { width: searchIconWidth, opacity: searchProgress.interpolate({ inputRange: [0, 1], outputRange: [1, 0] }) }]}
+            >
+              <Button variant="icon" size="sm" accessibilityLabel="Open search" onPress={openSearch} icon={<SearchIcon color={theme.colors.primary.dark} size={22} />} />
+            </Animated.View>
+            {user ? <Button variant="icon" size="sm" accessibilityLabel={`Notifications, ${unreadQuery.data?.length ?? 0} unread`} onPress={() => { closeSearch(); openNotifications(); }} icon={<View><Bell color={theme.colors.primary.dark} size={22} /><CountBadge count={unreadQuery.data?.length ?? 0} /></View>} /> : null}
+            <Button variant="icon" size="sm" accessibilityLabel={`Cart, ${cart.itemCount} items`} onPress={() => { closeSearch(); navigation.navigate('Cart'); }} icon={<View><ShoppingCart color={theme.colors.primary.dark} size={23} /><CountBadge count={cart.itemCount} /></View>} />
           </View>
         </View>
-        <SearchTrigger onPress={compactSearch.open} style={styles.searchBar} />
+        <Animated.View
+          pointerEvents={searchExpanded ? 'auto' : 'none'}
+          accessibilityElementsHidden={!searchExpanded}
+          importantForAccessibility={searchExpanded ? 'auto' : 'no-hide-descendants'}
+          aria-hidden={!searchExpanded}
+          style={[styles.inlineSearch, { opacity: searchProgress, transform: [{ translateY: searchRowOffset }] }]}
+        >
+          <Search presentation="inline" focusRequest={focusRequest} onDismiss={closeSearch} onOpenProduct={openSearchProduct} onOpenSeller={openSearchSeller} />
+        </Animated.View>
       </Animated.View>}
+
+      {isCompact && searchExpanded ? <Pressable accessible={false} onPress={closeSearch} style={styles.searchBackdrop} /> : null}
 
       <Animated.ScrollView
         style={styles.contentScroll}
         contentContainerStyle={[styles.content, isExpanded && { maxWidth: 1440 }]}
         showsVerticalScrollIndicator={false}
-        scrollEventThrottle={16}
-        onScroll={reduceMotion ? undefined : Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: false })}
+        scrollEnabled={!searchExpanded}
       >
         <PromotionalCarousel products={featured} loading={productsLoading} onProductPress={productId => {
           const product = products.find(item => item.id === productId);
@@ -188,13 +263,15 @@ const styles = StyleSheet.create({
   desktopGrid: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: theme.spacing.lg },
   sellerSpacing: { marginBottom: theme.spacing.sm },
   container: { flex: 1, minHeight: 0, overflow: 'hidden', backgroundColor: theme.colors.cream },
-  topArea: { position: 'relative', zIndex: 20, elevation: 4, flexShrink: 0, backgroundColor: theme.colors.white, borderBottomWidth: 1, borderBottomColor: theme.colors.border },
+  topArea: { position: 'relative', zIndex: 30, elevation: 6, flexShrink: 0, overflow: 'visible', backgroundColor: theme.colors.white, borderBottomWidth: 1, borderBottomColor: theme.colors.border },
   topRow: { minHeight: 56, paddingHorizontal: theme.spacing.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   mobileBrand: { minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs },
   mobileLogoViewport: { width: 44, height: 48, overflow: 'hidden', justifyContent: 'center' },
   mobileLogo: { width: 104, height: 69, marginLeft: -4, marginTop: -10, flexShrink: 0 },
   headerActions: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs },
-  searchBar: { marginHorizontal: theme.spacing.md, backgroundColor: theme.colors.cream },
+  searchIconSlot: { height: 48, overflow: 'hidden' },
+  inlineSearch: { position: 'absolute', top: 56, left: theme.spacing.md, right: theme.spacing.md, zIndex: 40 },
+  searchBackdrop: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, zIndex: 20, backgroundColor: 'transparent' },
   countBadge: { position: 'absolute', top: 2, right: 1, minWidth: 18, height: 18, paddingHorizontal: 4, borderRadius: 9, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.secondary.DEFAULT, borderWidth: 2, borderColor: theme.colors.white },
   countBadgeText: { color: theme.colors.white, fontSize: 9, lineHeight: 11, fontWeight: '800' },
   brandLockup: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm, paddingVertical: theme.spacing.sm },

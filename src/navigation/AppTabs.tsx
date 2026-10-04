@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback } from 'react';
 import { BottomTabBarProps, createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Grid2X2, Home, PackageCheck, Plus, User, type LucideIcon } from 'lucide-react-native';
@@ -13,9 +13,7 @@ import { theme } from '../theme';
 import { useResponsiveLayout } from '../contexts/ResponsiveLayoutContext';
 import { useAuth } from '../hooks/useAuth';
 import { canAccessSellerTools } from '../utils/roles';
-import { CompactSearchPanel } from '../components/search/CompactSearchPanel';
 import type { RootStackParamList } from './RootNavigator';
-import { CompactSearchContext } from '../contexts/CompactSearchContext';
 
 export type AppTabParamList = {
   Home: undefined;
@@ -106,17 +104,8 @@ const AppTabsNavigator = ({ onOpenHome, onOpenCategories, onOpenOrders, onOpenPr
 };
 
 const AppTabsContent = () => {
-  const { isCompact } = useResponsiveLayout();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList, 'AppTabs'>>();
   const { user } = useAuth();
-  const [searchOpen, setSearchOpen] = useState(false);
-
-  useEffect(() => {
-    if (isCompact) return;
-    setSearchOpen(false);
-  }, [isCompact]);
-
-  const openSearch = useCallback(() => setSearchOpen(true), []);
   const openHome = useCallback(() => navigation.navigate('AppTabs', { screen: 'Home', params: { screen: 'HomeFeed' } }), [navigation]);
   const openCategories = useCallback(() => navigation.navigate('AppTabs', { screen: 'Home', params: { screen: 'ProductListing' } }), [navigation]);
   const openOrders = useCallback(() => {
@@ -124,23 +113,11 @@ const AppTabsContent = () => {
     navigation.navigate('AppTabs', { screen: 'Profile', params: { screen: 'MyOrders' } });
   }, [navigation, user]);
   const openProfile = useCallback(() => navigation.navigate('AppTabs', { screen: 'Profile', params: { screen: 'ProfileOverview' } }), [navigation]);
-  const openProduct = useCallback((productId: string) => navigation.navigate('AppTabs', {
-    screen: 'Home', params: { screen: 'ProductDetails', params: { productId } },
-  }), [navigation]);
-  const openSeller = useCallback((sellerId: string) => navigation.navigate('AppTabs', {
-    screen: 'Home', params: { screen: 'SellerStore', params: { sellerId } },
-  }), [navigation]);
-  const compactSearch = useMemo(() => ({ open: openSearch }), [openSearch]);
 
   return (
-    <CompactSearchContext.Provider value={compactSearch}>
-      <View style={styles.appRoot}>
-        <View style={styles.appRoot} accessibilityElementsHidden={isCompact && searchOpen} importantForAccessibility={isCompact && searchOpen ? 'no-hide-descendants' : 'auto'}>
-          <AppTabsNavigator onOpenHome={openHome} onOpenCategories={openCategories} onOpenOrders={openOrders} onOpenProfile={openProfile} />
-        </View>
-        {isCompact && <CompactSearchPanel visible={searchOpen} onClose={() => setSearchOpen(false)} onOpenProduct={openProduct} onOpenSeller={openSeller} />}
-      </View>
-    </CompactSearchContext.Provider>
+    <View style={styles.appRoot}>
+      <AppTabsNavigator onOpenHome={openHome} onOpenCategories={openCategories} onOpenOrders={openOrders} onOpenProfile={openProfile} />
+    </View>
   );
 };
 

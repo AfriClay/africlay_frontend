@@ -4,6 +4,7 @@ import {
   InteractionManager,
   Keyboard,
   Pressable,
+  ScrollView,
   SectionList,
   StyleSheet,
   Text,
@@ -32,7 +33,7 @@ import { recentSearches } from '../../utils/recentSearches';
 
 type SearchNavigation = NativeStackNavigationProp<SearchStackParamList, 'SearchLanding'>;
 type SearchProps = {
-  presentation?: 'screen' | 'overlay';
+  presentation?: 'screen' | 'inline';
   focusRequest?: number;
   onDismiss?: () => void;
   onOpenProduct?: (productId: string) => void;
@@ -56,9 +57,10 @@ const Match = ({ text, query, color, highlight }: { text: string; query: string;
 };
 
 export const Search: React.FC<SearchProps> = ({ presentation = 'screen', focusRequest = 0, onDismiss, onOpenProduct, onOpenSeller }) => {
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   const compact = width < 600;
   const expanded = width >= 840;
+  const inline = presentation === 'inline';
   const route = useRoute<RouteProp<SearchStackParamList, 'SearchLanding'>>();
   const navigation = useNavigation<SearchNavigation>();
   const { colors } = useAppTheme();
@@ -156,7 +158,7 @@ export const Search: React.FC<SearchProps> = ({ presentation = 'screen', focusRe
   };
   const retry = () => { void productsQuery.refetch(); void sellersQuery.refetch(); };
   const cancel = () => {
-    if (presentation === 'overlay' && onDismiss) {
+    if (inline && onDismiss) {
       Keyboard.dismiss();
       onDismiss();
       return;
@@ -166,96 +168,114 @@ export const Search: React.FC<SearchProps> = ({ presentation = 'screen', focusRe
     else Keyboard.dismiss();
   };
 
-  if (hasBlockingFailure) return <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'bottom']}>
-    {presentation === 'overlay' && onDismiss ? <View style={styles.errorHeader}><Button variant="tertiary" size="sm" onPress={onDismiss}>Cancel</Button></View> : null}
+  const searchField = <SearchField
+    ref={inputRef}
+    value={query}
+    onChangeText={setQuery}
+    onSubmit={submit}
+    onCancel={cancel}
+    showCancel={inline || compact}
+    autoFocus={presentation === 'screen' && compact}
+    onKeyPress={event => {
+      if (event.nativeEvent.key === 'Escape') { cancel(); return; }
+      if (event.nativeEvent.key === 'ArrowDown') setSelectedIndex(current => Math.min(flatResults.length - 1, current + 1));
+      if (event.nativeEvent.key === 'ArrowUp') setSelectedIndex(current => Math.max(0, current - 1));
+      if (event.nativeEvent.key === 'Enter') submit();
+    }}
+  />;
+
+  const discovery = <View style={styles.discovery}>
+    {recent.length > 0 ? <View style={styles.block}>
+      <View style={styles.sectionHeadingRow}><Text style={[styles.sectionTitle, { color: colors.text }]}>Recent searches</Text><Button size="sm" variant="tertiary" onPress={() => { void recentSearches.clear(); setRecent([]); }}>Clear all</Button></View>
+      {recent.map(item => <View key={item} style={[styles.recentRow, { borderBottomColor: colors.border }]}>
+        <Pressable style={styles.recentAction} onPress={() => setQuery(item)} accessibilityRole="button" accessibilityLabel={`Search for ${item}`}>
+          <Clock3 size={18} color={colors.textMuted} /><Text numberOfLines={1} style={[styles.recentText, { color: colors.text }]}>{item}</Text>
+        </Pressable>
+        <Button variant="icon" size="sm" icon={<Trash2 size={17} color={colors.textMuted} />} accessibilityLabel={`Remove ${item} from recent searches`} onPress={() => { void recentSearches.remove(item).then(setRecent); }} />
+      </View>)}
+    </View> : null}
+    <View style={[styles.discoveryCard, { backgroundColor: colors.accentSoft }]}>
+      <PackageSearch size={26} color={colors.accentPressed} />
+      <View style={styles.discoveryCopy}><Text style={[styles.discoveryTitle, { color: colors.text }]}>Search the marketplace</Text><Text style={[styles.supportingText, { color: colors.textMuted }]}>Search product names, descriptions, seller names, and locations.</Text></View>
+    </View>
+  </View>;
+
+  const loadingContent = <View style={styles.results}>
+    {slow ? <View style={[styles.notice, { backgroundColor: colors.secondarySoft }]}><Text style={[styles.noticeText, { color: colors.text }]}>This is taking longer than usual.</Text><Button size="sm" variant="tertiary" onPress={retry}>Retry</Button></View> : null}
+    {Array.from({ length: inline ? 4 : 6 }).map((_, index) => <View key={index} style={styles.skeletonRow}><View style={[styles.skeletonImage, { backgroundColor: colors.skeleton }]} /><View style={styles.skeletonCopy}><View style={[styles.skeletonTitle, { backgroundColor: colors.skeleton }]} /><View style={[styles.skeletonMeta, { backgroundColor: colors.skeleton }]} /></View></View>)}
+  </View>;
+
+  const resultList = <SectionList
+    style={inline ? styles.inlineList : undefined}
+    sections={sections}
+    keyExtractor={item => item.key}
+    keyboardDismissMode="on-drag"
+    keyboardShouldPersistTaps="handled"
+    stickySectionHeadersEnabled={false}
+    contentContainerStyle={flatResults.length ? styles.results : styles.emptyResults}
+    ListHeaderComponent={<>
+      {hasCachedFailure ? <View style={[styles.notice, { backgroundColor: colors.secondarySoft }]}><Text style={[styles.noticeText, { color: colors.text }]}>Showing previously loaded results. Refresh failed.</Text><Button size="sm" variant="tertiary" onPress={retry}>Retry</Button></View> : null}
+      <View style={styles.filterRow}><Pressable accessibilityRole="checkbox" accessibilityState={{ checked: availableOnly }} onPress={() => setAvailableOnly(value => !value)} style={({ pressed }) => [styles.filterChip, { backgroundColor: availableOnly ? colors.accent : pressed ? colors.accentSoft : colors.surface, borderColor: availableOnly ? colors.accent : colors.border }]}><Text style={{ color: availableOnly ? colors.surface : colors.text, fontWeight: '600' }}>In stock only</Text></Pressable><Text style={[styles.resultCount, { color: colors.textMuted }]}>{flatResults.length} result{flatResults.length === 1 ? '' : 's'}</Text></View>
+    </>}
+    renderSectionHeader={({ section }) => <Text style={[styles.sectionHeader, { color: colors.text }]}>{section.title}</Text>}
+    renderItem={({ item }) => {
+      const index = flatResults.findIndex(result => result.key === item.key);
+      const selected = index === selectedIndex;
+      return <Pressable
+        onPress={() => openResult(item)}
+        onFocus={() => setSelectedIndex(index)}
+        accessibilityRole="button"
+        accessibilityState={{ selected }}
+        style={({ pressed }) => [styles.result, { backgroundColor: pressed || selected ? colors.accentSoft : colors.surface, borderColor: selected ? colors.focusRing : colors.border }]}
+      >
+        {item.imageUrl ? <CatalogImage uri={item.imageUrl} label={item.title} style={styles.resultImage} /> : <View style={[styles.resultIcon, { backgroundColor: colors.accentSoft }]}>{item.type === 'seller' ? <Store size={22} color={colors.accent} /> : <PackageSearch size={22} color={colors.accent} />}</View>}
+        <View style={styles.resultCopy}><View style={styles.resultType}>{item.type === 'seller' ? <Store size={15} color={colors.accent} /> : <PackageSearch size={15} color={colors.accent} />}<Text style={[styles.typeText, { color: colors.accentPressed }]}>{item.type === 'seller' ? 'Seller' : 'Product'}</Text></View><Match text={item.title} query={debouncedQuery} color={colors.text} highlight={colors.accentPressed} /><Text numberOfLines={1} style={[styles.resultMeta, { color: colors.textMuted }]}>{item.meta}</Text></View>
+      </Pressable>;
+    }}
+    ListEmptyComponent={<EmptyState title="No matches found" description="Try a product name, seller, or location." />}
+  />;
+
+  const searchContent = hasBlockingFailure ? (
+    <View style={styles.inlineError}><Text style={[styles.noticeText, { color: colors.text }]}>Search is unavailable right now.</Text><Button size="sm" variant="tertiary" onPress={retry}>Retry</Button></View>
+  ) : !query.trim() ? (
+    inline ? <ScrollView style={styles.inlineList} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.inlineScrollContent}>{discovery}</ScrollView> : discovery
+  ) : loading ? (
+    inline ? <ScrollView style={styles.inlineList} keyboardShouldPersistTaps="handled">{loadingContent}</ScrollView> : loadingContent
+  ) : resultList;
+
+  if (inline) return <View style={styles.inlineContainer}>
+    {searchField}
+    <View style={[styles.inlineResults, { height: Math.min(420, Math.max(240, height * 0.5)), backgroundColor: colors.surface, borderColor: colors.border }]}>
+      {searchContent}
+    </View>
+  </View>;
+
+  if (hasBlockingFailure) return <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
     <ErrorState message="Search is unavailable right now. Check your connection and try again." onRetry={retry} />
   </SafeAreaView>;
 
-  return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={presentation === 'overlay' ? ['top', 'bottom'] : ['top']}>
-      <View style={[styles.shell, expanded && styles.expandedShell]}>
-        <View style={styles.headingRow}>
-          <View>
-            <Text style={[styles.title, { color: colors.text }]}>Search</Text>
-            {!compact ? <Text style={[styles.subtitle, { color: colors.textMuted }]}>Find products and seller stores across AfriClay.</Text> : null}
-          </View>
-          {__DEV__ ? <Button size="sm" variant="tertiary" onPress={() => navigation.navigate('UiPreview')}>UI preview</Button> : null}
+  return <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+    <View style={[styles.shell, expanded && styles.expandedShell]}>
+      <View style={styles.headingRow}>
+        <View>
+          <Text style={[styles.title, { color: colors.text }]}>Search</Text>
+          {!compact ? <Text style={[styles.subtitle, { color: colors.textMuted }]}>Find products and seller stores across AfriClay.</Text> : null}
         </View>
-        <SearchField
-          ref={inputRef}
-          value={query}
-          onChangeText={setQuery}
-          onSubmit={submit}
-          onCancel={cancel}
-          showCancel={presentation === 'overlay' || compact}
-          autoFocus={presentation === 'screen' && compact}
-          onKeyPress={event => {
-            if (event.nativeEvent.key === 'Escape') { cancel(); return; }
-            if (event.nativeEvent.key === 'ArrowDown') setSelectedIndex(current => Math.min(flatResults.length - 1, current + 1));
-            if (event.nativeEvent.key === 'ArrowUp') setSelectedIndex(current => Math.max(0, current - 1));
-            if (event.nativeEvent.key === 'Enter') submit();
-          }}
-        />
-
-        {!query.trim() ? (
-          <View style={styles.discovery}>
-            {recent.length > 0 ? <View style={styles.block}>
-              <View style={styles.sectionHeadingRow}><Text style={[styles.sectionTitle, { color: colors.text }]}>Recent searches</Text><Button size="sm" variant="tertiary" onPress={() => { void recentSearches.clear(); setRecent([]); }}>Clear all</Button></View>
-              {recent.map(item => <View key={item} style={[styles.recentRow, { borderBottomColor: colors.border }]}>
-                <Pressable style={styles.recentAction} onPress={() => setQuery(item)} accessibilityRole="button" accessibilityLabel={`Search for ${item}`}>
-                  <Clock3 size={18} color={colors.textMuted} /><Text numberOfLines={1} style={[styles.recentText, { color: colors.text }]}>{item}</Text>
-                </Pressable>
-                <Button variant="icon" size="sm" icon={<Trash2 size={17} color={colors.textMuted} />} accessibilityLabel={`Remove ${item} from recent searches`} onPress={() => { void recentSearches.remove(item).then(setRecent); }} />
-              </View>)}
-            </View> : null}
-            <View style={[styles.discoveryCard, { backgroundColor: colors.accentSoft }]}>
-              <PackageSearch size={26} color={colors.accentPressed} />
-              <View style={styles.discoveryCopy}><Text style={[styles.discoveryTitle, { color: colors.text }]}>Search the marketplace</Text><Text style={[styles.supportingText, { color: colors.textMuted }]}>Search product names, descriptions, seller names, and locations.</Text></View>
-            </View>
-          </View>
-        ) : loading ? (
-          <View style={styles.results}>
-            {slow ? <View style={[styles.notice, { backgroundColor: colors.secondarySoft }]}><Text style={[styles.noticeText, { color: colors.text }]}>This is taking longer than usual.</Text><Button size="sm" variant="tertiary" onPress={retry}>Retry</Button></View> : null}
-            {Array.from({ length: 6 }).map((_, index) => <View key={index} style={styles.skeletonRow}><View style={[styles.skeletonImage, { backgroundColor: colors.skeleton }]} /><View style={styles.skeletonCopy}><View style={[styles.skeletonTitle, { backgroundColor: colors.skeleton }]} /><View style={[styles.skeletonMeta, { backgroundColor: colors.skeleton }]} /></View></View>)}
-          </View>
-        ) : (
-          <SectionList
-            sections={sections}
-            keyExtractor={item => item.key}
-            keyboardDismissMode="on-drag"
-            keyboardShouldPersistTaps="handled"
-            stickySectionHeadersEnabled={false}
-            contentContainerStyle={flatResults.length ? styles.results : styles.emptyResults}
-            ListHeaderComponent={<>
-              {hasCachedFailure ? <View style={[styles.notice, { backgroundColor: colors.secondarySoft }]}><Text style={[styles.noticeText, { color: colors.text }]}>Showing saved results. New results could not be loaded.</Text><Button size="sm" variant="tertiary" onPress={retry}>Retry</Button></View> : null}
-              <View style={styles.filterRow}><Pressable accessibilityRole="checkbox" accessibilityState={{ checked: availableOnly }} onPress={() => setAvailableOnly(value => !value)} style={({ pressed }) => [styles.filterChip, { backgroundColor: availableOnly ? colors.accent : pressed ? colors.accentSoft : colors.surface, borderColor: availableOnly ? colors.accent : colors.border }]}><Text style={{ color: availableOnly ? colors.surface : colors.text, fontWeight: '600' }}>In stock only</Text></Pressable><Text style={[styles.resultCount, { color: colors.textMuted }]}>{flatResults.length} result{flatResults.length === 1 ? '' : 's'}</Text></View>
-            </>}
-            renderSectionHeader={({ section }) => <Text style={[styles.sectionHeader, { color: colors.text }]}>{section.title}</Text>}
-            renderItem={({ item }) => {
-              const index = flatResults.findIndex(result => result.key === item.key);
-              const selected = index === selectedIndex;
-              return <Pressable
-                onPress={() => openResult(item)}
-                onFocus={() => setSelectedIndex(index)}
-                accessibilityRole="button"
-                accessibilityState={{ selected }}
-                style={({ pressed }) => [styles.result, { backgroundColor: pressed || selected ? colors.accentSoft : colors.surface, borderColor: selected ? colors.focusRing : colors.border }]}
-              >
-                {item.imageUrl ? <CatalogImage uri={item.imageUrl} label={item.title} style={styles.resultImage} /> : <View style={[styles.resultIcon, { backgroundColor: colors.accentSoft }]}>{item.type === 'seller' ? <Store size={22} color={colors.accent} /> : <PackageSearch size={22} color={colors.accent} />}</View>}
-                <View style={styles.resultCopy}><View style={styles.resultType}>{item.type === 'seller' ? <Store size={15} color={colors.accent} /> : <PackageSearch size={15} color={colors.accent} />}<Text style={[styles.typeText, { color: colors.accentPressed }]}>{item.type === 'seller' ? 'Seller' : 'Product'}</Text></View><Match text={item.title} query={debouncedQuery} color={colors.text} highlight={colors.accentPressed} /><Text numberOfLines={1} style={[styles.resultMeta, { color: colors.textMuted }]}>{item.meta}</Text></View>
-              </Pressable>;
-            }}
-            ListEmptyComponent={<EmptyState title="No matches found" description="Try a product name, seller, or location." />}
-          />
-        )}
+        {__DEV__ ? <Button size="sm" variant="tertiary" onPress={() => navigation.navigate('UiPreview')}>UI preview</Button> : null}
       </View>
-    </SafeAreaView>
-  );
+      {searchField}
+      {searchContent}
+    </View>
+  </SafeAreaView>;
 };
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  errorHeader: { minHeight: 56, alignItems: 'flex-end', justifyContent: 'center', paddingHorizontal: theme.spacing.md },
+  inlineContainer: { position: 'relative', zIndex: 50, width: '100%', minWidth: 0 },
+  inlineResults: { position: 'absolute', top: '100%', left: 0, right: 0, marginTop: theme.spacing.sm, overflow: 'hidden', borderWidth: 1, borderRadius: theme.radii.control, ...theme.shadows.md },
+  inlineList: { flex: 1 },
+  inlineScrollContent: { flexGrow: 1 },
+  inlineError: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: theme.spacing.sm, padding: theme.spacing.lg },
   shell: { flex: 1, width: '100%', maxWidth: 760, alignSelf: 'center', paddingHorizontal: theme.spacing.md, paddingTop: theme.spacing.md },
   expandedShell: { maxWidth: 920, paddingHorizontal: theme.spacing.xl },
   headingRow: { minHeight: 52, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.md },
