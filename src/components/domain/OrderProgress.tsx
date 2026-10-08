@@ -5,8 +5,8 @@ import { theme } from '../../theme';
 import { OrderStatus } from '../../types/order';
 
 const steps: Array<{ status: Exclude<OrderStatus, 'cancelled'>; label: string }> = [
-  { status: 'pending', label: 'Placed' },
-  { status: 'processing', label: 'Accepted' },
+  { status: 'pending', label: 'Payment' },
+  { status: 'processing', label: 'Processing' },
   { status: 'shipped', label: 'Shipped' },
   { status: 'delivered', label: 'Delivered' },
 ];

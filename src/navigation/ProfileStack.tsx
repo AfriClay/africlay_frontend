@@ -10,6 +10,7 @@ import { Wishlist } from '../screens/profile/Wishlist';
 import { Notifications } from '../screens/notifications/Notifications';
 import { MyBookings } from '../screens/profile/MyBookings';
 import { ServiceDetails } from '../screens/home/ServiceDetails';
+import { Wallet } from '../screens/profile/Wallet';
 
 export type ProfileStackParamList = {
   ProfileOverview: undefined;
@@ -19,6 +20,7 @@ export type ProfileStackParamList = {
   Wishlist: undefined;
   Notifications: undefined;
   MyBookings: undefined;
+  Wallet: undefined;
   Settings: undefined;
   SupportHelp: undefined;
   ProductDetails: { productId: string };
@@ -37,6 +39,7 @@ export const ProfileStack = () => (
     <Stack.Screen name="Wishlist" component={Wishlist} options={{ title: 'My Wishlist' }} />
     <Stack.Screen name="Notifications" component={Notifications} />
     <Stack.Screen name="MyBookings" component={MyBookings} options={{ title: 'My Bookings' }} />
+    <Stack.Screen name="Wallet" component={Wallet} options={{ title: 'Wallet' }} />
     <Stack.Screen name="Settings" component={Settings} />
     <Stack.Screen name="SupportHelp" component={SupportHelp} options={{ title: 'Help & Support' }} />
     <Stack.Screen name="ProductDetails" component={ProductDetails} options={{ title: '' }} />

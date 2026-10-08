@@ -2,8 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { AppState, FlatList, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Bell, CalendarClock, ChevronRight, Package, ShoppingBag, Sparkles, Star } from 'lucide-react-native';
-import { NavigationProp, ParamListBase, useNavigation } from '@react-navigation/native';
+import { Bell, CalendarClock, Package, Sparkles } from 'lucide-react-native';
 import { Button } from '../../components/ui/Button';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { ErrorState } from '../../components/ui/ErrorState';
@@ -14,7 +13,7 @@ import { formatDate } from '../../utils/formatDate';
 import { NotificationItem } from '../../types/notification';
 import { DeviceNotificationPermission, getDeviceNotificationPermission, requestDeviceNotificationPermission } from '../../services/deviceNotificationService';
 
-const icons = { order: Package, booking: CalendarClock, product: ShoppingBag, review: Star, system: Bell, promotion: Sparkles } as const;
+const icons = { order: Package, booking: CalendarClock, system: Bell, promotion: Sparkles } as const;
 
 const DevicePermissionPrompt = () => {
   const [permission, setPermission] = useState<DeviceNotificationPermission>();
@@ -51,7 +50,6 @@ const DevicePermissionPrompt = () => {
 
 export const Notifications: React.FC = () => {
   const { user } = useAuth();
-  const navigation = useNavigation<NavigationProp<ParamListBase>>();
   const client = useQueryClient();
   const userId = user?.id ?? '';
   const key = notificationKeys.all(userId);
@@ -65,15 +63,6 @@ export const Notifications: React.FC = () => {
     if (!item.isRead) {
       try { await markRead.mutateAsync(item.id); } catch { /* Keep navigation available if marking read fails. */ }
     }
-    const tabs = navigation.getParent<NavigationProp<ParamListBase>>();
-    if (item.action === 'buyer_order' && item.targetId) navigation.navigate('OrderDetails', { orderId: item.targetId });
-    else if (item.action === 'seller_orders') tabs?.navigate('Sell', { screen: 'SellerOrders' });
-    else if (item.action === 'seller_product' && item.targetId) tabs?.navigate('Sell', { screen: 'AddEditProduct', params: { productId: item.targetId } });
-    else if (item.action === 'product' && (item.targetSlug || item.targetId)) navigation.navigate('ProductDetails', { productId: item.targetSlug ?? item.targetId });
-    else if (item.action === 'store' && item.targetId) navigation.navigate('SellerStore', { sellerId: item.targetId });
-    else if (item.action === 'service' && (item.targetSlug || item.targetId)) navigation.navigate('ServiceDetails', { serviceId: item.targetSlug ?? item.targetId });
-    else if (item.action === 'buyer_bookings') navigation.navigate('MyBookings');
-    else if (item.action === 'seller_bookings') tabs?.navigate('Sell', { screen: 'SellerBookings' });
   };
   return <SafeAreaView style={styles.container} edges={['bottom']}>
     <View style={styles.toolbar}><Text style={styles.summary}>{unread ? `${unread} unread` : 'You are all caught up'}</Text>{unread > 0 && <Button size="sm" variant="ghost" loading={markAll.isPending} onPress={() => void markAll.mutateAsync()}>Mark all read</Button>}</View>
@@ -87,11 +76,10 @@ export const Notifications: React.FC = () => {
       ListEmptyComponent={query.isLoading ? <Text style={styles.loading}>Loading notifications...</Text> : <EmptyState title="No notifications" description="Order, booking, and account updates will appear here." />}
       renderItem={({ item }) => {
         const Icon = icons[item.type];
-        return <Pressable onPress={() => void openNotification(item)} style={[styles.item, !item.isRead && styles.unread]} accessibilityRole="button" accessibilityLabel={`${item.title}. ${item.action ? 'Open update' : item.isRead ? 'Read' : 'Mark as read'}`}>
+        return <Pressable onPress={() => void openNotification(item)} style={[styles.item, !item.isRead && styles.unread]} accessibilityRole="button" accessibilityLabel={`${item.title}. ${item.isRead ? 'Read' : 'Mark as read'}`}>
           <View style={styles.icon}><Icon size={20} color={theme.colors.primary.DEFAULT} /></View>
           <View style={styles.copy}><Text style={styles.title}>{item.title}</Text><Text style={styles.message}>{item.message}</Text><Text style={styles.date}>{formatDate(item.createdAt)}</Text></View>
           {!item.isRead && <View style={styles.dot} />}
-          {item.action ? <ChevronRight size={18} color={theme.colors.muted} /> : null}
         </Pressable>;
       }}
     />

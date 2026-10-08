@@ -325,7 +325,7 @@ Keep the backend Dockerized and separate from this Expo app. Configure the front
 
 - Signed out: `AuthStack`
 - Guest: `AppTabs` plus modal access to `AuthStack`
-- Signed-in member: `AppTabs`, cart, checkout, and notifications
+- Signed-in member: `AppTabs` and notifications; cart and checkout are shown only to buyer-enabled roles
 
 The auth flow can include registration, email verification, role selection, profile completion, seller KYC, pending verification, and storefront setup. A Django user response is mapped into the app's `User` type by `src/services/authService.ts`.
 
@@ -339,8 +339,8 @@ Authenticated and guest users enter five bottom tabs:
 - **Messages**: conversations with sellers and buyers
 - **Profile**: account, orders, wishlist, and profile settings
 
-Cart and checkout are root-level modal routes. Notifications, wishlist, and
-bookings are account screens in `ProfileStack`. The side menu is mounted
+Cart and checkout are buyer-only root-level modal routes. Notifications,
+wallet, wishlist, and bookings are account screens in `ProfileStack`. The side menu is mounted
 alongside the tabs through `SideMenuProvider`.
 
 ### State and data

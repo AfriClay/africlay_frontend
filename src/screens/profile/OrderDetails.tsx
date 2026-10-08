@@ -3,7 +3,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { RouteProp, useRoute } from '@react-navigation/native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { MapPin } from 'lucide-react-native';
+import { CreditCard, MapPin, Truck } from 'lucide-react-native';
 import { StatusPill } from '../../components/ui/StatusPill';
 import { Button } from '../../components/ui/Button';
 import { OrderProgress } from '../../components/domain/OrderProgress';
@@ -45,7 +45,9 @@ export const OrderDetails: React.FC = () => {
   return <SafeAreaView style={styles.container}><ScrollView contentContainerStyle={styles.content}>
     <View style={styles.header}><View style={styles.headerCopy}><Text style={styles.id}>Order #{order.id}</Text><Text style={styles.date}>{formatDate(order.date)}</Text></View><StatusPill status={order.status} /></View>
     <OrderProgress status={order.status} />
-    <Text style={styles.statusNote}>{order.status === 'shipped' ? 'Your order is on its way. Confirm receipt only after it arrives.' : order.status === 'processing' ? 'The seller accepted your order and is preparing it.' : order.status === 'pending' ? 'Your order is waiting for the seller to accept it.' : order.status === 'delivered' ? 'Delivery is complete. You can now rate the product or store.' : ''}</Text>
+    <Text style={styles.statusNote}>{order.status === 'shipped' ? 'Your order is on its way. Confirm receipt only after it arrives.' : order.status === 'processing' ? 'Payment is confirmed and the seller is preparing your order.' : order.status === 'pending' ? 'Your order is waiting for payment confirmation.' : order.status === 'delivered' ? 'Delivery is complete. You can now rate the product or store.' : ''}</Text>
+    <View style={styles.infoCard}><CreditCard color={theme.colors.primary.DEFAULT} size={20} /><View style={styles.infoCopy}><Text style={styles.infoTitle}>Payment</Text><Text style={styles.infoText}>{order.paymentStatus === 'paid' ? 'Confirmed' : order.paymentStatus === 'refunded' ? 'Refunded' : order.paymentStatus === 'failed' ? 'Failed' : 'Pending confirmation'}{order.paymentMethod ? ` · ${order.paymentMethod === 'mpesa' ? 'M-Pesa' : order.paymentMethod}` : ''}</Text></View></View>
+    {order.status === 'shipped' && order.courierName ? <View style={styles.infoCard}><Truck color={theme.colors.primary.DEFAULT} size={20} /><View style={styles.infoCopy}><Text style={styles.infoTitle}>{order.courierName}</Text><Text style={styles.infoText}>Tracking {order.trackingNumber}</Text><Text style={styles.infoText}>Shipping {formatCurrency(order.shippingCost, order.currency)}</Text></View></View> : null}
     {order.status === 'shipped' ? <View style={styles.confirmBlock}><Button loading={confirmDelivery.isPending} disabled={confirmDelivery.isPending} onPress={() => confirmDelivery.mutate()}>Confirm item received</Button>{confirmDelivery.isError ? <Text style={styles.error} accessibilityRole="alert">{getApiErrorMessage(confirmDelivery.error, 'Unable to confirm delivery.')}</Text> : null}</View> : null}
     <Text style={styles.sectionTitle}>Items</Text>
     {order.items.map(item => <View key={item.id} style={styles.itemRow}><View style={styles.itemCopy}><Text style={styles.itemName}>{item.name}</Text><Text style={styles.date}>Qty {item.quantity}</Text></View><Text style={styles.amount}>{formatCurrency(item.price * item.quantity, order.currency)}</Text></View>)}
@@ -76,4 +78,8 @@ const styles = StyleSheet.create({
   statusNote: { color: theme.colors.muted, lineHeight: 21, marginTop: theme.spacing.xs },
   confirmBlock: { marginTop: theme.spacing.md, gap: theme.spacing.sm },
   error: { color: theme.colors.error },
+  infoCard: { marginTop: theme.spacing.md, padding: theme.spacing.md, backgroundColor: theme.colors.white, borderRadius: theme.radii.md, flexDirection: 'row', alignItems: 'flex-start', gap: theme.spacing.sm },
+  infoCopy: { flex: 1, minWidth: 0 },
+  infoTitle: { color: theme.colors.ink, fontWeight: '800' },
+  infoText: { color: theme.colors.muted, marginTop: 2 },
 });

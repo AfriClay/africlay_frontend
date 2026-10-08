@@ -11,7 +11,7 @@ import { catalogKeys } from '../../services/catalogQueries';
 import { theme } from '../../theme';
 import { useReducedMotionSafe } from '../../hooks/useReducedMotionSafe';
 import { Tooltip } from '../ui/Tooltip';
-import { canAccessSellerTools } from '../../utils/roles';
+import { canAccessBuyerTools, canAccessSellerTools } from '../../utils/roles';
 import { notificationKeys, notificationService } from '../../services/notificationService';
 import { CategoryMegaMenu } from './CategoryMegaMenu';
 import { SearchField } from '../ui/SearchField';
@@ -38,6 +38,7 @@ export const MarketplaceShell = ({ children, route, category, navigate }: Props)
   const { isExpanded, sidebarWidth } = useResponsiveLayout();
   const { user } = useAuth();
   const canSell = canAccessSellerTools(user?.role);
+  const showCart = !user || canAccessBuyerTools(user.role);
   const unreadQuery = useQuery({ queryKey: notificationKeys.unread(user?.id ?? ''), queryFn: () => notificationService.list(false), enabled: Boolean(user?.id), staleTime: 15_000, refetchInterval: 30_000 });
   const unreadCount = unreadQuery.data?.length ?? 0;
   const categoriesQuery = useQuery({ queryKey: catalogKeys.categories, queryFn: productService.fetchCategories });
@@ -61,7 +62,7 @@ export const MarketplaceShell = ({ children, route, category, navigate }: Props)
       </Pressable>
       <SearchField value={query} onChangeText={setQuery} onSubmit={search} containerStyle={styles.search} />
       {user && <Action label={`Notifications, ${unreadCount} unread`} icon={Bell} badge={unreadCount} onPress={() => navigate({ tab: 'Profile', screen: 'Notifications' })} iconOnly />}
-      <Action label={`Cart, ${cart.itemCount} items`} icon={ShoppingCart} onPress={() => navigate({ root: 'Cart' })} iconOnly />
+      {showCart && <Action label={`Cart, ${cart.itemCount} items`} icon={ShoppingCart} onPress={() => navigate({ root: 'Cart' })} iconOnly />}
       <Action label="Account" icon={User} onPress={() => navigate({ tab: 'Profile', screen: 'ProfileOverview' })} iconOnly />
     </View><CategoryMegaMenu categories={categoriesQuery.data ?? []} activeSlug={category} onSelect={item => navigate({ tab: 'Home', screen: 'ProductListing', params: { categoryId: item.slug } })} /></View>}
     <View style={styles.body}>

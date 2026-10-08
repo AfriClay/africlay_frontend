@@ -89,9 +89,6 @@ export const presentDeviceNotification = async (item: NotificationItem): Promise
       body: item.message,
       data: {
         notificationId: item.id,
-        action: item.action,
-        targetId: item.targetId ?? '',
-        targetSlug: item.targetSlug ?? '',
       },
     },
     trigger: null,

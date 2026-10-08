@@ -1,7 +1,7 @@
 # Django feature matrix
 
-Source: `new_updated_server` route files, views, serializers, and models
-inspected on 2026-09-26 at commit `4321405`. All paths are relative to the Django host. `A`
+Source: `updated_backend_v4/Africlay-server` route files, views, serializers,
+models, and tests inspected on 2026-10-08. All paths are relative to the Django host. `A`
 means public (`AllowAny`), `U` authenticated active user, `V` verified seller,
 and `D` application admin. Owner filtering also applies where noted. A 400
 response contains DRF field errors; object-not-found or inaccessible records
@@ -52,20 +52,25 @@ Statuses describe the frontend after this parity pass. See
 | `/api/services/bookings/<uuid>/` | GET, DELETE U+customer | none -> booking; DELETE cancels pending/confirmed booking | `bookingService` / MyBookings | Integrated cancellation |
 | `/api/services/seller/bookings/` | GET V | none -> bookings for seller services | `bookingService` / SellerBookings | Integrated |
 | `/api/services/seller/bookings/<uuid>/` | PATCH V+owner | status -> booking | `bookingService` / SellerBookings | Integrated with allowed transition controls |
-| `/api/cart/` | GET U | none -> cart with items | `cartService` / Cart | Integrated; no clear route |
-| `/api/cart/items/` | GET, POST U | product UUID, quantity -> owned items; POST 201/200 | `cartService` / Cart | Integrated; stock checked |
-| `/api/cart/items/<uuid>/` | GET, PUT, PATCH, DELETE U+owner | quantity -> cart item; DELETE 204 | `cartService` / Cart | Integrated |
-| `/api/cart/checkout/` | POST U | four shipping fields -> 201 pending order | `orderService` / Checkout | Integrated; no payment or idempotency key |
+| `/api/cart/` | GET buyer | none -> cart with items | `cartService`, `CartContext` / Cart | Integrated; seller-only accounts do not request or display cart controls |
+| `/api/cart/items/` | GET, POST buyer | product UUID, quantity -> owned items; POST 201/200 | `cartService` / Cart | Integrated; stock checked |
+| `/api/cart/items/<uuid>/` | GET, PUT, PATCH, DELETE buyer+owner | quantity -> cart item; DELETE 204 | `cartService` / Cart | Integrated |
+| `/api/cart/checkout/` | POST buyer | four shipping fields, optional payment_method -> 201 order | `orderService` / Checkout | Integrated; M-Pesa order flow creates a pending order then calls payment initiation |
 | `/api/cart/orders/` | GET U | none -> buyer order array | `orderService` / MyOrders | Integrated |
 | `/api/cart/orders/<uuid>/` | GET U+buyer | none -> order with items | `orderService` / OrderDetails | Integrated |
 | `/api/cart/seller/orders/` | GET V | none -> seller order array | `orderService` / SellerOrders | Integrated; backend excludes multi-seller orders |
-| `/api/cart/seller/orders/<uuid>/` | PATCH V | status -> order | `orderService` / SellerOrders | Integrated |
+| `/api/cart/seller/orders/<uuid>/` | PATCH V | processing order: shipped requires courier_name, tracking_number, shipping_cost; cancelled is also allowed | `orderService` / SellerOrders | Integrated; pending-payment orders expose no seller action |
+| `/api/payments/initiate/` | POST buyer | order_id, 2547XXXXXXXX phone_number -> payment | `paymentService` / Checkout | Integrated; existing active payment is returned instead of creating a duplicate |
+| `/api/payments/<uuid>/` | GET buyer+order owner | none -> payment status/detail | `paymentService` / Checkout | Integrated with bounded, cancellable status refresh and foreground refresh |
+| `/api/payments/wallets/` | GET, POST U | GET auto-creates KES wallet -> wallet array; POST currency -> wallet | `paymentService` / Wallet | Integrated GET; the client uses the KES wallet created by the server |
+| `/api/payments/wallets/<uuid>/transactions/` | GET U+owner | limit/offset -> `{count,next,previous,results}` | `paymentService` / Wallet | Integrated first page with loading, empty, refresh, and error states |
+| `/api/payments/mpesa/stk-push/` | POST U | whole-KES amount, Kenyan phone, required Idempotency-Key -> payment attempt | `paymentService` / Wallet | Integrated as wallet top-up, separate from order payment; same attempt reuses its key |
 | `/api/cart/wishlist/` | GET U | none -> account wishlist with items | `wishlistService`, `WishlistContext` / Wishlist | Integrated |
 | `/api/cart/wishlist/items/` | GET, POST U | product UUID -> item | `wishlistService`, `WishlistContext` / ProductDetails | Integrated |
 | `/api/cart/wishlist/items/<uuid>/` | DELETE U+owner | none -> 204 | `wishlistService`, `WishlistContext` / Wishlist | Integrated |
 | `/api/reviews/` | GET A, POST U | target filter or exactly one target UUID plus rating/comment -> review | `reviewService` / product, service, store details | Integrated |
 | `/api/reviews/<uuid>/` | GET, PATCH, DELETE U | rating/comment -> review; DELETE 204 | `reviewService` / ReviewSection | Integrated; local backend fixes partial-update target validation |
-| `/api/notifications/` | GET U | optional is_read filter -> owned notifications | `notificationService` / Notifications, desktop shell | Integrated; backend does not yet emit notifications automatically |
+| `/api/notifications/` | GET U | optional is_read filter -> owned notifications with id, notification_type, title, message, is_read, created_at | `notificationService` / Notifications, desktop shell | Integrated exactly; no action/target deep-link metadata is assumed |
 | `/api/notifications/<uuid>/` | GET, PATCH U+owner | is_read -> notification | `notificationService` / Notifications | Integrated |
 | `/api/notifications/mark-all-read/` | POST U | none -> marked_read count | `notificationService` / Notifications | Integrated |
 | `/api/messages/conversations/` | GET, POST U | GET -> `{results:[conversation]}`; POST seller_id/store_id/product_id/service_id -> conversation | `messageService` / MessagesList, SellerStore | Integrated |
@@ -75,7 +80,8 @@ Statuses describe the frontend after this parity pass. See
 | `/api/schema/`, `/api/docs/`, `/api/redoc/` | GET A | none -> OpenAPI schema/documentation | none | Not applicable to marketplace client |
 | `/admin/` | Django admin | browser admin session -> admin UI | none | Not applicable to marketplace client |
 
-There is still no backend route for role promotion, wallets, payments,
-delivery tracking, product/image deletion, server-side product search, or a
-public store-product filter. Notification storage and read APIs exist, but no
-application workflow currently creates notification records automatically.
+There is still no backend route for role promotion, product/image deletion,
+server-side product search, a public store-product filter, payment-attempt
+detail lookup, or live courier tracking events. Notifications have no
+action/target fields, so notification rows cannot safely deep-link to a
+specific order, product, booking, or store.

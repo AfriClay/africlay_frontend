@@ -3,7 +3,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Bell, CalendarClock, ChevronRight, CircleHelp, Heart, LogOut, MapPin, Package, Settings, BadgeCheck } from 'lucide-react-native';
+import { Bell, CalendarClock, ChevronRight, CircleHelp, Heart, LogOut, MapPin, Package, Settings, BadgeCheck, WalletCards } from 'lucide-react-native';
 import { Avatar } from '../../components/ui/Avatar';
 import { GuestAuthSheet } from '../../components/ui/GuestAuthSheet';
 import { useAuth } from '../../hooks/useAuth';
@@ -17,13 +17,14 @@ import { useWishlist } from '../../hooks/useWishlist';
 import { Button } from '../../components/ui/Button';
 
 type ProfileNavigation = NativeStackNavigationProp<ProfileStackParamList, 'ProfileOverview'>;
-type ProfileRouteName = 'MyOrders' | 'MyAddresses' | 'Wishlist' | 'Notifications' | 'MyBookings' | 'Settings' | 'SupportHelp';
+type ProfileRouteName = 'MyOrders' | 'MyAddresses' | 'Wishlist' | 'Notifications' | 'MyBookings' | 'Wallet' | 'Settings' | 'SupportHelp';
 
 const menuItems: ReadonlyArray<{ label: string; route: ProfileRouteName; icon: typeof Package }> = [
   { label: 'My Orders', route: 'MyOrders', icon: Package },
   { label: 'My Bookings', route: 'MyBookings', icon: CalendarClock },
   { label: 'My Wishlist', route: 'Wishlist', icon: Heart },
   { label: 'Notifications', route: 'Notifications', icon: Bell },
+  { label: 'Wallet', route: 'Wallet', icon: WalletCards },
   { label: 'My Addresses', route: 'MyAddresses', icon: MapPin },
   { label: 'Settings', route: 'Settings', icon: Settings },
   { label: 'Help & Support', route: 'SupportHelp', icon: CircleHelp },

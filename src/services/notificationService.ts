@@ -5,13 +5,10 @@ import { parseCommerce, parseCommerceList } from './commerceContract';
 
 const notificationSchema = z.object({
   id: z.string().uuid(),
-  notification_type: z.enum(['order', 'booking', 'product', 'review', 'system', 'promotion']),
+  notification_type: z.enum(['order', 'booking', 'system', 'promotion']),
   title: z.string(),
   message: z.string(),
   is_read: z.boolean(),
-  action: z.enum(['', 'buyer_order', 'seller_orders', 'product', 'seller_product', 'store', 'service', 'buyer_bookings', 'seller_bookings']).default(''),
-  target_id: z.string().uuid().nullish(),
-  target_slug: z.string().nullish(),
   created_at: z.string(),
 });
 
@@ -21,9 +18,6 @@ const toNotification = (value: z.infer<typeof notificationSchema>): Notification
   title: value.title,
   message: value.message,
   isRead: value.is_read,
-  action: value.action,
-  targetId: value.target_id ?? undefined,
-  targetSlug: value.target_slug || undefined,
   createdAt: value.created_at,
 });
 

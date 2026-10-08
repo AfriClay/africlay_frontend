@@ -13,7 +13,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useSideMenu } from '../contexts/SideMenuContext';
 import { theme } from '../theme';
 import { confirmLogout } from '../utils/confirmLogout';
-import { canAccessSellerTools } from '../utils/roles';
+import { canAccessBuyerTools, canAccessSellerTools } from '../utils/roles';
 import { rootCategories } from '../utils/categoryTree';
 import { useCart } from '../hooks/useCart';
 import { notificationKeys, notificationService } from '../services/notificationService';
@@ -77,6 +77,7 @@ export const SideMenu: React.FC = () => {
   const requestLogout = () => confirmLogout(() => { close(); void auth.logout(); });
 
   const showStoreDashboard = canAccessSellerTools(auth.user?.role);
+  const showCart = !auth.user || canAccessBuyerTools(auth.user.role);
 
   return (
     <View pointerEvents={isOpen ? 'auto' : 'none'} style={styles.overlay} accessibilityViewIsModal={isOpen}
@@ -90,9 +91,9 @@ export const SideMenu: React.FC = () => {
           </View>
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
             <Pressable style={styles.menuRow} onPress={() => goTo('Home', { screen: 'HomeFeed' })}><Home color={theme.colors.ink} size={20} /><Text style={styles.menuLabel}>Home</Text></Pressable>
-            <Pressable style={styles.menuRow} onPress={goToCart} accessibilityRole="button" accessibilityLabel={`Cart, ${cart.itemCount} items`}>
+            {showCart ? <Pressable style={styles.menuRow} onPress={goToCart} accessibilityRole="button" accessibilityLabel={`Cart, ${cart.itemCount} items`}>
               <ShoppingCart color={theme.colors.ink} size={20} /><Text style={styles.menuLabel}>Cart</Text>{cart.itemCount > 0 ? <View style={styles.countBadge}><Text style={styles.countText}>{cart.itemCount > 99 ? '99+' : cart.itemCount}</Text></View> : null}
-            </Pressable>
+            </Pressable> : null}
             {auth.user ? <Pressable style={styles.menuRow} onPress={() => goTo('Profile', { screen: 'Notifications' })} accessibilityRole="button" accessibilityLabel={`Notifications, ${unreadQuery.data?.length ?? 0} unread`}>
               <Bell color={theme.colors.ink} size={20} /><Text style={styles.menuLabel}>Notifications</Text>{unreadQuery.data?.length ? <View style={styles.countBadge}><Text style={styles.countText}>{unreadQuery.data.length > 99 ? '99+' : unreadQuery.data.length}</Text></View> : null}
             </Pressable> : null}

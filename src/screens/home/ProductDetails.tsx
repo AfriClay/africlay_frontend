@@ -26,6 +26,7 @@ import { getApiErrorMessage } from '../../services/api';
 import { WishlistToggle } from '../../components/domain/WishlistToggle';
 import { ReviewSection } from '../../components/domain/ReviewSection';
 import { Button } from '../../components/ui/Button';
+import { canAccessBuyerTools } from '../../utils/roles';
 
 type ProductDetailsRoute = RouteProp<HomeStackParamList, 'ProductDetails'>;
 type ProductDetailsNavigation = CompositeNavigationProp<
@@ -52,9 +53,11 @@ export const ProductDetails: React.FC = () => {
   const [authSheetVisible, setAuthSheetVisible] = useState(false);
   const [cartError, setCartError] = useState<string>();
   const [pendingAction, setPendingAction] = useState<'cart' | 'buy'>();
+  const canBuy = !auth.user || canAccessBuyerTools(auth.user.role);
 
   const handleAddToCart = async () => {
     if (!auth.user) { setAuthSheetVisible(true); return; }
+    if (!canAccessBuyerTools(auth.user.role)) { setCartError('Shopping is available to buyer accounts.'); return; }
     if (product && !cart.mutating) {
       setPendingAction('cart');
       setCartError(undefined);
@@ -75,6 +78,7 @@ export const ProductDetails: React.FC = () => {
       setAuthSheetVisible(true);
       return;
     }
+    if (!canAccessBuyerTools(auth.user.role)) { setCartError('Shopping is available to buyer accounts.'); return; }
     if (product && !cart.mutating) {
       setPendingAction('buy');
       setCartError(undefined);
@@ -95,10 +99,10 @@ export const ProductDetails: React.FC = () => {
   if (!product) return <EmptyState title="Product not found" description="This product is unavailable. Go back to browse other items." />;
 
   const actions = <View onLayout={event => setActionHeight(event.nativeEvent.layout.height)} style={[styles.actions, isExpanded && styles.desktopActions]}>
-    <View style={styles.buttonRow}>
+    {canBuy ? <View style={styles.buttonRow}>
       <Button style={styles.actionButton} variant="secondary" icon={<ShoppingCart color={theme.colors.primary.DEFAULT} size={20} />} onPress={() => void handleAddToCart()} disabled={cart.mutating} loading={pendingAction === 'cart'} loadingLabel="Adding">Add to cart</Button>
       <Button style={styles.actionButton} onPress={() => void buyNow()} disabled={cart.mutating} loading={pendingAction === 'buy'} loadingLabel="Preparing">Buy now</Button>
-    </View>
+    </View> : <Text style={styles.buyerOnly}>Switch to a buyer-enabled account to purchase products.</Text>}
   </View>;
 
   return (
@@ -245,4 +249,5 @@ const styles = StyleSheet.create({
     color: theme.colors.muted,
     padding: theme.spacing.lg,
   },
+  buyerOnly: { color: theme.colors.muted, textAlign: 'center' },
 });

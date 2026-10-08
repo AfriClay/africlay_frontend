@@ -20,7 +20,7 @@ import { useResponsiveLayout } from '../../contexts/ResponsiveLayoutContext';
 import { ErrorState } from '../../components/ui/ErrorState';
 import { catalogKeys } from '../../services/catalogQueries';
 import { useAuth } from '../../hooks/useAuth';
-import { canAccessSellerTools } from '../../utils/roles';
+import { canAccessBuyerTools, canAccessSellerTools } from '../../utils/roles';
 import { categoryBranchIds, rootCategories } from '../../utils/categoryTree';
 import { useCart } from '../../hooks/useCart';
 import { notificationKeys, notificationService } from '../../services/notificationService';
@@ -42,6 +42,7 @@ export const Home: React.FC = () => {
   const { user } = useAuth();
   const cart = useCart();
   const canSell = canAccessSellerTools(user?.role);
+  const showCart = !user || canAccessBuyerTools(user.role);
   const reduceMotion = useReducedMotionSafe();
   const searchProgress = useRef(new Animated.Value(0)).current;
   const [searchExpanded, setSearchExpanded] = useState(false);
@@ -164,7 +165,7 @@ export const Home: React.FC = () => {
           </View>
           <View style={styles.headerActions}>
             {user ? <Button variant="icon" size="sm" accessibilityLabel={`Notifications, ${unreadQuery.data?.length ?? 0} unread`} onPress={() => { closeSearch(); openNotifications(); }} icon={<View><Bell color={theme.colors.primary.dark} size={22} /><CountBadge count={unreadQuery.data?.length ?? 0} /></View>} /> : null}
-            <Button variant="icon" size="sm" accessibilityLabel={`Cart, ${cart.itemCount} items`} onPress={() => { closeSearch(); navigation.navigate('Cart'); }} icon={<View><ShoppingCart color={theme.colors.primary.dark} size={23} /><CountBadge count={cart.itemCount} /></View>} />
+            {showCart ? <Button variant="icon" size="sm" accessibilityLabel={`Cart, ${cart.itemCount} items`} onPress={() => { closeSearch(); navigation.navigate('Cart'); }} icon={<View><ShoppingCart color={theme.colors.primary.dark} size={23} /><CountBadge count={cart.itemCount} /></View>} /> : null}
           </View>
         </View>
       </Animated.View>}

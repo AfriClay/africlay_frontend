@@ -1,4 +1,6 @@
 export type OrderStatus = 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
+export type OrderPaymentMethod = '' | 'wallet' | 'mpesa' | 'card';
+export type OrderPaymentStatus = 'pending' | 'paid' | 'failed' | 'refunded';
 
 export interface OrderItem {
   id: string;
@@ -19,4 +21,10 @@ export interface Order {
   total: number;
   currency: string;
   deliveryAddress: string;
+  paymentMethod: OrderPaymentMethod;
+  paymentStatus: OrderPaymentStatus;
+  courierName: string;
+  trackingNumber: string;
+  shippingCost: number;
+  shippedAt?: string;
 }

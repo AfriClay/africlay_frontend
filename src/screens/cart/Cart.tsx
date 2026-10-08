@@ -37,6 +37,15 @@ export const Cart: React.FC = () => {
     );
   }
 
+  if (!cart.available) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}><Text style={styles.title}>Cart</Text><Button variant="icon" icon={<X color={theme.colors.ink} size={22} />} onPress={() => navigation.goBack()} accessibilityLabel="Close cart" /></View>
+        <View style={styles.empty}><Text style={styles.emptyText}>The cart is available to buyer accounts. Your seller tools and orders remain available from the Sell tab.</Text></View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}><Text style={styles.title}>Cart</Text><Button variant="icon" icon={<X color={theme.colors.ink} size={22} />} onPress={() => navigation.goBack()} accessibilityLabel="Close cart" /></View>

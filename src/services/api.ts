@@ -46,11 +46,19 @@ export class ApiError extends Error {
   }
 }
 
+export class ApiTimeoutError extends Error {
+  constructor() {
+    super('The request took too long. Its final status may still be updating.');
+    this.name = 'ApiTimeoutError';
+  }
+}
+
 type RequestOptions = Omit<RequestInit, 'body' | 'headers'> & {
   body?: unknown;
   headers?: HeadersInit;
   auth?: boolean;
   retryOnUnauthorized?: boolean;
+  timeoutMs?: number;
 };
 
 export const tokenManager = {
@@ -148,7 +156,7 @@ const refreshTokens = async (): Promise<void> => {
 };
 
 export const apiClient = async <T>(endpoint: string, options: RequestOptions = {}): Promise<T> => {
-  const { body, headers, auth = true, retryOnUnauthorized = true, ...init } = options;
+  const { body, headers, auth = true, retryOnUnauthorized = true, timeoutMs, signal, ...init } = options;
   const requestHeaders = buildHeaders(headers);
   if (!auth) {
     requestHeaders.delete('Authorization');
@@ -166,17 +174,31 @@ export const apiClient = async <T>(endpoint: string, options: RequestOptions = {
   }
 
   let response: Response;
+  const timeoutController = timeoutMs ? new AbortController() : undefined;
+  let timedOut = false;
+  const abortFromCaller = () => timeoutController?.abort();
+  if (signal?.aborted) timeoutController?.abort();
+  else signal?.addEventListener('abort', abortFromCaller, { once: true });
+  const timeout = timeoutController && timeoutMs
+    ? setTimeout(() => { timedOut = true; timeoutController.abort(); }, timeoutMs)
+    : undefined;
   try {
     response = await fetch(endpointUrl(endpoint), {
       ...init,
       credentials: 'omit',
       headers: requestHeaders,
       body: body instanceof FormData ? body : body === undefined ? undefined : JSON.stringify(body),
+      signal: timeoutController?.signal ?? signal,
     });
-  } catch {
+  } catch (error) {
+    if (timedOut) throw new ApiTimeoutError();
+    if (error instanceof Error && error.name === 'AbortError') throw error;
     throw new Error(isWeb
       ? 'Unable to connect to AfriClay. Confirm that the backend is running.'
       : 'Unable to connect to AfriClay. Keep the phone and computer on the same network, or restore USB forwarding.');
+  } finally {
+    if (timeout) clearTimeout(timeout);
+    signal?.removeEventListener('abort', abortFromCaller);
   }
   const data = await parseResponse(response);
   if (response.status === 401 && auth && retryOnUnauthorized) {
