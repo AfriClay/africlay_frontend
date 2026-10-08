@@ -9,7 +9,6 @@ import { MotiView } from 'moti';
 import { PromotionalCarousel } from '../../components/domain/PromotionalCarousel';
 import { CategoryCard } from '../../components/domain/CategoryCard';
 import { ProductCard } from '../../components/domain/ProductCard';
-import { SellerCard } from '../../components/domain/SellerCard';
 import { ServiceCard } from '../../components/domain/ServiceCard';
 import { useReducedMotionSafe } from '../../hooks/useReducedMotionSafe';
 import { HomeStackParamList } from '../../navigation/HomeStack';
@@ -53,8 +52,6 @@ export const Home: React.FC = () => {
   const { data: products = [], isLoading: productsLoading } = productsQuery;
   const serviceQuery = useQuery({ queryKey: ['services'], queryFn: productService.fetchServices });
   const { data: services = [] } = serviceQuery;
-  const sellersQuery = useQuery({ queryKey: catalogKeys.sellers, queryFn: productService.fetchSellers });
-  const { data: sellers = [] } = sellersQuery;
   const featured = useMemo(() => products.slice(0, 4), [products]);
   const recommendedServices = useMemo(() => services.slice(0, 2), [services]);
   const mainCategories = useMemo(() => rootCategories(categories), [categories]);
@@ -134,7 +131,7 @@ export const Home: React.FC = () => {
   const brandOffset = searchProgress.interpolate({ inputRange: [0, 1], outputRange: [0, -8] });
   const brandOpacity = searchProgress.interpolate({ inputRange: [0, 0.7, 1], outputRange: [1, 0, 0] });
 
-  if (productsQuery.isError || categoriesQuery.isError || sellersQuery.isError) return <ErrorState message="Unable to load the catalog." onRetry={() => { void productsQuery.refetch(); void categoriesQuery.refetch(); void sellersQuery.refetch(); }} />;
+  if (productsQuery.isError || categoriesQuery.isError) return <ErrorState message="Unable to load the catalog." onRetry={() => { void productsQuery.refetch(); void categoriesQuery.refetch(); }} />;
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -247,11 +244,6 @@ export const Home: React.FC = () => {
           contentContainerStyle={styles.horizontalList}
         />}
 
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Meet the sellers</Text>
-        </View>
-        <View style={isExpanded && styles.desktopGrid}>{sellers.map(seller => <View key={seller.id} style={[styles.sellerSpacing, isExpanded && { width: '50%', padding: theme.spacing.sm }]}><SellerCard marketplace seller={seller} onPress={() => navigation.navigate('SellerStore', { sellerId: seller.id })} /></View>)}</View>
-
         {!isWeb && canSell && <View style={styles.sellBanner}>
           <Text style={styles.sellTitle}>Sell on AfriClay</Text>
           <Text style={styles.sellText}>Bring your products and services to the AfriClay community.</Text>
@@ -266,7 +258,6 @@ const styles = StyleSheet.create({
   desktopSellBanner: { width: '100%', maxWidth: 560, alignSelf: 'center', padding: theme.spacing.md, marginTop: theme.spacing.md },
   desktopSellCta: { alignSelf: 'flex-start', paddingHorizontal: theme.spacing.lg },
   desktopGrid: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: theme.spacing.lg },
-  sellerSpacing: { marginBottom: theme.spacing.sm },
   container: { flex: 1, minHeight: 0, overflow: 'hidden', backgroundColor: theme.colors.cream },
   topArea: { position: 'relative', zIndex: 30, elevation: 6, flexShrink: 0, overflow: 'visible', backgroundColor: theme.colors.white, borderBottomWidth: 1, borderBottomColor: theme.colors.border },
   topRow: { minHeight: 56, paddingHorizontal: theme.spacing.md, flexDirection: 'row', alignItems: 'center' },

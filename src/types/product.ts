@@ -32,6 +32,7 @@ export interface Service {
   priceFrom: number;
   currency?: string;
   durationMinutes?: number;
+  bookingBufferMinutes?: number;
   rating: number;
   reviewCount: number;
   category: string;

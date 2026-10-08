@@ -10,13 +10,14 @@ const serviceSchema = z.object({
   id: z.string().uuid(), store: z.string().uuid(), category: z.string().uuid().nullish(),
   tags: z.array(z.string().uuid()), images: z.array(imageSchema), name: z.string(), slug: z.string(),
   description: z.string(), price: z.union([z.string(), z.number()]), currency: z.string(),
-  duration_minutes: z.number().int().nonnegative(), status: z.enum(['draft', 'published', 'archived']),
+  duration_minutes: z.number().int().positive(), booking_buffer_minutes: z.number().int().nonnegative(),
+  status: z.enum(['draft', 'published', 'archived']),
 });
 type BackendService = z.infer<typeof serviceSchema>;
 export type ServiceCategory = z.infer<typeof categorySchema>;
 export type ServiceDraft = {
   name: string; slug: string; description: string; price: number; currency: string;
-  duration_minutes: number; category: string | null; tags: string[];
+  duration_minutes: number; booking_buffer_minutes: number; category: string | null; tags: string[];
   status: 'draft' | 'published' | 'archived';
 };
 
@@ -40,6 +41,7 @@ const toService = (raw: BackendService, categories: ServiceCategory[]): Service 
   return {
     id: raw.id, slug: raw.slug, status: raw.status, title: raw.name, description: raw.description,
     priceFrom: amount, currency: raw.currency, durationMinutes: raw.duration_minutes,
+    bookingBufferMinutes: raw.booking_buffer_minutes,
     category: categories.find(item => item.id === raw.category)?.name ?? 'Uncategorized',
     categoryId: raw.category ?? undefined, tagIds: raw.tags, providerId: raw.store,
     images: [...raw.images].sort((a, b) => Number(b.is_primary) - Number(a.is_primary) || a.display_order - b.display_order)
