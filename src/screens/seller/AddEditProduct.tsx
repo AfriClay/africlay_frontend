@@ -4,9 +4,10 @@ import * as ImagePicker from 'expo-image-picker';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ImagePlus, X } from 'lucide-react-native';
+import { ChevronDown, ImagePlus, Search, X } from 'lucide-react-native';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
+import { TagPicker } from '../../components/domain/TagPicker';
 import { SellerDashboardStackParamList } from '../../navigation/SellerDashboardStack';
 import { productService, type SellerProductDraft } from '../../services/productService';
 import { catalogKeys, invalidateCatalog } from '../../services/catalogQueries';
@@ -48,6 +49,8 @@ export const AddEditProduct: React.FC = () => {
   const [sku, setSku] = useState('');
   const [description, setDescription] = useState('');
   const [categoryId, setCategoryId] = useState<string>();
+  const [categoryPickerOpen, setCategoryPickerOpen] = useState(false);
+  const [categoryQuery, setCategoryQuery] = useState('');
   const [tagIds, setTagIds] = useState<string[]>([]);
   const [price, setPrice] = useState('');
   const [stock, setStock] = useState('0');
@@ -63,6 +66,7 @@ export const AddEditProduct: React.FC = () => {
     pendingUploads.current = [];
     generatedIdentifierSeed.current = identifierSeed();
     setName(''); setSlug(''); setSku(''); setDescription(''); setCategoryId(undefined);
+    setCategoryPickerOpen(false); setCategoryQuery('');
     setTagIds([]); setPrice(''); setStock('0'); setExistingImages([]); setImages([]);
     setStatus('draft'); setError(undefined);
   }, [productId]);
@@ -105,6 +109,22 @@ export const AddEditProduct: React.FC = () => {
   const categoryOptions = leafCategoryItems(categories);
   const selectableCategoryIds = new Set(categoryOptions.map(item => item.category.id));
   const categoryById = new Map(categories.map(item => [item.id, item]));
+  const pathForCategory = (id?: string) => {
+    const path = [];
+    const visited = new Set<string>();
+    let current = id ? categoryById.get(id) : undefined;
+    while (current && !visited.has(current.id)) {
+      visited.add(current.id);
+      path.unshift(current);
+      current = current.parent ? categoryById.get(current.parent) : undefined;
+    }
+    return path;
+  };
+  const selectedCategoryPath = pathForCategory(categoryId);
+  const selectedCategoryLabel = selectedCategoryPath.map(category => category.label).join(' / ');
+  const normalizedCategoryQuery = categoryQuery.trim().toLowerCase();
+  const visibleCategoryOptions = categoryOptions.filter(({ category }) =>
+    !normalizedCategoryQuery || pathForCategory(category.id).some(item => item.label.toLowerCase().includes(normalizedCategoryQuery)));
   const hasValidCategory = Boolean(categoryId && selectableCategoryIds.has(categoryId));
   const baseDetailsValid = Boolean(name.trim() && name.length <= 180 && resolvedSlug && resolvedSku && numericPrice > 0 && Number.isFinite(numericPrice) && /^\d+$/.test(stock.trim()));
   const canSave = baseDetailsValid && (status !== 'published' || hasValidCategory);
@@ -165,20 +185,43 @@ export const AddEditProduct: React.FC = () => {
     {categoriesQuery.isLoading ? <Text style={styles.optionMessage}>Loading categories...</Text> :
       categoriesQuery.isError ? <View style={styles.optionFailure}><Text style={styles.optionError}>Unable to load categories.</Text><Button size="sm" variant="tertiary" onPress={() => void categoriesQuery.refetch()} accessibilityLabel="Retry loading product categories">Retry</Button></View> :
         categoryOptions.length === 0 ? <Text style={styles.optionMessage}>No categories are available. You can save a draft, but a category is required to publish.</Text> :
-          <View style={styles.categoryTree}>{categoryOptions.map(({ category }) =>
-            <Pressable key={category.id} onPress={() => setCategoryId(current => current === category.id ? undefined : category.id)}
-              style={[styles.categoryBranch, categoryId === category.id && styles.categoryActive]}
-              accessibilityRole="radio" accessibilityState={{ selected: categoryId === category.id }} accessibilityLabel={`Choose ${category.label}`}>
-              <Text style={[styles.categoryText, categoryId === category.id && styles.categoryTextActive]}>{categoryById.get(category.parent ?? '')?.label ?? 'Other'} / {category.label}</Text>
-            </Pressable>)}</View>}
-    <Text style={styles.label}>Tags</Text>
-    {tagsQuery.isLoading ? <Text style={styles.optionMessage}>Loading optional tags...</Text> :
-      tagsQuery.isError ? <View style={styles.optionFailure}><Text style={styles.optionError}>Optional tags could not be loaded.</Text><Button size="sm" variant="tertiary" onPress={() => void tagsQuery.refetch()} accessibilityLabel="Retry loading product tags">Retry</Button></View> :
-        (tagsQuery.data ?? []).length === 0 ? <Text style={styles.optionMessage}>No optional tags are available.</Text> :
-          <View style={styles.categories}>{(tagsQuery.data ?? []).map(item =>
-            <Pressable key={item.id} onPress={() => setTagIds(current => current.includes(item.id) ? current.filter(id => id !== item.id) : [...current, item.id])} style={[styles.category, tagIds.includes(item.id) && styles.categoryActive]} accessibilityRole="button">
-              <Text style={[styles.categoryText, tagIds.includes(item.id) && styles.categoryTextActive]}>{item.label}</Text>
-            </Pressable>)}</View>}
+          <View style={styles.categoryPicker}>
+            <Pressable
+              onPress={() => setCategoryPickerOpen(value => !value)}
+              style={[styles.categoryField, categoryId && styles.categoryFieldSelected]}
+              accessibilityRole="button"
+              accessibilityState={{ expanded: categoryPickerOpen }}
+              accessibilityLabel={selectedCategoryLabel || 'Choose a specific category'}
+            >
+              <Text numberOfLines={2} style={[styles.categoryFieldText, !categoryId && styles.categoryPlaceholder]}>{selectedCategoryLabel || 'Choose a category'}</Text>
+              <ChevronDown color={theme.colors.primary.DEFAULT} size={20} />
+            </Pressable>
+            {categoryPickerOpen ? <View style={styles.categoryPanel}>
+              <View style={styles.categorySearch}>
+                <Search color={theme.colors.muted} size={18} />
+                <TextInput value={categoryQuery} onChangeText={setCategoryQuery} placeholder="Search categories" placeholderTextColor={theme.colors.muted} style={styles.categorySearchInput} accessibilityLabel="Search product categories" />
+              </View>
+              <ScrollView style={styles.categoryTree} contentContainerStyle={styles.categoryTreeContent} nestedScrollEnabled keyboardShouldPersistTaps="handled">{visibleCategoryOptions.map(({ category }) => {
+                const selected = categoryId === category.id;
+                return <Pressable key={category.id} onPress={() => { setCategoryId(category.id); setCategoryPickerOpen(false); setCategoryQuery(''); }}
+                  style={[styles.categoryBranch, selected && styles.categoryActive]}
+                  accessibilityRole="radio" accessibilityState={{ selected }} accessibilityLabel={`Choose ${category.label}`}>
+                  <Text numberOfLines={2} style={[styles.categoryText, selected && styles.categoryTextActive]}>{pathForCategory(category.id).map(item => item.label).join(' / ')}</Text>
+                </Pressable>;
+              })}</ScrollView>
+              {!visibleCategoryOptions.length ? <Text style={styles.optionMessage}>No matching categories.</Text> : null}
+            </View> : null}
+          </View>}
+    <TagPicker
+      tags={tagsQuery.data ?? []}
+      selectedIds={tagIds}
+      onChange={setTagIds}
+      relevantCategoryIds={selectedCategoryPath.map(category => category.id)}
+      loading={tagsQuery.isLoading}
+      error={tagsQuery.isError}
+      onRetry={() => void tagsQuery.refetch()}
+      disabled={saving}
+    />
     <View style={styles.twoColumns}>
       <View style={styles.column}><Input label="Price (KSh)" value={price} onChangeText={setPrice} keyboardType="decimal-pad" placeholder="0" accessibilityLabel="Product price" /></View>
       <View style={styles.column}><Input label="Stock count" value={stock} onChangeText={setStock} keyboardType="number-pad" placeholder="0" accessibilityLabel="Stock count" /></View>
@@ -222,11 +265,17 @@ const styles = StyleSheet.create({
   container: { padding: theme.spacing.lg, paddingBottom: theme.spacing.xxl, backgroundColor: theme.colors.cream },
   label: { color: theme.colors.ink, fontSize: theme.typography.small.fontSize, marginBottom: theme.spacing.xs },
   description: { minHeight: 112, padding: theme.spacing.md, borderRadius: theme.radii.md, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.white, color: theme.colors.ink, textAlignVertical: 'top', marginBottom: theme.spacing.md },
-  categories: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm, marginBottom: theme.spacing.md },
-  categoryTree: { gap: theme.spacing.xs, marginBottom: theme.spacing.md },
+  categoryPicker: { marginBottom: theme.spacing.md },
+  categoryField: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm, paddingHorizontal: theme.spacing.md, borderRadius: theme.radii.md, backgroundColor: theme.colors.white, borderWidth: 1, borderColor: theme.colors.border },
+  categoryFieldSelected: { borderColor: theme.colors.primary.DEFAULT },
+  categoryFieldText: { flex: 1, color: theme.colors.ink, fontSize: theme.typography.small.fontSize, lineHeight: 18 },
+  categoryPlaceholder: { color: theme.colors.muted },
+  categoryPanel: { marginTop: theme.spacing.xs, padding: theme.spacing.sm, borderWidth: 1, borderColor: theme.colors.border, borderRadius: theme.radii.md, backgroundColor: theme.colors.white },
+  categorySearch: { minHeight: 42, flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm, paddingHorizontal: theme.spacing.sm, borderWidth: 1, borderColor: theme.colors.border, borderRadius: theme.radii.sm },
+  categorySearchInput: { flex: 1, minWidth: 0, paddingVertical: theme.spacing.sm, color: theme.colors.ink },
+  categoryTree: { marginTop: theme.spacing.sm, maxHeight: 300 },
+  categoryTreeContent: { gap: 4 },
   categoryBranch: { minHeight: 42, flexDirection: 'row', alignItems: 'center', paddingHorizontal: theme.spacing.md, borderRadius: theme.radii.sm, backgroundColor: theme.colors.white, borderWidth: 1, borderColor: theme.colors.border },
-  branchMarker: { width: 8, height: 8, borderLeftWidth: 1, borderBottomWidth: 1, borderColor: theme.colors.muted, marginRight: theme.spacing.sm },
-  category: { paddingHorizontal: theme.spacing.md, paddingVertical: theme.spacing.sm, borderRadius: theme.radii.pill, backgroundColor: theme.colors.white, borderWidth: 1, borderColor: theme.colors.border },
   categoryActive: { backgroundColor: theme.colors.primary.DEFAULT, borderColor: theme.colors.primary.DEFAULT },
   categoryText: { color: theme.colors.ink, fontSize: theme.typography.small.fontSize },
   categoryTextActive: { color: theme.colors.white, fontWeight: '700' },

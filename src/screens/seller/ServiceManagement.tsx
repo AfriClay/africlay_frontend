@@ -6,6 +6,7 @@ import { ImagePlus, X } from 'lucide-react-native';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { ErrorState } from '../../components/ui/ErrorState';
+import { TagPicker } from '../../components/domain/TagPicker';
 import { getApiErrorMessage } from '../../services/api';
 import { catalogKeys } from '../../services/catalogQueries';
 import { productService } from '../../services/productService';
@@ -228,16 +229,15 @@ export const ServiceManagement: React.FC = () => {
             })}
           </View>}
 
-      <Text style={styles.label}>Tags</Text>
-      {tagsQuery.isLoading ? <Text style={styles.optionMessage}>Loading optional tags...</Text> :
-        tagsQuery.isError ? <View style={styles.optionFailure}><Text style={styles.optionError}>Optional tags could not be loaded.</Text><Button size="sm" variant="tertiary" onPress={() => void tagsQuery.refetch()}>Retry</Button></View> :
-          (tagsQuery.data ?? []).length === 0 ? <Text style={styles.optionMessage}>No optional tags are available.</Text> :
-            <View style={styles.options}>{(tagsQuery.data ?? []).map(tag => {
-              const selected = draft.tags.includes(tag.id);
-              return <Pressable key={tag.id} onPress={() => setDraft(value => ({ ...value, tags: selected ? value.tags.filter(id => id !== tag.id) : [...value.tags, tag.id] }))} style={[styles.option, selected && styles.optionActive]} accessibilityRole="checkbox" accessibilityState={{ checked: selected }}>
-                <Text style={[styles.optionText, selected && styles.optionTextActive]}>{tag.label}</Text>
-              </Pressable>;
-            })}</View>}
+      <TagPicker
+        tags={tagsQuery.data ?? []}
+        selectedIds={draft.tags}
+        onChange={tags => setDraft(value => ({ ...value, tags }))}
+        loading={tagsQuery.isLoading}
+        error={tagsQuery.isError}
+        onRetry={() => void tagsQuery.refetch()}
+        disabled={busy}
+      />
 
       <Text style={styles.label}>Listing status</Text>
       <View style={styles.statusOptions}>

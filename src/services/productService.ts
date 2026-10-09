@@ -20,7 +20,12 @@ const productSchema = z.object({
   review_count: quantity.optional().default(0),
 });
 const categorySchema = z.object({ id: z.string().min(1), name: z.string().min(1), slug: z.string().min(1), parent: optionalText });
-const tagSchema = z.object({ id: z.string().min(1), name: z.string().min(1), slug: z.string().min(1) });
+const tagSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1),
+  slug: z.string().min(1),
+  categories: z.array(z.string().min(1)).default([]),
+});
 const storeSchema = z.object({
   id: z.string().min(1), owner: z.string().min(1), slug: z.string().min(1), name: z.string().min(1),
   description: z.string().nullish(), city: z.string().nullish(), country: z.string().nullish(),
@@ -31,7 +36,7 @@ const storeSchema = z.object({
 type BackendProduct = z.infer<typeof productSchema>;
 type BackendStore = z.infer<typeof storeSchema>;
 export type CatalogCategory = { id: string; slug: string; label: string; icon: string; parent?: string };
-export type CatalogTag = { id: string; slug: string; label: string };
+export type CatalogTag = { id: string; slug: string; label: string; categoryIds: string[] };
 export type SellerProductDraft = {
   name: string;
   slug: string;
@@ -107,7 +112,7 @@ export const productService = {
     return categoriesInFlight;
   },
   fetchTags: async (): Promise<CatalogTag[]> => list(tagSchema, await apiClient('/products/tags/', { auth: false }))
-    .map(item => ({ id: item.id, slug: item.slug, label: item.name })),
+    .map(item => ({ id: item.id, slug: item.slug, label: item.name, categoryIds: item.categories })),
   fetchProducts: async (filters: { category?: string; tag?: string } = {}): Promise<Product[]> => {
     const params = new URLSearchParams();
     if (filters.category) params.set('category', filters.category);
