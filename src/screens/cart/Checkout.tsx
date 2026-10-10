@@ -18,6 +18,7 @@ import { orderKeys, orderService } from '../../services/orderService';
 import { isOrderPaymentPhone, paymentKeys, paymentService } from '../../services/paymentService';
 import { theme } from '../../theme';
 import { Payment } from '../../types/payment';
+import { OrderPaymentOption } from '../../types/order';
 import { formatCurrency } from '../../utils/formatCurrency';
 import { checkoutAddressSchema } from '../../validation/checkoutSchemas';
 
@@ -40,6 +41,7 @@ export const Checkout: React.FC = () => {
   const [stage, setStage] = useState<CheckoutStage>('idle');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [phoneTouched, setPhoneTouched] = useState(false);
+  const [paymentOption, setPaymentOption] = useState<OrderPaymentOption>('pay_now');
   const [error, setError] = useState<string>();
   const [statusError, setStatusError] = useState<string>();
   const [orderCreationUncertain, setOrderCreationUncertain] = useState(false);
@@ -51,6 +53,20 @@ export const Checkout: React.FC = () => {
   const statusRequest = useRef<AbortController | undefined>(undefined);
   const addresses = addressesQuery.data ?? [];
   const selected = addresses.find(address => address.id === selectedId) ?? addresses.find(address => address.is_default) ?? addresses[0];
+  const addressPayload = selected ? {
+    shipping_address: [selected.street_address, selected.apartment_suite].filter(Boolean).join(', '),
+    shipping_city: selected.city,
+    shipping_postal_code: selected.postal_code ?? '',
+    shipping_country: selected.country,
+  } : undefined;
+  const parsedAddress = addressPayload ? checkoutAddressSchema.safeParse(addressPayload) : undefined;
+  const validAddressPayload = parsedAddress?.success ? parsedAddress.data : undefined;
+  const cartSignature = cart.items.map(item => `${item.id}:${item.quantity}`).join('|');
+  const quoteQuery = useQuery({
+    queryKey: orderKeys.shippingQuote(userId, selected?.city ?? '', cartSignature),
+    queryFn: () => orderService.shippingQuote(validAddressPayload!),
+    enabled: Boolean(userId && cart.available && cart.itemCount && validAddressPayload),
+  });
 
   useEffect(() => {
     if (phoneTouched || phoneNumber) return;
@@ -132,11 +148,7 @@ export const Checkout: React.FC = () => {
   const requestPayment = useCallback(async (targetOrderId: string) => {
     if (inFlight.current) return;
     if (!isOrderPaymentPhone(phoneNumber)) {
-      setError('Enter a Kenyan M-Pesa number in 2547XXXXXXXX format.');
-      return;
-    }
-    if (!Number.isInteger(cart.subtotal)) {
-      setError('M-Pesa order payments require a whole-KES total. Adjust the cart before placing this order.');
+      setError('Enter a Kenyan M-Pesa number in 2547XXXXXXXX or 2541XXXXXXXX format.');
       return;
     }
     inFlight.current = true;
@@ -159,23 +171,22 @@ export const Checkout: React.FC = () => {
     if (inFlight.current || !cart.itemCount || !selected || !auth.user || !cart.available) return;
     if (!isOrderPaymentPhone(phoneNumber)) {
       setPhoneTouched(true);
-      setError('Enter a Kenyan M-Pesa number in 2547XXXXXXXX format.');
+      setError('Enter a Kenyan M-Pesa number in 2547XXXXXXXX or 2541XXXXXXXX format.');
       return;
     }
-    const candidate = {
-      shipping_address: [selected.street_address, selected.apartment_suite].filter(Boolean).join(', '),
-      shipping_city: selected.city,
-      shipping_postal_code: selected.postal_code ?? '',
-      shipping_country: selected.country,
-    };
-    const parsed = checkoutAddressSchema.safeParse(candidate);
+    const parsed = checkoutAddressSchema.safeParse(addressPayload);
     if (!parsed.success) { setError(parsed.error.issues[0]?.message); return; }
+    if (!quoteQuery.data) { setError('Wait for the delivery quote before placing the order.'); return; }
     inFlight.current = true;
     setStage('creating-order');
     setError(undefined);
     setOrderCreationUncertain(false);
     try {
-      const order = await orderService.checkout(parsed.data);
+      const order = await orderService.checkout({
+        ...parsed.data,
+        payment_method: 'mpesa',
+        payment_option: paymentOption,
+      });
       setOrderId(order.id);
       setOrderTotal(order.total);
       inFlight.current = false;
@@ -215,7 +226,9 @@ export const Checkout: React.FC = () => {
     const Icon = succeeded ? CircleCheckBig : pending ? Clock3 : AlertTriangle;
     const title = succeeded ? 'Payment confirmed' : pending ? 'Payment pending' : stage === 'payment-failed' ? 'Payment failed' : 'Payment status unknown';
     const description = succeeded
-      ? `Order #${orderId.slice(0, 8)} is paid and ready for the seller to process.`
+      ? payment?.purpose === 'delivery_fee'
+        ? `Order #${orderId.slice(0, 8)} is confirmed. The delivery fee is paid and the item balance is due at delivery.`
+        : `Order #${orderId.slice(0, 8)} is paid and ready for the seller to process.`
       : pending
         ? 'Complete the M-Pesa prompt on your phone. This screen checks for confirmation for a limited time.'
         : stage === 'payment-failed'
@@ -250,6 +263,17 @@ export const Checkout: React.FC = () => {
       </Pressable>)}
     {creating ? <AddressForm onSave={createAddress} onCancel={() => setCreating(false)} /> :
       <Button variant="secondary" onPress={() => setCreating(true)}>Add Address</Button>}
+    <Text style={styles.sectionTitle}>Payment option</Text>
+    <View style={styles.paymentOptions}>
+      <Pressable onPress={() => setPaymentOption('pay_now')} accessibilityRole="radio" accessibilityState={{ selected: paymentOption === 'pay_now' }} style={[styles.paymentOption, paymentOption === 'pay_now' && styles.paymentOptionSelected]}>
+        <Text style={[styles.paymentOptionTitle, paymentOption === 'pay_now' && styles.paymentOptionTitleSelected]}>Pay Now</Text>
+        <Text style={styles.paymentOptionNote}>Items and delivery</Text>
+      </Pressable>
+      <Pressable onPress={() => setPaymentOption('pay_on_delivery')} accessibilityRole="radio" accessibilityState={{ selected: paymentOption === 'pay_on_delivery' }} style={[styles.paymentOption, paymentOption === 'pay_on_delivery' && styles.paymentOptionSelected]}>
+        <Text style={[styles.paymentOptionTitle, paymentOption === 'pay_on_delivery' && styles.paymentOptionTitleSelected]}>Pay on Delivery</Text>
+        <Text style={styles.paymentOptionNote}>Delivery fee now</Text>
+      </Pressable>
+    </View>
     <Text style={styles.sectionTitle}>M-Pesa Payment</Text>
     <Input
       label="Phone number"
@@ -258,18 +282,27 @@ export const Checkout: React.FC = () => {
       placeholder="254712345678"
       keyboardType="phone-pad"
       autoComplete="tel"
-      error={phoneTouched && phoneNumber && !isOrderPaymentPhone(phoneNumber) ? 'Use 2547XXXXXXXX format.' : undefined}
+      error={phoneTouched && phoneNumber && !isOrderPaymentPhone(phoneNumber) ? 'Use 2547XXXXXXXX or 2541XXXXXXXX format.' : undefined}
     />
     <Text style={styles.note}>An M-Pesa prompt will be sent after your order is created.</Text>
     <Text style={styles.sectionTitle}>Order Summary</Text>
   </>;
   const busy = stage === 'creating-order' || stage === 'requesting-payment';
+  const quote = quoteQuery.data;
+  const dueNow = paymentOption === 'pay_on_delivery' ? quote?.shippingCost ?? 0 : quote?.total ?? 0;
   const footer = <View style={styles.footer}>
-    <View style={styles.totalRow}><Text style={styles.note}>Total due</Text><Text style={styles.total}>{formatCurrency(cart.subtotal)}</Text></View>
+    {quoteQuery.isLoading ? <View style={styles.quoteState}><ActivityIndicator color={theme.colors.primary.DEFAULT} /><Text style={styles.note}>Calculating delivery...</Text></View> : null}
+    {quoteQuery.isError ? <View style={styles.quoteError}><Text style={styles.error}>{getApiErrorMessage(quoteQuery.error, 'Delivery could not be calculated for this address.')}</Text><Button size="sm" variant="secondary" onPress={() => void quoteQuery.refetch()}>Retry Quote</Button></View> : null}
+    {quote ? <>
+      <View style={styles.totalRow}><Text style={styles.note}>Items</Text><Text style={styles.summaryAmount}>{formatCurrency(quote.itemSubtotal, quote.currency)}</Text></View>
+      <View style={styles.totalRow}><Text style={styles.note}>Delivery</Text><Text style={styles.summaryAmount}>{formatCurrency(quote.shippingCost, quote.currency)}</Text></View>
+      <View style={styles.totalRow}><Text style={styles.note}>{paymentOption === 'pay_on_delivery' ? 'Pay now' : 'Total due'}</Text><Text style={styles.total}>{formatCurrency(dueNow, quote.currency)}</Text></View>
+      {paymentOption === 'pay_on_delivery' ? <View style={styles.totalRow}><Text style={styles.note}>Due at delivery</Text><Text style={styles.summaryAmount}>{formatCurrency(quote.itemSubtotal, quote.currency)}</Text></View> : null}
+    </> : null}
     {cart.error && <Text style={styles.error} accessibilityRole="alert">{cart.error}</Text>}
     {error && <Text style={styles.error} accessibilityRole="alert">{error}</Text>}
     {orderCreationUncertain ? <Button variant="secondary" onPress={() => navigation.navigate('AppTabs', { screen: 'Profile', params: { screen: 'MyOrders' } })}>View My Orders</Button> : null}
-    <Button onPress={() => void submit()} loading={busy} loadingLabel={stage === 'creating-order' ? 'Creating order' : 'Requesting payment'} disabled={busy || orderCreationUncertain || cart.loading || cart.mutating || !cart.itemCount || !selected || !isOrderPaymentPhone(phoneNumber) || !Number.isInteger(cart.subtotal) || addressesQuery.isError || creating || Boolean(cart.error)}>Place Order & Pay</Button>
+    <Button onPress={() => void submit()} loading={busy} loadingLabel={stage === 'creating-order' ? 'Creating order' : 'Requesting payment'} disabled={busy || orderCreationUncertain || cart.loading || cart.mutating || !cart.itemCount || !selected || !isOrderPaymentPhone(phoneNumber) || addressesQuery.isError || quoteQuery.isLoading || quoteQuery.isError || !quote || creating || Boolean(cart.error)}>{paymentOption === 'pay_on_delivery' ? 'Pay Delivery Fee & Place Order' : 'Place Order & Pay'}</Button>
   </View>;
   return <SafeAreaView style={styles.container}><FlatList data={cart.items} keyExtractor={item => item.id}
     renderItem={({ item }) => <View style={styles.itemRow}><Text style={styles.itemName}>{item.name} x {item.quantity}</Text><Text style={styles.itemPrice}>{formatCurrency(item.price * item.quantity)}</Text></View>}
@@ -293,6 +326,15 @@ const styles = StyleSheet.create({
   footer: { gap: theme.spacing.sm, marginTop: theme.spacing.lg },
   totalRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   total: { fontSize: theme.typography.h3.fontSize, fontWeight: '800', color: theme.colors.ink },
+  summaryAmount: { color: theme.colors.ink, fontWeight: '700' },
+  paymentOptions: { flexDirection: 'row', gap: theme.spacing.sm },
+  paymentOption: { flex: 1, minHeight: 76, padding: theme.spacing.md, borderWidth: 1, borderColor: theme.colors.border, borderRadius: theme.radii.md, backgroundColor: theme.colors.white },
+  paymentOptionSelected: { borderColor: theme.colors.primary.DEFAULT, backgroundColor: theme.colors.primary.tint },
+  paymentOptionTitle: { color: theme.colors.ink, fontWeight: '800' },
+  paymentOptionTitleSelected: { color: theme.colors.primary.dark },
+  paymentOptionNote: { color: theme.colors.muted, marginTop: 4, fontSize: theme.typography.small.fontSize },
+  quoteState: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm },
+  quoteError: { gap: theme.spacing.sm, alignItems: 'stretch' },
   error: { color: theme.colors.error, textAlign: 'center' },
   confirmation: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: theme.spacing.xl, backgroundColor: theme.colors.cream },
   confirmationText: { maxWidth: 520, textAlign: 'center', color: theme.colors.muted, marginTop: theme.spacing.md, lineHeight: 22 },

@@ -14,6 +14,7 @@ const paymentSchema = z.object({
   id: z.string().uuid(),
   order_id: z.string().uuid(),
   provider: z.string(),
+  purpose: z.enum(['order_total', 'delivery_fee', 'delivery_balance']),
   status: z.enum(['initiated', 'pending', 'succeeded', 'failed', 'cancelled']),
   amount: moneySchema,
   currency: z.string().length(3),
@@ -59,6 +60,7 @@ const toPayment = (raw: z.infer<typeof paymentSchema>): Payment => ({
   id: raw.id,
   orderId: raw.order_id,
   provider: raw.provider,
+  purpose: raw.purpose,
   status: raw.status,
   amount: parseAmount(raw.amount),
   currency: raw.currency,
@@ -98,7 +100,7 @@ export const normalizeKenyanPaymentPhone = (value: string): string =>
   value.replace(/[+\s-]/g, '');
 
 export const isOrderPaymentPhone = (value: string): boolean =>
-  /^2547\d{8}$/.test(normalizeKenyanPaymentPhone(value));
+  /^254(?:7|1)\d{8}$/.test(normalizeKenyanPaymentPhone(value));
 
 export const isWalletTopUpPhone = (value: string): boolean =>
   /^254(?:7|1)\d{8}$/.test(normalizeKenyanPaymentPhone(value));
@@ -110,10 +112,10 @@ export const paymentKeys = {
 };
 
 export const paymentService = {
-  initiateOrderPayment: async (orderId: string, phoneNumber: string, signal?: AbortSignal): Promise<Payment> =>
+  initiateOrderPayment: async (orderId: string, phoneNumber: string, purpose: 'initial' | 'delivery_balance' = 'initial', signal?: AbortSignal): Promise<Payment> =>
     toPayment(parseCommerce(paymentSchema, await apiClient('/payments/initiate/', {
       method: 'POST',
-      body: { order_id: orderId, phone_number: normalizeKenyanPaymentPhone(phoneNumber) },
+      body: { order_id: orderId, phone_number: normalizeKenyanPaymentPhone(phoneNumber), purpose },
       signal,
       timeoutMs: 45_000,
     }))),

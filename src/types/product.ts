@@ -17,8 +17,10 @@ export interface Product {
   images: string[];
   deliveryEstimate: string;
   availableQuantity: number;
-  weight?: string;
-  dimensions?: string;
+  weightKg?: number;
+  lengthCm?: number;
+  widthCm?: number;
+  heightCm?: number;
   tags?: string[];
   tagIds?: string[];
 }

@@ -54,6 +54,10 @@ export const AddEditProduct: React.FC = () => {
   const [tagIds, setTagIds] = useState<string[]>([]);
   const [price, setPrice] = useState('');
   const [stock, setStock] = useState('0');
+  const [weightKg, setWeightKg] = useState('1');
+  const [lengthCm, setLengthCm] = useState('');
+  const [widthCm, setWidthCm] = useState('');
+  const [heightCm, setHeightCm] = useState('');
   const [existingImages, setExistingImages] = useState<string[]>([]);
   const [images, setImages] = useState<ImagePicker.ImagePickerAsset[]>([]);
   const [status, setStatus] = useState<ProductStatus>('draft');
@@ -67,7 +71,7 @@ export const AddEditProduct: React.FC = () => {
     generatedIdentifierSeed.current = identifierSeed();
     setName(''); setSlug(''); setSku(''); setDescription(''); setCategoryId(undefined);
     setCategoryPickerOpen(false); setCategoryQuery('');
-    setTagIds([]); setPrice(''); setStock('0'); setExistingImages([]); setImages([]);
+    setTagIds([]); setPrice(''); setStock('0'); setWeightKg('1'); setLengthCm(''); setWidthCm(''); setHeightCm(''); setExistingImages([]); setImages([]);
     setStatus('draft'); setError(undefined);
   }, [productId]);
 
@@ -82,6 +86,10 @@ export const AddEditProduct: React.FC = () => {
     setTagIds(product.tagIds ?? []);
     setPrice(String(product.price));
     setStock(String(product.availableQuantity));
+    setWeightKg(String(product.weightKg ?? 1));
+    setLengthCm(product.lengthCm == null ? '' : String(product.lengthCm));
+    setWidthCm(product.widthCm == null ? '' : String(product.widthCm));
+    setHeightCm(product.heightCm == null ? '' : String(product.heightCm));
     setExistingImages(product.images);
     setStatus(product.status ?? 'draft');
   }, [product]);
@@ -102,6 +110,10 @@ export const AddEditProduct: React.FC = () => {
   };
 
   const numericPrice = Number(price.replace(/,/g, ''));
+  const numericWeight = Number(weightKg.replace(/,/g, ''));
+  const numericLength = Number(lengthCm.replace(/,/g, ''));
+  const numericWidth = Number(widthCm.replace(/,/g, ''));
+  const numericHeight = Number(heightCm.replace(/,/g, ''));
   const generatedIdentifiers = productIdentifiers(name, generatedIdentifierSeed.current);
   const resolvedSlug = productId ? slug.trim() : generatedIdentifiers.slug;
   const resolvedSku = productId ? sku.trim() : generatedIdentifiers.sku;
@@ -126,16 +138,20 @@ export const AddEditProduct: React.FC = () => {
   const visibleCategoryOptions = categoryOptions.filter(({ category }) =>
     !normalizedCategoryQuery || pathForCategory(category.id).some(item => item.label.toLowerCase().includes(normalizedCategoryQuery)));
   const hasValidCategory = Boolean(categoryId && selectableCategoryIds.has(categoryId));
-  const baseDetailsValid = Boolean(name.trim() && name.length <= 180 && resolvedSlug && resolvedSku && numericPrice > 0 && Number.isFinite(numericPrice) && /^\d+$/.test(stock.trim()));
-  const canSave = baseDetailsValid && (status !== 'published' || hasValidCategory);
+  const validWeight = Number.isFinite(numericWeight) && numericWeight > 0;
+  const validDimensions = [numericLength, numericWidth, numericHeight].every(value => Number.isFinite(value) && value > 0 && value < 100);
+  const baseDetailsValid = Boolean(name.trim() && name.length <= 180 && resolvedSlug && resolvedSku && numericPrice > 0 && Number.isFinite(numericPrice) && /^\d+$/.test(stock.trim()) && validWeight);
+  const canSave = baseDetailsValid && (status !== 'published' || (hasValidCategory && validDimensions));
   const validationMessage = !name.trim() ? 'Enter a product name to continue.' :
     name.length > 180 ? 'Keep the product name within 180 characters.' :
     !Number.isFinite(numericPrice) || numericPrice <= 0 ? 'Enter a price greater than zero.' :
     !/^\d+$/.test(stock.trim()) ? 'Stock count must be a whole number of zero or more.' :
+    !validWeight ? 'Enter the packaged product weight in kilograms.' :
     status === 'published' && categoriesQuery.isLoading ? 'Loading product categories...' :
     status === 'published' && categoriesQuery.isError ? 'Categories could not be loaded. Retry before publishing.' :
     status === 'published' && categoryOptions.length === 0 ? 'No product categories are available yet. Save as a draft or ask an administrator to add categories.' :
-    status === 'published' && !hasValidCategory ? 'Choose a specific category before publishing.' : undefined;
+    status === 'published' && !hasValidCategory ? 'Choose a specific category before publishing.' :
+    status === 'published' && !validDimensions ? 'Enter package length, width, and height below 100 cm.' : undefined;
 
   const save = async () => {
     if (!canSave || saving) return;
@@ -144,7 +160,12 @@ export const AddEditProduct: React.FC = () => {
     try {
       const draft: SellerProductDraft = {
         name: name.trim(), slug: resolvedSlug, sku: resolvedSku, description: description.trim(),
-        categoryId, tagIds, price: numericPrice, availableQuantity: Number(stock), status,
+        categoryId, tagIds, price: numericPrice, availableQuantity: Number(stock),
+        weightKg: numericWeight,
+        lengthCm: lengthCm.trim() ? numericLength : undefined,
+        widthCm: widthCm.trim() ? numericWidth : undefined,
+        heightCm: heightCm.trim() ? numericHeight : undefined,
+        status,
       };
       const hasPendingUploads = pendingUploads.current.length > 0 || images.length > 0;
       const deferPublishing = status === 'published' && product?.status !== 'published' && hasPendingUploads;
@@ -225,6 +246,15 @@ export const AddEditProduct: React.FC = () => {
     <View style={styles.twoColumns}>
       <View style={styles.column}><Input label="Price (KSh)" value={price} onChangeText={setPrice} keyboardType="decimal-pad" placeholder="0" accessibilityLabel="Product price" /></View>
       <View style={styles.column}><Input label="Stock count" value={stock} onChangeText={setStock} keyboardType="number-pad" placeholder="0" accessibilityLabel="Stock count" /></View>
+    </View>
+    <Text style={styles.label}>Package measurements</Text>
+    <View style={styles.twoColumns}>
+      <View style={styles.column}><Input label="Weight (kg)" value={weightKg} onChangeText={setWeightKg} keyboardType="decimal-pad" placeholder="1.0" accessibilityLabel="Packaged product weight in kilograms" /></View>
+      <View style={styles.column}><Input label="Length (cm)" value={lengthCm} onChangeText={setLengthCm} keyboardType="decimal-pad" placeholder="0" accessibilityLabel="Package length in centimetres" /></View>
+    </View>
+    <View style={styles.twoColumns}>
+      <View style={styles.column}><Input label="Width (cm)" value={widthCm} onChangeText={setWidthCm} keyboardType="decimal-pad" placeholder="0" accessibilityLabel="Package width in centimetres" /></View>
+      <View style={styles.column}><Input label="Height (cm)" value={heightCm} onChangeText={setHeightCm} keyboardType="decimal-pad" placeholder="0" accessibilityLabel="Package height in centimetres" /></View>
     </View>
     <Text style={styles.label}>Listing status</Text>
     <View style={styles.statusOptions}>

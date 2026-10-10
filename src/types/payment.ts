@@ -1,10 +1,12 @@
 export type PaymentStatus = 'initiated' | 'pending' | 'succeeded' | 'failed' | 'cancelled';
 export type PaymentAttemptStatus = 'initiated' | 'pending' | 'succeeded' | 'failed' | 'unknown';
+export type PaymentPurpose = 'order_total' | 'delivery_fee' | 'delivery_balance';
 
 export interface Payment {
   id: string;
   orderId: string;
   provider: string;
+  purpose: PaymentPurpose;
   status: PaymentStatus;
   amount: number;
   currency: string;

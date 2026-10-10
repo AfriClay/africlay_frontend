@@ -15,6 +15,10 @@ const productSchema = z.object({
   name: z.string().min(1), slug: z.string().min(1), description: z.string().nullish(),
   sku: z.string().min(1), price: z.union([z.string(), z.number()]),
   currency: z.string().length(3), stock_quantity: quantity,
+  weight_kg: z.union([z.string(), z.number()]),
+  length_cm: z.union([z.string(), z.number()]).nullable(),
+  width_cm: z.union([z.string(), z.number()]).nullable(),
+  height_cm: z.union([z.string(), z.number()]).nullable(),
   status: z.enum(['draft', 'published', 'archived']),
   average_rating: z.union([z.string(), z.number()]).optional().default(0),
   review_count: quantity.optional().default(0),
@@ -46,6 +50,10 @@ export type SellerProductDraft = {
   tagIds: string[];
   price: number;
   availableQuantity: number;
+  weightKg: number;
+  lengthCm?: number;
+  widthCm?: number;
+  heightCm?: number;
   status: 'draft' | 'published' | 'archived';
 };
 
@@ -84,6 +92,10 @@ const toProduct = (raw: BackendProduct, categories: CatalogCategory[]): Product 
     currency: raw.currency, category: category?.label ?? 'Uncategorized', categoryId: raw.category ?? undefined,
     tagIds: raw.tags, sellerId: raw.store, images: orderedImages.map(item => imageUrl(item.image)).filter((url): url is string => Boolean(url)),
     availableQuantity: raw.stock_quantity, rating: asPrice(raw.average_rating), reviewCount: raw.review_count, deliveryEstimate: '',
+    weightKg: asPrice(raw.weight_kg),
+    lengthCm: raw.length_cm == null ? undefined : asPrice(raw.length_cm),
+    widthCm: raw.width_cm == null ? undefined : asPrice(raw.width_cm),
+    heightCm: raw.height_cm == null ? undefined : asPrice(raw.height_cm),
   };
 };
 
@@ -99,6 +111,10 @@ const productPayload = (draft: SellerProductDraft) => ({
   name: draft.name, slug: draft.slug, sku: draft.sku, description: draft.description,
   category: draft.categoryId ?? null, tags: draft.tagIds, price: draft.price.toFixed(2),
   currency: 'KES', stock_quantity: draft.availableQuantity, status: draft.status,
+  weight_kg: draft.weightKg.toFixed(3),
+  length_cm: draft.lengthCm?.toFixed(2) ?? null,
+  width_cm: draft.widthCm?.toFixed(2) ?? null,
+  height_cm: draft.heightCm?.toFixed(2) ?? null,
 });
 
 let categoriesInFlight: Promise<CatalogCategory[]> | undefined;

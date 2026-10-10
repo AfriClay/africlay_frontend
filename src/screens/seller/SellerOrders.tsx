@@ -25,7 +25,6 @@ export const SellerOrders: React.FC = () => {
   const [shippingOrderId, setShippingOrderId] = useState<string>();
   const [courierName, setCourierName] = useState('');
   const [trackingNumber, setTrackingNumber] = useState('');
-  const [shippingCost, setShippingCost] = useState('');
   const [formError, setFormError] = useState<string>();
   const update = useMutation({
     mutationFn: ({ id, update: payload }: UpdateVariables) => orderService.updateSellerOrderStatus(id, payload),
@@ -34,7 +33,6 @@ export const SellerOrders: React.FC = () => {
       setShippingOrderId(undefined);
       setCourierName('');
       setTrackingNumber('');
-      setShippingCost('');
       setFormError(undefined);
       void client.invalidateQueries({ queryKey: key });
       void client.invalidateQueries({ queryKey: ['notifications', userId] });
@@ -52,9 +50,8 @@ export const SellerOrders: React.FC = () => {
   };
 
   const shipOrder = (id: string) => {
-    const cost = Number(shippingCost);
-    if (!courierName.trim() || !trackingNumber.trim() || !shippingCost.trim() || !Number.isFinite(cost) || cost < 0) {
-      setFormError('Enter the courier, tracking number, and a valid shipping cost.');
+    if (!courierName.trim() || !trackingNumber.trim()) {
+      setFormError('Enter the courier and tracking number.');
       return;
     }
     setFormError(undefined);
@@ -62,7 +59,6 @@ export const SellerOrders: React.FC = () => {
       status: 'shipped',
       courier_name: courierName.trim(),
       tracking_number: trackingNumber.trim(),
-      shipping_cost: cost,
     };
     const run = () => { update.reset(); update.mutate({ id, update: payload }); };
     const message = 'Confirm that this order has been handed to the delivery provider.';
@@ -80,13 +76,18 @@ export const SellerOrders: React.FC = () => {
     onRefresh={() => void query.refetch()}
     keyExtractor={item => item.id}
     contentContainerStyle={(query.data?.length ?? 0) ? styles.content : styles.empty}
-    ListEmptyComponent={query.isLoading ? <Text style={styles.loading}>Loading orders...</Text> : <EmptyState title="No seller orders" description="Orders containing only your products will appear here." />}
+    ListEmptyComponent={query.isLoading ? <Text style={styles.loading}>Loading orders...</Text> : <EmptyState title="No seller orders" description="Orders containing your products will appear here." />}
     renderItem={({ item }) => {
       const isUpdating = update.isPending && update.variables?.id === item.id;
       const showShippingForm = shippingOrderId === item.id;
       return <View style={styles.card}>
         <View style={styles.header}><View style={styles.headerCopy}><Text style={styles.orderId}>Order #{item.id.slice(0, 8)}</Text><Text style={styles.date}>{formatDate(item.date)}</Text></View><StatusPill status={item.status} /></View>
         {item.items.map(orderItem => <View key={orderItem.id} style={styles.item}><Text style={styles.itemName}>{orderItem.name} x {orderItem.quantity}</Text><Text style={styles.amount}>{formatCurrency(orderItem.price * orderItem.quantity, item.currency)}</Text></View>)}
+        {item.sellerProceeds != null ? <View style={styles.settlement}>
+          <View style={styles.settlementRow}><Text style={styles.noticeText}>Commission</Text><Text style={styles.amount}>{formatCurrency(item.commissionAmount ?? 0, item.currency)}</Text></View>
+          <View style={styles.settlementRow}><Text style={styles.noticeTitle}>Your proceeds</Text><Text style={styles.amount}>{formatCurrency(item.sellerProceeds, item.currency)}</Text></View>
+          <Text style={styles.noticeText}>{item.settlementStatus === 'released' ? 'Available in wallet' : item.settlementStatus === 'held' ? 'Held until delivery is confirmed' : item.settlementStatus === 'reversed' ? 'Reversed' : 'Waiting for item payment'}</Text>
+        </View> : null}
         <View style={styles.delivery}><MapPin size={18} color={theme.colors.primary.dark} /><View style={styles.deliveryCopy}><Text style={styles.deliveryLabel}>Delivery address</Text><Text style={styles.address}>{item.deliveryAddress}</Text></View></View>
         {item.status === 'pending' ? <View style={styles.orderNotice}><Text style={styles.noticeTitle}>Awaiting buyer payment</Text><Text style={styles.noticeText}>Fulfilment actions become available after payment is confirmed.</Text></View> : null}
         {item.status === 'shipped' && item.courierName ? <View style={styles.orderNotice}><Truck size={18} color={theme.colors.primary.dark} /><View style={styles.deliveryCopy}><Text style={styles.noticeTitle}>{item.courierName}</Text><Text style={styles.noticeText}>Tracking {item.trackingNumber} · {formatCurrency(item.shippingCost, item.currency)} shipping</Text></View></View> : null}
@@ -94,12 +95,11 @@ export const SellerOrders: React.FC = () => {
           <Text style={styles.formTitle}>Shipping details</Text>
           <Input label="Courier name" value={courierName} onChangeText={setCourierName} placeholder="Delivery provider" />
           <Input label="Tracking number" value={trackingNumber} onChangeText={setTrackingNumber} placeholder="Tracking or consignment number" autoCapitalize="characters" />
-          <Input label="Shipping cost (KSh)" value={shippingCost} onChangeText={setShippingCost} placeholder="0" keyboardType="decimal-pad" />
           {formError ? <Text style={styles.errorText} accessibilityRole="alert">{formError}</Text> : null}
           <View style={styles.formActions}><Button variant="secondary" disabled={isUpdating} onPress={() => { setShippingOrderId(undefined); setFormError(undefined); }}>Back</Button><Button loading={isUpdating} loadingLabel="Saving shipment" onPress={() => shipOrder(item.id)}>Confirm Shipment</Button></View>
         </View> : null}
         <View style={styles.footer}>
-          <View><Text style={styles.total}>{formatCurrency(item.total, item.currency)}</Text><Text style={styles.paymentState}>{item.paymentStatus === 'paid' ? 'Paid' : 'Payment pending'}</Text></View>
+          <View><Text style={styles.total}>{formatCurrency(item.total, item.currency)}</Text><Text style={styles.paymentState}>{item.paymentStatus === 'paid' ? 'Paid' : item.paymentStatus === 'partial' ? 'Delivery fee paid' : 'Payment pending'}</Text></View>
           {item.status === 'processing' && !showShippingForm ? <View style={styles.actions}>
             <Button size="sm" loading={false} disabled={isUpdating} onPress={() => { update.reset(); setShippingOrderId(item.id); }}>Mark as Shipped</Button>
             <Button size="sm" variant="secondary" loading={isUpdating && update.variables?.update.status === 'cancelled'} disabled={isUpdating} onPress={() => cancelOrder(item.id)}>Cancel Order</Button>
@@ -131,6 +131,8 @@ const styles = StyleSheet.create({
   orderNotice: { flexDirection: 'row', alignItems: 'flex-start', gap: theme.spacing.sm, marginTop: theme.spacing.sm, padding: theme.spacing.sm, borderRadius: theme.radii.sm, backgroundColor: theme.colors.secondary.tint },
   noticeTitle: { color: theme.colors.ink, fontWeight: '800' },
   noticeText: { color: theme.colors.muted, marginTop: 2, fontSize: theme.typography.small.fontSize },
+  settlement: { marginTop: theme.spacing.sm, padding: theme.spacing.sm, borderTopWidth: 1, borderTopColor: theme.colors.border, gap: 4 },
+  settlementRow: { flexDirection: 'row', justifyContent: 'space-between', gap: theme.spacing.sm },
   footer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.md, marginTop: theme.spacing.md },
   total: { color: theme.colors.ink, fontSize: theme.typography.h3.fontSize, fontWeight: '800' },
   paymentState: { color: theme.colors.muted, fontSize: theme.typography.small.fontSize, marginTop: 2 },
