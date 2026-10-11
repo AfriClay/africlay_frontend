@@ -77,6 +77,21 @@ test('native connection failures produce an actionable message', async () => {
   await assert.rejects(api.apiClient('/auth/login/', { auth: false }), /same network, or restore USB forwarding/);
 });
 
+test('HTML server errors are replaced with the screen fallback message', async () => {
+  const { api } = harness('web', async () => new Response(
+    '<!doctype html><html><title>Server Error (500)</title></html>',
+    { status: 500, headers: { 'Content-Type': 'text/html' } },
+  ));
+  let error;
+  try {
+    await api.apiClient('/cart/seller/orders/order-id/', { method: 'PATCH', body: { status: 'cancelled' } });
+  } catch (cause) {
+    error = cause;
+  }
+  assert.equal(api.extractApiErrorMessage(error.data), undefined);
+  assert.equal(api.getApiErrorMessage(error, 'Unable to update this order.'), 'Unable to update this order.');
+});
+
 test('public web request needs no token and makes no CSRF or cookie request', async () => {
   const requests = [];
   const { api, nativeLoads } = harness('web', async (url, init) => {

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Alert, FlatList, Platform, StyleSheet, Text, View } from 'react-native';
+import { Alert, FlatList, Platform, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { MapPin, Truck } from 'lucide-react-native';
@@ -18,6 +18,8 @@ import { formatDate } from '../../utils/formatDate';
 type UpdateVariables = { id: string; update: SellerOrderUpdate };
 
 export const SellerOrders: React.FC = () => {
+  const { width } = useWindowDimensions();
+  const compactActions = width < 520;
   const userId = useAuth().user?.id ?? '';
   const client = useQueryClient();
   const key = orderKeys.seller(userId);
@@ -96,16 +98,16 @@ export const SellerOrders: React.FC = () => {
           <Input label="Courier name" value={courierName} onChangeText={setCourierName} placeholder="Delivery provider" />
           <Input label="Tracking number" value={trackingNumber} onChangeText={setTrackingNumber} placeholder="Tracking or consignment number" autoCapitalize="characters" />
           {formError ? <Text style={styles.errorText} accessibilityRole="alert">{formError}</Text> : null}
-          <View style={styles.formActions}><Button variant="secondary" disabled={isUpdating} onPress={() => { setShippingOrderId(undefined); setFormError(undefined); }}>Back</Button><Button loading={isUpdating} loadingLabel="Saving shipment" onPress={() => shipOrder(item.id)}>Confirm Shipment</Button></View>
+          <View style={[styles.formActions, compactActions && styles.formActionsCompact]}><Button style={compactActions && styles.actionButton} fullWidth={compactActions} variant="secondary" disabled={isUpdating} onPress={() => { setShippingOrderId(undefined); setFormError(undefined); }}>Back</Button><Button style={compactActions && styles.actionButton} fullWidth={compactActions} loading={isUpdating} loadingLabel="Saving shipment" onPress={() => shipOrder(item.id)}>Confirm Shipment</Button></View>
         </View> : null}
-        <View style={styles.footer}>
+        <View style={[styles.footer, compactActions && styles.footerCompact]}>
           <View><Text style={styles.total}>{formatCurrency(item.total, item.currency)}</Text><Text style={styles.paymentState}>{item.paymentStatus === 'paid' ? 'Paid' : item.paymentStatus === 'partial' ? 'Delivery fee paid' : 'Payment pending'}</Text></View>
-          {item.status === 'processing' && !showShippingForm ? <View style={styles.actions}>
-            <Button size="sm" loading={false} disabled={isUpdating} onPress={() => { update.reset(); setShippingOrderId(item.id); }}>Mark as Shipped</Button>
-            <Button size="sm" variant="secondary" loading={isUpdating && update.variables?.update.status === 'cancelled'} disabled={isUpdating} onPress={() => cancelOrder(item.id)}>Cancel Order</Button>
+          {item.status === 'processing' && !showShippingForm ? <View style={[styles.actions, compactActions && styles.actionsCompact]}>
+            <Button style={compactActions && styles.actionButton} fullWidth={compactActions} size="sm" loading={false} disabled={isUpdating} onPress={() => { update.reset(); setShippingOrderId(item.id); }}>Mark as Shipped</Button>
+            <Button style={compactActions && styles.actionButton} fullWidth={compactActions} size="sm" variant="secondary" loading={isUpdating && update.variables?.update.status === 'cancelled'} disabled={isUpdating} onPress={() => cancelOrder(item.id)}>Cancel Order</Button>
           </View> : null}
         </View>
-        {update.isError && update.variables?.id === item.id ? <View style={styles.updateError}><Text style={styles.errorText} accessibilityRole="alert">{getApiErrorMessage(update.error, 'Unable to update this order.')}</Text><Button size="sm" variant="tertiary" onPress={() => update.reset()}>Dismiss</Button></View> : null}
+        {update.isError && update.variables?.id === item.id ? <View style={[styles.updateError, compactActions && styles.updateErrorCompact]}><Text style={styles.errorText} accessibilityRole="alert">{getApiErrorMessage(update.error, 'Unable to update this order.')}</Text><Button fullWidth={compactActions} size="sm" variant="tertiary" onPress={() => update.reset()}>Dismiss</Button></View> : null}
       </View>;
     }}
   /></SafeAreaView>;
@@ -134,12 +136,17 @@ const styles = StyleSheet.create({
   settlement: { marginTop: theme.spacing.sm, padding: theme.spacing.sm, borderTopWidth: 1, borderTopColor: theme.colors.border, gap: 4 },
   settlementRow: { flexDirection: 'row', justifyContent: 'space-between', gap: theme.spacing.sm },
   footer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.md, marginTop: theme.spacing.md },
+  footerCompact: { flexDirection: 'column', alignItems: 'stretch', gap: theme.spacing.sm },
   total: { color: theme.colors.ink, fontSize: theme.typography.h3.fontSize, fontWeight: '800' },
   paymentState: { color: theme.colors.muted, fontSize: theme.typography.small.fontSize, marginTop: 2 },
   actions: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'flex-end', gap: theme.spacing.sm },
+  actionsCompact: { width: '100%', flexWrap: 'nowrap', justifyContent: 'space-between' },
+  actionButton: { flex: 1 },
   shippingForm: { marginTop: theme.spacing.md, paddingTop: theme.spacing.md, borderTopWidth: 1, borderTopColor: theme.colors.border },
   formTitle: { color: theme.colors.ink, fontWeight: '800', marginBottom: theme.spacing.md },
   formActions: { flexDirection: 'row', justifyContent: 'flex-end', flexWrap: 'wrap', gap: theme.spacing.sm },
+  formActionsCompact: { width: '100%', flexWrap: 'nowrap' },
   updateError: { marginTop: theme.spacing.sm, padding: theme.spacing.sm, borderRadius: theme.radii.sm, backgroundColor: theme.colors.white, borderWidth: 1, borderColor: theme.colors.error, flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm },
+  updateErrorCompact: { flexDirection: 'column', alignItems: 'stretch' },
   errorText: { flex: 1, color: theme.colors.error },
 });

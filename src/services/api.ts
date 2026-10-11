@@ -228,6 +228,9 @@ export const apiClient = async <T>(endpoint: string, options: RequestOptions = {
 };
 
 export const getApiErrorMessage = (error: unknown, fallback: string): string => {
+  if (error instanceof ApiError && !extractApiErrorMessage(error.data)) {
+    return fallback;
+  }
   if (error instanceof Error && error.message) {
     return error.message;
   }
@@ -239,7 +242,11 @@ export const extractApiErrorMessage = (data: unknown): string | undefined => {
     return undefined;
   }
   if (typeof data === 'string') {
-    return data;
+    const message = data.trim();
+    if (/^(?:<!doctype\s+html|<html\b)/i.test(message)) {
+      return undefined;
+    }
+    return message || undefined;
   }
   if (Array.isArray(data)) {
     return data.map(item => extractApiErrorMessage(item)).find(Boolean);
