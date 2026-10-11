@@ -101,6 +101,7 @@ const toProduct = (raw: BackendProduct, categories: CatalogCategory[]): Product 
 
 const toSeller = (raw: BackendStore): Seller => ({
   id: raw.id, ownerId: raw.owner, slug: raw.slug, name: raw.name, bio: raw.description ?? '',
+  city: raw.city ?? undefined,
   location: [raw.city, raw.country].filter(Boolean).join(', '),
   verified: false, rating: raw.average_rating == null ? 0 : asPrice(raw.average_rating),
   reviewCount: raw.total_reviews ?? 0, totalProducts: raw.total_products ?? 0,

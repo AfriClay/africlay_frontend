@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { ApiError, apiClient } from './api';
 import { productService } from './productService';
 
-const storeSchema = z.object({ id: z.string().uuid(), owner: z.string().uuid(), name: z.string(), slug: z.string(), status: z.string() });
+const storeSchema = z.object({ id: z.string().uuid(), owner: z.string().uuid(), name: z.string(), slug: z.string(), city: z.string(), status: z.string() });
 const kycSchema = z.object({ id: z.number().int().positive(), store: z.string().uuid(),
   status: z.enum(['pending', 'approved', 'rejected']), document_type: z.string(), document: z.string().nullish(),
   rejection_reason: z.string().nullish(), submitted_at: z.string().nullish() });
@@ -18,13 +18,15 @@ const imagePart = (asset: ImagePicker.ImagePickerAsset): Blob =>
 
 export const storeService = {
   ownStore: (ownerId: string) => productService.fetchOwnStore(ownerId),
-  create: async (name: string, logo?: ImagePicker.ImagePickerAsset) => {
+  create: async (name: string, city: string, logo?: ImagePicker.ImagePickerAsset) => {
     const slug = name.trim().toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
     if (!slug) throw new Error('Enter a store name containing letters or numbers.');
     if (logo?.fileSize && logo.fileSize > 5 * 1024 * 1024) throw new Error('Store logo must be 5 MB or smaller.');
     const form = new FormData();
     form.append('name', name.trim());
     form.append('slug', slug);
+    form.append('city', city);
+    form.append('country', 'Kenya');
     if (logo) form.append('logo', imagePart(logo));
     const created = parse(storeSchema, await apiClient('/stores/', { method: 'POST', body: form }));
     return created;

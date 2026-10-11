@@ -8,6 +8,7 @@ import { SellerOrders } from '../screens/seller/SellerOrders';
 import { OrderDetails } from '../screens/profile/OrderDetails';
 import { theme } from '../theme';
 import { SellerBookings } from '../screens/seller/SellerBookings';
+import { StoreSettings } from '../screens/seller/StoreSettings';
 
 export type SellerDashboardStackParamList = {
   DashboardHome: undefined;
@@ -16,6 +17,7 @@ export type SellerDashboardStackParamList = {
   AddEditProduct: { productId?: string } | undefined;
   SellerOrders: undefined;
   SellerBookings: undefined;
+  StoreSettings: undefined;
   OrderDetails: { orderId: string };
 };
 
@@ -33,6 +35,7 @@ export const SellerDashboardStack = () => (
     />
     <Stack.Screen name="SellerOrders" component={SellerOrders} options={{ title: 'Seller Orders' }} />
     <Stack.Screen name="SellerBookings" component={SellerBookings} options={{ title: 'Service Bookings' }} />
+    <Stack.Screen name="StoreSettings" component={StoreSettings} options={{ title: 'Store Settings' }} />
     <Stack.Screen name="OrderDetails" component={OrderDetails as any} options={{ title: 'Order Details' }} />
   </Stack.Navigator>
 );

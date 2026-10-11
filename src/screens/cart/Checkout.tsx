@@ -289,10 +289,16 @@ export const Checkout: React.FC = () => {
   </>;
   const busy = stage === 'creating-order' || stage === 'requesting-payment';
   const quote = quoteQuery.data;
+  const quoteErrorMessage = quoteQuery.isError ? getApiErrorMessage(quoteQuery.error, 'Delivery could not be calculated for this address.') : undefined;
+  const sellerDispatchError = quoteErrorMessage?.toLowerCase().includes('dispatch town');
   const dueNow = paymentOption === 'pay_on_delivery' ? quote?.shippingCost ?? 0 : quote?.total ?? 0;
   const footer = <View style={styles.footer}>
     {quoteQuery.isLoading ? <View style={styles.quoteState}><ActivityIndicator color={theme.colors.primary.DEFAULT} /><Text style={styles.note}>Calculating delivery...</Text></View> : null}
-    {quoteQuery.isError ? <View style={styles.quoteError}><Text style={styles.error}>{getApiErrorMessage(quoteQuery.error, 'Delivery could not be calculated for this address.')}</Text><Button size="sm" variant="secondary" onPress={() => void quoteQuery.refetch()}>Retry Quote</Button></View> : null}
+    {quoteQuery.isError ? <View style={styles.quoteError}>
+      <Text style={styles.error}>{quoteErrorMessage}</Text>
+      {sellerDispatchError ? <Text style={styles.quoteHint}>Your delivery address is saved correctly. The seller needs to update their parcel pickup town.</Text> : null}
+      <Button size="sm" variant="secondary" onPress={() => void quoteQuery.refetch()}>Retry Quote</Button>
+    </View> : null}
     {quote ? <>
       <View style={styles.totalRow}><Text style={styles.note}>Items</Text><Text style={styles.summaryAmount}>{formatCurrency(quote.itemSubtotal, quote.currency)}</Text></View>
       <View style={styles.totalRow}><Text style={styles.note}>Delivery</Text><Text style={styles.summaryAmount}>{formatCurrency(quote.shippingCost, quote.currency)}</Text></View>
@@ -335,6 +341,7 @@ const styles = StyleSheet.create({
   paymentOptionNote: { color: theme.colors.muted, marginTop: 4, fontSize: theme.typography.small.fontSize },
   quoteState: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm },
   quoteError: { gap: theme.spacing.sm, alignItems: 'stretch' },
+  quoteHint: { color: theme.colors.muted, textAlign: 'center', fontSize: theme.typography.small.fontSize, lineHeight: 18 },
   error: { color: theme.colors.error, textAlign: 'center' },
   confirmation: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: theme.spacing.xl, backgroundColor: theme.colors.cream },
   confirmationText: { maxWidth: 520, textAlign: 'center', color: theme.colors.muted, marginTop: theme.spacing.md, lineHeight: 22 },

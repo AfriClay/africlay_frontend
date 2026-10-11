@@ -6,6 +6,7 @@ export interface Seller {
   verified: boolean;
   rating: number;
   reviewCount: number;
+  city?: string;
   location: string;
   bio: string;
   bannerUrl?: string;

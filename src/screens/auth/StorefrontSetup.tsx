@@ -3,13 +3,16 @@ import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import * as ImagePicker from 'expo-image-picker';
 import { useNavigation } from '@react-navigation/native';
 import { useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { Camera, Store } from 'lucide-react-native';
+import { DispatchTownPicker } from '../../components/domain/DispatchTownPicker';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { useAuth } from '../../hooks/useAuth';
 import { storeService } from '../../services/storeService';
 import { getApiErrorMessage } from '../../services/api';
 import { catalogKeys } from '../../services/catalogQueries';
+import { shippingService } from '../../services/shippingService';
 import { theme } from '../../theme';
 
 export const StorefrontSetup: React.FC = () => {
@@ -17,9 +20,11 @@ export const StorefrontSetup: React.FC = () => {
   const auth = useAuth();
   const client = useQueryClient();
   const [name, setName] = useState('');
+  const [city, setCity] = useState('');
   const [logo, setLogo] = useState<ImagePicker.ImagePickerAsset>();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>();
+  const townsQuery = useQuery({ queryKey: ['shipping-towns'], queryFn: shippingService.supportedTowns });
 
   const pickLogo = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: true, aspect: [1, 1], quality: 0.8 });
@@ -32,11 +37,12 @@ export const StorefrontSetup: React.FC = () => {
       return;
     }
     if (!name.trim()) { setError('Enter a store name.'); return; }
+    if (!city) { setError('Choose the town where orders will be dispatched.'); return; }
     if (loading) return;
     setLoading(true);
     setError(undefined);
     try {
-      await storeService.create(name, logo);
+      await storeService.create(name, city, logo);
       await client.invalidateQueries({ queryKey: catalogKeys.sellerAccess(user.id) });
       await client.invalidateQueries({ queryKey: ['owned-store', user.id] });
       navigation.navigate('KYCUpload');
@@ -53,8 +59,17 @@ export const StorefrontSetup: React.FC = () => {
       <Text style={styles.logoText}>{logo ? 'Change logo' : 'Add store logo'}</Text>
     </Pressable>
     <Input label="Store name" value={name} onChangeText={setName} placeholder="Your business name" accessibilityLabel="Store name" />
+    <DispatchTownPicker
+      towns={townsQuery.data ?? []}
+      value={city}
+      onChange={value => { setCity(value); setError(undefined); }}
+      loading={townsQuery.isLoading}
+      error={townsQuery.isError}
+      onRetry={() => void townsQuery.refetch()}
+      disabled={loading}
+    />
     {error && <Text style={styles.error} accessibilityRole="alert">{error}</Text>}
-    <Button onPress={() => void save()} loading={loading}>Create Storefront</Button>
+    <Button onPress={() => void save()} loading={loading} disabled={!city || townsQuery.isLoading || townsQuery.isError}>Create Storefront</Button>
   </ScrollView>;
 };
 

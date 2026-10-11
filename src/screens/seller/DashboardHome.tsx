@@ -3,7 +3,7 @@ import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { BriefcaseBusiness, CalendarDays, PackagePlus, Pencil, ShoppingBag } from 'lucide-react-native';
+import { BriefcaseBusiness, CalendarDays, MapPin, PackagePlus, Pencil, ShoppingBag } from 'lucide-react-native';
 import { useQuery } from '@tanstack/react-query';
 import { StatCard } from '../../components/domain/StatCard';
 import { useAuth } from '../../hooks/useAuth';
@@ -22,6 +22,7 @@ const actions = [
   { label: 'Manage Services', route: 'ServiceManagement' as const, icon: BriefcaseBusiness },
   { label: 'Seller Orders', route: 'SellerOrders' as const, icon: ShoppingBag },
   { label: 'Service Bookings', route: 'SellerBookings' as const, icon: CalendarDays },
+  { label: 'Store Settings', route: 'StoreSettings' as const, icon: MapPin },
 ];
 
 export const DashboardHome: React.FC = () => {
@@ -46,8 +47,17 @@ export const DashboardHome: React.FC = () => {
           <View style={styles.storeCopy}>
             <Text style={styles.eyebrow}>MY STORE</Text>
             <Text style={styles.storeName}>{store?.name ?? (storeQuery.isLoading ? 'Loading store...' : 'Store unavailable')}</Text>
+            {store?.city ? <Text style={styles.storeLocation}>{store.city} dispatch</Text> : null}
           </View>
         </View>
+
+        {store && !store.city ? <Pressable style={styles.locationWarning} onPress={() => navigation.navigate('StoreSettings')} accessibilityRole="button">
+          <MapPin color={theme.colors.warning} size={22} />
+          <View style={styles.warningCopy}>
+            <Text style={styles.warningTitle}>Set your dispatch town</Text>
+            <Text style={styles.warningText}>Buyers cannot get delivery prices for your products until this is added.</Text>
+          </View>
+        </Pressable> : null}
 
         <View style={styles.stats}>
           <StatCard value={String(products.length)} label="Products" />
@@ -82,6 +92,11 @@ const styles = StyleSheet.create({
   storeCopy: { flex: 1, marginLeft: theme.spacing.md },
   eyebrow: { color: theme.colors.secondary.DEFAULT, fontSize: 10, fontWeight: '800', letterSpacing: 1 },
   storeName: { color: theme.colors.white, fontSize: theme.typography.h2.fontSize, fontWeight: '800', marginTop: theme.spacing.xs },
+  storeLocation: { color: theme.colors.white, opacity: 0.82, marginTop: theme.spacing.xs, fontSize: theme.typography.small.fontSize },
+  locationWarning: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm, marginTop: theme.spacing.md, padding: theme.spacing.md, borderWidth: 1, borderColor: theme.colors.secondary.DEFAULT, borderRadius: theme.radii.md, backgroundColor: theme.colors.secondary.tint },
+  warningCopy: { flex: 1 },
+  warningTitle: { color: theme.colors.secondary.dark, fontWeight: '800' },
+  warningText: { marginTop: theme.spacing.xs, color: theme.colors.ink, fontSize: theme.typography.small.fontSize, lineHeight: 18 },
   verified: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', marginTop: theme.spacing.sm, paddingHorizontal: theme.spacing.sm, paddingVertical: 3, borderRadius: theme.radii.pill, backgroundColor: theme.colors.white },
   verifiedText: { color: theme.colors.primary.dark, fontSize: theme.typography.small.fontSize, fontWeight: '700', marginLeft: theme.spacing.xs },
   stats: { flexDirection: 'row', gap: theme.spacing.sm, marginTop: theme.spacing.md },
