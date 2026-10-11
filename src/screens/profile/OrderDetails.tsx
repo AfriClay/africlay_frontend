@@ -41,18 +41,18 @@ export const OrderDetails: React.FC = () => {
   });
   const { data: order } = orderQuery;
   const [phoneNumber, setPhoneNumber] = useState('');
-  const [balancePayment, setBalancePayment] = useState<Payment>();
+  const [requestedPayment, setRequestedPayment] = useState<Payment>();
   useEffect(() => {
     if (!phoneNumber && auth.user?.phoneNumber) setPhoneNumber(auth.user.phoneNumber);
   }, [auth.user?.phoneNumber, phoneNumber]);
-  const payBalance = useMutation({
-    mutationFn: () => paymentService.initiateOrderPayment(params.orderId, phoneNumber, 'delivery_balance'),
-    onSuccess: setBalancePayment,
+  const requestOrderPayment = useMutation({
+    mutationFn: (purpose: 'initial' | 'delivery_balance') => paymentService.initiateOrderPayment(params.orderId, phoneNumber, purpose),
+    onSuccess: setRequestedPayment,
   });
-  const refreshBalance = useMutation({
-    mutationFn: () => paymentService.getPayment(balancePayment!.id),
+  const refreshPayment = useMutation({
+    mutationFn: () => paymentService.getPayment(requestedPayment!.id),
     onSuccess: payment => {
-      setBalancePayment(payment);
+      setRequestedPayment(payment);
       if (payment.status === 'succeeded') void orderQuery.refetch();
     },
   });
@@ -67,15 +67,24 @@ export const OrderDetails: React.FC = () => {
     <OrderProgress status={order.status} />
     <Text style={styles.statusNote}>{order.status === 'shipped' ? 'Your order is on its way. Confirm receipt only after it arrives.' : order.status === 'processing' ? 'Payment is confirmed and the seller is preparing your order.' : order.status === 'pending' ? 'Your order is waiting for payment confirmation.' : order.status === 'delivered' ? 'Delivery is complete. You can now rate the product or store.' : ''}</Text>
     <View style={styles.infoCard}><CreditCard color={theme.colors.primary.DEFAULT} size={20} /><View style={styles.infoCopy}><Text style={styles.infoTitle}>Payment</Text><Text style={styles.infoText}>{order.paymentStatus === 'paid' ? 'Confirmed' : order.paymentStatus === 'refunded' ? 'Refunded' : order.paymentStatus === 'failed' ? 'Failed' : 'Pending confirmation'}{order.paymentMethod ? ` · ${order.paymentMethod === 'mpesa' ? 'M-Pesa' : order.paymentMethod}` : ''}</Text></View></View>
+    {order.status === 'pending' && order.paymentStatus !== 'paid' ? <View style={styles.balanceBlock}>
+      <Text style={styles.infoTitle}>Complete payment</Text>
+      <Text style={styles.infoText}>{formatCurrency(order.paymentOption === 'pay_on_delivery' ? order.shippingCost : order.amountDue, order.currency)} will be requested through M-Pesa.</Text>
+      <Input label="M-Pesa phone number" value={phoneNumber} onChangeText={setPhoneNumber} keyboardType="phone-pad" placeholder="254712345678" error={phoneNumber && !isOrderPaymentPhone(phoneNumber) ? 'Use 2547XXXXXXXX or 2541XXXXXXXX format.' : undefined} />
+      {!requestedPayment ? <Button loading={requestOrderPayment.isPending} disabled={!isOrderPaymentPhone(phoneNumber)} onPress={() => requestOrderPayment.mutate('initial')}>Send M-Pesa Prompt</Button> :
+        <Button variant="secondary" loading={refreshPayment.isPending} onPress={() => refreshPayment.mutate()}>{requestedPayment.status === 'succeeded' ? 'Payment Confirmed' : 'Check Payment Status'}</Button>}
+      {requestOrderPayment.isError ? <Text style={styles.error}>{getApiErrorMessage(requestOrderPayment.error, 'Unable to request payment for this order.')}</Text> : null}
+      {refreshPayment.isError ? <Text style={styles.error}>{getApiErrorMessage(refreshPayment.error, 'Unable to refresh payment status.')}</Text> : null}
+    </View> : null}
     {order.status === 'shipped' && order.courierName ? <View style={styles.infoCard}><Truck color={theme.colors.primary.DEFAULT} size={20} /><View style={styles.infoCopy}><Text style={styles.infoTitle}>{order.courierName}</Text><Text style={styles.infoText}>Tracking {order.trackingNumber}</Text><Text style={styles.infoText}>Shipping {formatCurrency(order.shippingCost, order.currency)}</Text></View></View> : null}
     {order.status === 'shipped' && order.paymentOption === 'pay_on_delivery' && order.paymentStatus !== 'paid' ? <View style={styles.balanceBlock}>
       <Text style={styles.infoTitle}>Pay delivery balance</Text>
       <Text style={styles.infoText}>{formatCurrency(order.amountDue, order.currency)} is due before delivery can be confirmed.</Text>
       <Input label="M-Pesa phone number" value={phoneNumber} onChangeText={setPhoneNumber} keyboardType="phone-pad" placeholder="254712345678" error={phoneNumber && !isOrderPaymentPhone(phoneNumber) ? 'Use 2547XXXXXXXX or 2541XXXXXXXX format.' : undefined} />
-      {!balancePayment ? <Button loading={payBalance.isPending} disabled={!isOrderPaymentPhone(phoneNumber)} onPress={() => payBalance.mutate()}>Send M-Pesa Prompt</Button> :
-        <Button variant="secondary" loading={refreshBalance.isPending} onPress={() => refreshBalance.mutate()}>{balancePayment.status === 'succeeded' ? 'Payment Confirmed' : 'Check Payment Status'}</Button>}
-      {payBalance.isError ? <Text style={styles.error}>{getApiErrorMessage(payBalance.error, 'Unable to request the balance payment.')}</Text> : null}
-      {refreshBalance.isError ? <Text style={styles.error}>{getApiErrorMessage(refreshBalance.error, 'Unable to refresh payment status.')}</Text> : null}
+      {!requestedPayment ? <Button loading={requestOrderPayment.isPending} disabled={!isOrderPaymentPhone(phoneNumber)} onPress={() => requestOrderPayment.mutate('delivery_balance')}>Send M-Pesa Prompt</Button> :
+        <Button variant="secondary" loading={refreshPayment.isPending} onPress={() => refreshPayment.mutate()}>{requestedPayment.status === 'succeeded' ? 'Payment Confirmed' : 'Check Payment Status'}</Button>}
+      {requestOrderPayment.isError ? <Text style={styles.error}>{getApiErrorMessage(requestOrderPayment.error, 'Unable to request the balance payment.')}</Text> : null}
+      {refreshPayment.isError ? <Text style={styles.error}>{getApiErrorMessage(refreshPayment.error, 'Unable to refresh payment status.')}</Text> : null}
     </View> : null}
     {order.status === 'shipped' ? <View style={styles.confirmBlock}><Button loading={confirmDelivery.isPending} disabled={confirmDelivery.isPending || order.paymentStatus !== 'paid'} onPress={() => confirmDelivery.mutate()}>Confirm item received</Button>{confirmDelivery.isError ? <Text style={styles.error} accessibilityRole="alert">{getApiErrorMessage(confirmDelivery.error, 'Unable to confirm delivery.')}</Text> : null}</View> : null}
     <Text style={styles.sectionTitle}>Items</Text>
