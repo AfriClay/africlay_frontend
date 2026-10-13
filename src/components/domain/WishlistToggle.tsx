@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
 import { Heart } from 'lucide-react-native';
 import { useAuth } from '../../hooks/useAuth';
@@ -10,11 +10,19 @@ export function WishlistToggle({ productId, onGuest, style }: { productId: strin
   const { user } = useAuth();
   const wishlist = useWishlist();
   const [failed, setFailed] = useState(false);
+  const [resumeAfterAuth, setResumeAfterAuth] = useState(false);
   const saved = wishlist.isSaved(productId);
   const loading = wishlist.pendingProductId === productId;
 
+  useEffect(() => {
+    if (!resumeAfterAuth || !user || loading) return;
+    setResumeAfterAuth(false);
+    setFailed(false);
+    void wishlist.toggle(productId).catch(() => setFailed(true));
+  }, [loading, productId, resumeAfterAuth, user, wishlist]);
+
   const toggle = async () => {
-    if (!user) { onGuest(); return; }
+    if (!user) { setResumeAfterAuth(true); onGuest(); return; }
     if (loading) return;
     setFailed(false);
     try { await wishlist.toggle(productId); }

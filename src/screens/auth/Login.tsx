@@ -23,6 +23,11 @@ export const Login: React.FC = () => {
   const navigation = useNavigation<NativeStackNavigationProp<AuthStackParamList, 'Login'>>();
   const auth = useAuth();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const returnToMarketplace = () => {
+    const root = navigation.getParent<any>();
+    if (root?.canGoBack()) root.goBack();
+    else root?.reset({ index: 0, routes: [{ name: 'AppTabs' }] });
+  };
 
   const { control, handleSubmit } = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
@@ -83,6 +88,7 @@ export const Login: React.FC = () => {
       <Button variant="tertiary" size="sm" style={styles.forgot} onPress={() => navigation.navigate(ROUTES.ForgotPassword)}>Forgot password?</Button>
       <Button fullWidth onPress={handleSubmit(onSubmit)} loading={auth.loading} loadingLabel="Logging in" accessibilityLabel="Log In">Log In</Button>
       <View style={styles.footer}><Text style={styles.footerText}>Don&apos;t have an account?</Text><Button variant="tertiary" size="sm" onPress={() => navigation.navigate(ROUTES.Register)}>Create account</Button></View>
+      <Button variant="tertiary" size="sm" onPress={returnToMarketplace}>Back to marketplace</Button>
     </FormFrame>
   );
 };

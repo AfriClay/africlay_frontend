@@ -63,7 +63,7 @@ export const ReviewSection = ({ target }: { target: ReviewTarget }) => {
     </View>}
     {ownReview && !editingId && <ReviewCard review={ownReview} onEdit={startReview} onDelete={() => void remove.mutateAsync(ownReview.id)} deleting={remove.isPending} />}
     {(query.data ?? []).filter(review => review.id !== ownReview?.id).map(review => <ReviewCard key={review.id} review={review} />)}
-    <GuestAuthSheet visible={authSheet} onClose={() => setAuthSheet(false)} description="Log in to review products, services, and stores." />
+    <GuestAuthSheet visible={authSheet} onClose={() => setAuthSheet(false)} onAuthenticated={startReview} description="Log in or create an account to write and manage your review." />
   </View>;
 };
 

@@ -1,9 +1,9 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { Platform } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
 import { AppFrame } from './src/components/AppFrame';
 import { ResponsiveLayoutProvider } from './src/contexts/ResponsiveLayoutContext';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
 import { AuthProvider } from './src/contexts/AuthContext';
 import { CartProvider } from './src/contexts/CartContext';
 import { RootNavigator } from './src/navigation/RootNavigator';
@@ -21,7 +21,15 @@ if (Platform.OS !== 'web') {
 const queryClient = new QueryClient();
 
 const AppContent = () => {
-  const role = useAuth().user?.role;
+  const user = useAuth().user;
+  const role = user?.role;
+  const activeIdentity = user?.id ?? 'guest';
+  const previousIdentity = useRef<string | undefined>(undefined);
+  const client = useQueryClient();
+  useEffect(() => {
+    if (previousIdentity.current && previousIdentity.current !== activeIdentity) client.clear();
+    previousIdentity.current = activeIdentity;
+  }, [activeIdentity, client]);
   const navigator = <AppFrame><NativeNotificationBridge /><RootNavigator /></AppFrame>;
   return role === 'admin' || role === 'super_admin' ? navigator : <CartProvider><WishlistProvider>{navigator}</WishlistProvider></CartProvider>;
 };

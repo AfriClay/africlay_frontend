@@ -6,8 +6,6 @@ import { theme } from '../../theme';
 import { formatCurrency } from '../../utils/formatCurrency';
 import { Button } from '../../components/ui/Button';
 import { useNavigation } from '@react-navigation/native';
-import { GuestAuthSheet } from '../../components/ui/GuestAuthSheet';
-import { useAuth } from '../../hooks/useAuth';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../navigation/RootNavigator';
 import { ChevronRight, Trash2, X } from 'lucide-react-native';
@@ -17,25 +15,10 @@ export const Cart: React.FC = () => {
   const { isExpanded } = useResponsiveLayout();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList, 'Cart'>>();
   const cart = useCart();
-  const auth = useAuth();
-  const [authSheet, setAuthSheet] = React.useState(false);
   const openProduct = (slug?: string) => {
     if (!slug) return;
     navigation.navigate('AppTabs', { screen: 'Home', params: { screen: 'ProductDetails', params: { productId: slug } } });
   };
-
-  if (auth.isGuest) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <GuestAuthSheet visible={authSheet} onClose={() => setAuthSheet(false)} description="Register or log in to access your cart and proceed to checkout." />
-        <View style={styles.guestContent}>
-          <Text style={styles.title}>Cart</Text>
-          <View style={styles.empty}><Text style={styles.emptyText}>Create a free account to access your cart and proceed to checkout.</Text></View>
-          <Button onPress={() => setAuthSheet(true)} accessibilityLabel="Create account">Create Account</Button>
-        </View>
-      </SafeAreaView>
-    );
-  }
 
   if (!cart.available) {
     return (
@@ -49,6 +32,8 @@ export const Cart: React.FC = () => {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}><Text style={styles.title}>Cart</Text><Button variant="icon" icon={<X color={theme.colors.ink} size={22} />} onPress={() => navigation.goBack()} accessibilityLabel="Close cart" /></View>
+      {cart.isGuestCart ? <View style={styles.notice}><Text style={styles.noticeText}>Items are saved on this device. You can browse and edit your cart now; log in or create an account at checkout.</Text></View> : null}
+      {cart.transferMessage ? <View style={styles.notice} accessibilityLiveRegion="polite"><Text style={styles.noticeText}>{cart.transferMessage}</Text>{cart.savedGuestItemCount > 0 ? <Button size="sm" variant="tertiary" onPress={() => void cart.retryGuestTransfer().catch(() => {})}>Retry transfer</Button> : null}</View> : null}
       {cart.error && <View style={styles.message}><Text style={styles.error} accessibilityRole="alert">{cart.error}</Text><Button size="sm" variant="tertiary" onPress={() => void cart.refresh().catch(() => {})}>Retry</Button></View>}
       {cart.loading ? <View style={styles.empty}><Text style={styles.emptyText}>Loading cart...</Text></View> : cart.error && cart.itemCount === 0 ? (
         <View style={[styles.empty, isExpanded && styles.desktopEmpty]}><Text style={styles.emptyText}>Cart unavailable. Retry to load your items.</Text></View>
@@ -93,10 +78,8 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.cream,
   },
-  guestContent: {
-    flex: 1,
-    padding: theme.spacing.lg,
-  },
+  notice: { marginHorizontal: theme.spacing.lg, marginBottom: theme.spacing.sm, padding: theme.spacing.md, borderRadius: theme.radii.md, backgroundColor: theme.colors.primary.tint, borderWidth: 1, borderColor: theme.colors.primary.DEFAULT },
+  noticeText: { flex: 1, color: theme.colors.primary.dark, lineHeight: 20 },
   title: {
     fontSize: theme.typography.h2.fontSize,
     fontWeight: '800',

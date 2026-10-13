@@ -29,6 +29,11 @@ export const Register: React.FC = () => {
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [role, setRole] = useState<'buyer' | 'seller' | 'both'>('buyer');
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const returnToMarketplace = () => {
+    const root = navigation.getParent<any>();
+    if (root?.canGoBack()) root.goBack();
+    else root?.reset({ index: 0, routes: [{ name: 'AppTabs' }] });
+  };
   const { control, handleSubmit, setValue } = useForm<RegisterForm>({
     resolver: zodResolver(registerSchema),
     defaultValues: { name: '', email: '', password: '', confirmPassword: '', acceptTerms: false },
@@ -106,6 +111,7 @@ export const Register: React.FC = () => {
       {submitError ? <Text style={styles.error}>{submitError}</Text> : null}
       <Button fullWidth onPress={handleSubmit(onSubmit)} disabled={!acceptTerms || auth.loading} loading={auth.loading} loadingLabel="Creating account" accessibilityLabel="Create Account">Create Account</Button>
       <View style={styles.footer}><Text style={styles.footerText}>Already have an account?</Text><Button variant="tertiary" size="sm" onPress={() => navigation.navigate(ROUTES.Login)}>Log in</Button></View>
+      <Button variant="tertiary" size="sm" onPress={returnToMarketplace}>Back to marketplace</Button>
     </FormFrame>
   );
 };

@@ -105,13 +105,9 @@ const AppTabsNavigator = ({ onOpenHome, onOpenCategories, onOpenOrders, onOpenPr
 
 const AppTabsContent = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList, 'AppTabs'>>();
-  const { user } = useAuth();
   const openHome = useCallback(() => navigation.navigate('AppTabs', { screen: 'Home', params: { screen: 'HomeFeed' } }), [navigation]);
   const openCategories = useCallback(() => navigation.navigate('AppTabs', { screen: 'Home', params: { screen: 'ProductListing' } }), [navigation]);
-  const openOrders = useCallback(() => {
-    if (!user) { navigation.navigate('AuthStack'); return; }
-    navigation.navigate('AppTabs', { screen: 'Profile', params: { screen: 'MyOrders' } });
-  }, [navigation, user]);
+  const openOrders = useCallback(() => navigation.navigate('AppTabs', { screen: 'Profile', params: { screen: 'MyOrders' } }), [navigation]);
   const openProfile = useCallback(() => navigation.navigate('AppTabs', { screen: 'Profile', params: { screen: 'ProfileOverview' } }), [navigation]);
 
   return (

@@ -56,13 +56,12 @@ export const ProductDetails: React.FC = () => {
   const canBuy = !auth.user || canAccessBuyerTools(auth.user.role);
 
   const handleAddToCart = async () => {
-    if (!auth.user) { setAuthSheetVisible(true); return; }
-    if (!canAccessBuyerTools(auth.user.role)) { setCartError('Shopping is available to buyer accounts.'); return; }
+    if (auth.user && !canAccessBuyerTools(auth.user.role)) { setCartError('Shopping is not available for this account.'); return; }
     if (product && !cart.mutating) {
       setPendingAction('cart');
       setCartError(undefined);
       try {
-        await cart.addItem(product.id);
+        await cart.addItem(product.id, 1, { productId: product.id, productSlug: product.slug, name: product.name, price: product.price });
       } catch (error) {
         setCartError(getApiErrorMessage(error, 'Unable to add this item.'));
         setPendingAction(undefined);
@@ -74,16 +73,12 @@ export const ProductDetails: React.FC = () => {
   };
 
   const buyNow = async () => {
-    if (!auth.user) {
-      setAuthSheetVisible(true);
-      return;
-    }
-    if (!canAccessBuyerTools(auth.user.role)) { setCartError('Shopping is available to buyer accounts.'); return; }
+    if (auth.user && !canAccessBuyerTools(auth.user.role)) { setCartError('Shopping is not available for this account.'); return; }
     if (product && !cart.mutating) {
       setPendingAction('buy');
       setCartError(undefined);
       try {
-        await cart.addItem(product.id);
+        await cart.addItem(product.id, 1, { productId: product.id, productSlug: product.slug, name: product.name, price: product.price });
       } catch (error) {
         setCartError(getApiErrorMessage(error, 'Unable to add this item.'));
         setPendingAction(undefined);
@@ -134,7 +129,7 @@ export const ProductDetails: React.FC = () => {
       </ScrollView>
       {isCompact && actions}
       {isFocused && <CartToast key={product.id} event={cartEvent} bottom={isCompact ? actionHeight + theme.spacing.sm : theme.spacing.md} />}
-      <GuestAuthSheet visible={authSheetVisible} onClose={() => setAuthSheetVisible(false)} description="Register or log in to save items and complete your purchase." />
+      <GuestAuthSheet visible={authSheetVisible} onClose={() => setAuthSheetVisible(false)} description="Log in or create an account to save this product to your wishlist." />
     </SafeAreaView>
   );
 };

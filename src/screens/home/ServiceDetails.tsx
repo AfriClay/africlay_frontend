@@ -69,7 +69,12 @@ export const ServiceDetails: React.FC = () => {
       </View>
       <ReviewSection target={{ type: 'service', id: service.id }} />
     </ScrollView>
-    <GuestAuthSheet visible={authSheet} onClose={() => setAuthSheet(false)} description="Log in to book this service." />
+    <GuestAuthSheet
+      visible={authSheet}
+      onClose={() => setAuthSheet(false)}
+      onAuthenticated={() => setFormError('You are signed in. Review the booking details, then tap Request booking to confirm.')}
+      description="Log in or create an account to request this booking. Your entered details will remain here."
+    />
   </SafeAreaView>;
 };
 

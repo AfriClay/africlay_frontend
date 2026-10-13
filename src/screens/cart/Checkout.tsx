@@ -45,7 +45,7 @@ export const Checkout: React.FC = () => {
   const [error, setError] = useState<string>();
   const [statusError, setStatusError] = useState<string>();
   const [orderCreationUncertain, setOrderCreationUncertain] = useState(false);
-  const [authSheet, setAuthSheet] = useState(false);
+  const [authSheet, setAuthSheet] = useState(!auth.user);
   const [orderId, setOrderId] = useState<string>();
   const [orderTotal, setOrderTotal] = useState(0);
   const [payment, setPayment] = useState<Payment>();
@@ -67,6 +67,10 @@ export const Checkout: React.FC = () => {
     queryFn: () => orderService.shippingQuote(validAddressPayload!),
     enabled: Boolean(userId && cart.available && cart.itemCount && validAddressPayload),
   });
+
+  useEffect(() => {
+    if (!auth.user) setAuthSheet(true);
+  }, [auth.user]);
 
   useEffect(() => {
     if (phoneTouched || phoneNumber) return;
@@ -209,8 +213,8 @@ export const Checkout: React.FC = () => {
   };
 
   if (!auth.user) return <SafeAreaView style={styles.container}>
-    <GuestAuthSheet visible={authSheet} onClose={() => setAuthSheet(false)} description="Log in to complete checkout." />
-    <View style={styles.content}><Text style={styles.title}>Checkout</Text><Text style={styles.note}>Log in to place an order.</Text><Button onPress={() => setAuthSheet(true)}>Log In</Button></View>
+    <GuestAuthSheet visible={authSheet} onClose={() => setAuthSheet(false)} description="Your cart is saved. Log in or create an account to choose delivery and place the order." />
+    <View style={styles.content}><Text style={styles.title}>Checkout</Text><Text style={styles.note}>An account is required for delivery details, order history, and payment confirmation. No order or payment will be started automatically after sign-in.</Text><Button onPress={() => setAuthSheet(true)}>Continue to Login</Button></View>
   </SafeAreaView>;
 
   if (!cart.available) return <SafeAreaView style={styles.confirmation}>

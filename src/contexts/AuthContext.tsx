@@ -30,8 +30,8 @@ interface AuthContextValue extends AuthState {
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
-const signedOut = { isGuest: false, loading: false, initialized: true } as const;
-const signedInState = (user: User): AuthState => ({ user, role: user.role, ...signedOut });
+const signedOut = { isGuest: true, loading: false, initialized: true } as const;
+const signedInState = (user: User): AuthState => ({ user, role: user.role, isGuest: false, loading: false, initialized: true });
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [state, setState] = useState<AuthState>({ isGuest: false, loading: true, initialized: false });

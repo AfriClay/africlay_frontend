@@ -12,6 +12,12 @@ import { AuthStackParamList } from '../../navigation/AuthStack';
 export const GetStarted: React.FC = () => {
   const navigation = useNavigation<NativeStackNavigationProp<AuthStackParamList, 'GetStarted'>>();
   const auth = useAuth();
+  const continueBrowsing = async () => {
+    await auth.continueAsGuest();
+    const root = navigation.getParent<any>();
+    if (root?.canGoBack()) root.goBack();
+    else root?.reset({ index: 0, routes: [{ name: 'AppTabs' }] });
+  };
 
   return (
     <FormFrame style={styles.container}>
@@ -21,7 +27,7 @@ export const GetStarted: React.FC = () => {
         <Button fullWidth onPress={() => navigation.navigate(ROUTES.Login)} accessibilityLabel="Login">Login</Button>
         <Button fullWidth variant="secondary" onPress={() => navigation.navigate(ROUTES.Register)} accessibilityLabel="Create Account">Create Account</Button>
       </View>
-      <Button fullWidth variant="tertiary" onPress={auth.continueAsGuest}>Continue as guest</Button>
+      <Button fullWidth variant="tertiary" onPress={() => void continueBrowsing()}>Continue browsing</Button>
     </FormFrame>
   );
 };
