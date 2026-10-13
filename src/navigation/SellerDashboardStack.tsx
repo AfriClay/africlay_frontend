@@ -1,14 +1,14 @@
 import { RouteProp } from '@react-navigation/native';
-import { NativeStackNavigationOptions, createNativeStackNavigator } from '@react-navigation/native-stack';
+import { NativeStackNavigationOptions } from '@react-navigation/native-stack';
 import { DashboardHome } from '../screens/seller/DashboardHome';
 import { ProductManagement } from '../screens/seller/ProductManagement';
 import { ServiceManagement } from '../screens/seller/ServiceManagement';
 import { AddEditProduct } from '../screens/seller/AddEditProduct';
 import { SellerOrders } from '../screens/seller/SellerOrders';
 import { OrderDetails } from '../screens/profile/OrderDetails';
-import { theme } from '../theme';
 import { SellerBookings } from '../screens/seller/SellerBookings';
 import { StoreSettings } from '../screens/seller/StoreSettings';
+import { createAppStackNavigator, useAppStackScreenOptions } from './appStack';
 
 export type SellerDashboardStackParamList = {
   DashboardHome: undefined;
@@ -21,10 +21,11 @@ export type SellerDashboardStackParamList = {
   OrderDetails: { orderId: string };
 };
 
-const Stack = createNativeStackNavigator<SellerDashboardStackParamList>();
+const Stack = createAppStackNavigator<SellerDashboardStackParamList>();
 
-export const SellerDashboardStack = () => (
-  <Stack.Navigator screenOptions={{ headerShadowVisible: false, headerStyle: { backgroundColor: theme.colors.cream }, headerTintColor: theme.colors.ink, headerBackButtonDisplayMode: 'minimal' }}>
+export const SellerDashboardStack = () => {
+  const stackOptions = useAppStackScreenOptions();
+  return <Stack.Navigator screenOptions={stackOptions}>
     <Stack.Screen name="DashboardHome" component={DashboardHome} options={{ headerShown: false }} />
     <Stack.Screen name="ProductManagement" component={ProductManagement} options={{ title: 'Manage Products' }} />
     <Stack.Screen name="ServiceManagement" component={ServiceManagement} options={{ title: 'Manage Services' }} />
@@ -37,5 +38,5 @@ export const SellerDashboardStack = () => (
     <Stack.Screen name="SellerBookings" component={SellerBookings} options={{ title: 'Service Bookings' }} />
     <Stack.Screen name="StoreSettings" component={StoreSettings} options={{ title: 'Store Settings' }} />
     <Stack.Screen name="OrderDetails" component={OrderDetails as any} options={{ title: 'Order Details' }} />
-  </Stack.Navigator>
-);
+  </Stack.Navigator>;
+};

@@ -1,23 +1,24 @@
 import { RouteProp } from '@react-navigation/native';
-import { NativeStackNavigationOptions, createNativeStackNavigator } from '@react-navigation/native-stack';
+import { NativeStackNavigationOptions } from '@react-navigation/native-stack';
 import { MessagesList } from '../screens/messages/MessagesList';
 import { ConversationThread } from '../screens/messages/ConversationThread';
-import { theme } from '../theme';
+import { createAppStackNavigator, useAppStackScreenOptions } from './appStack';
 
 export type MessagesStackParamList = {
   MessagesInbox: undefined;
   ConversationThread: { conversationId: string; name: string };
 };
 
-const Stack = createNativeStackNavigator<MessagesStackParamList>();
+const Stack = createAppStackNavigator<MessagesStackParamList>();
 
-export const MessagesStack = () => (
-  <Stack.Navigator screenOptions={{ headerShadowVisible: false, headerStyle: { backgroundColor: theme.colors.cream }, headerTintColor: theme.colors.ink, headerBackButtonDisplayMode: 'minimal' }}>
+export const MessagesStack = () => {
+  const stackOptions = useAppStackScreenOptions();
+  return <Stack.Navigator screenOptions={stackOptions}>
     <Stack.Screen name="MessagesInbox" component={MessagesList} options={{ headerShown: false }} />
     <Stack.Screen
       name="ConversationThread"
       component={ConversationThread}
       options={({ route }: { route: RouteProp<MessagesStackParamList, 'ConversationThread'> }): NativeStackNavigationOptions => ({ title: route.params.name })}
     />
-  </Stack.Navigator>
-);
+  </Stack.Navigator>;
+};

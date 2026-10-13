@@ -1,9 +1,8 @@
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StartSelling } from '../screens/seller/StartSelling';
 import { KYCUpload } from '../screens/auth/KYCUpload';
 import { VerificationPending } from '../screens/auth/VerificationPending';
 import { StorefrontSetup } from '../screens/auth/StorefrontSetup';
-import { theme } from '../theme';
+import { createAppStackNavigator, useAppStackScreenOptions } from './appStack';
 
 export type SellOnboardingStackParamList = {
   StartSelling: undefined;
@@ -12,11 +11,12 @@ export type SellOnboardingStackParamList = {
   StorefrontSetup: undefined;
 };
 
-const Stack = createNativeStackNavigator<SellOnboardingStackParamList>();
+const Stack = createAppStackNavigator<SellOnboardingStackParamList>();
 
 export const SellOnboardingStack = () => {
+  const stackOptions = useAppStackScreenOptions();
   return (
-    <Stack.Navigator initialRouteName="StartSelling" screenOptions={{ headerShadowVisible: false, headerStyle: { backgroundColor: theme.colors.cream }, headerTintColor: theme.colors.ink, headerBackButtonDisplayMode: 'minimal' }}>
+    <Stack.Navigator initialRouteName="StartSelling" screenOptions={stackOptions}>
       <Stack.Screen name="StartSelling" component={StartSelling} options={{ headerShown: false }} />
       <Stack.Screen name="KYCUpload" component={KYCUpload} options={{ title: 'Seller Verification' }} />
       <Stack.Screen name="VerificationPending" component={VerificationPending} options={{ headerShown: false }} />

@@ -4,18 +4,18 @@ import * as ImagePicker from 'expo-image-picker';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ChevronDown, ImagePlus, Search, X } from 'lucide-react-native';
+import { ChevronDown, ImagePlus, Plus, Search, X } from 'lucide-react-native';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { TagPicker } from '../../components/domain/TagPicker';
 import { SellerDashboardStackParamList } from '../../navigation/SellerDashboardStack';
-import { productService, type SellerProductDraft } from '../../services/productService';
+import { productService, type CatalogCategory, type SellerProductDraft } from '../../services/productService';
 import { catalogKeys, invalidateCatalog } from '../../services/catalogQueries';
 import { ErrorState } from '../../components/ui/ErrorState';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { useAuth } from '../../hooks/useAuth';
 import { theme } from '../../theme';
-import { leafCategoryItems } from '../../utils/categoryTree';
+import { leafCategoryItems, rootCategories } from '../../utils/categoryTree';
 import { productIdentifiers } from '../../utils/productIdentifiers';
 
 type AddEditRoute = RouteProp<SellerDashboardStackParamList, 'AddEditProduct'>;
@@ -51,6 +51,12 @@ export const AddEditProduct: React.FC = () => {
   const [categoryId, setCategoryId] = useState<string>();
   const [categoryPickerOpen, setCategoryPickerOpen] = useState(false);
   const [categoryQuery, setCategoryQuery] = useState('');
+  const [categoryCreatorOpen, setCategoryCreatorOpen] = useState(false);
+  const [categoryParentId, setCategoryParentId] = useState<string>();
+  const [categoryParentName, setCategoryParentName] = useState('');
+  const [categoryChildName, setCategoryChildName] = useState('');
+  const [categoryCreating, setCategoryCreating] = useState(false);
+  const [categoryCreateError, setCategoryCreateError] = useState<string>();
   const [tagIds, setTagIds] = useState<string[]>([]);
   const [price, setPrice] = useState('');
   const [stock, setStock] = useState('0');
@@ -70,7 +76,8 @@ export const AddEditProduct: React.FC = () => {
     pendingUploads.current = [];
     generatedIdentifierSeed.current = identifierSeed();
     setName(''); setSlug(''); setSku(''); setDescription(''); setCategoryId(undefined);
-    setCategoryPickerOpen(false); setCategoryQuery('');
+    setCategoryPickerOpen(false); setCategoryQuery(''); setCategoryCreatorOpen(false);
+    setCategoryParentId(undefined); setCategoryParentName(''); setCategoryChildName(''); setCategoryCreateError(undefined);
     setTagIds([]); setPrice(''); setStock('0'); setWeightKg('1'); setLengthCm(''); setWidthCm(''); setHeightCm(''); setExistingImages([]); setImages([]);
     setStatus('draft'); setError(undefined);
   }, [productId]);
@@ -118,6 +125,7 @@ export const AddEditProduct: React.FC = () => {
   const resolvedSlug = productId ? slug.trim() : generatedIdentifiers.slug;
   const resolvedSku = productId ? sku.trim() : generatedIdentifiers.sku;
   const categories = categoriesQuery.data ?? [];
+  const mainCategoryOptions = rootCategories(categories);
   const categoryOptions = leafCategoryItems(categories);
   const selectableCategoryIds = new Set(categoryOptions.map(item => item.category.id));
   const categoryById = new Map(categories.map(item => [item.id, item]));
@@ -142,6 +150,7 @@ export const AddEditProduct: React.FC = () => {
   const validDimensions = [numericLength, numericWidth, numericHeight].every(value => Number.isFinite(value) && value > 0 && value < 100);
   const baseDetailsValid = Boolean(name.trim() && name.length <= 180 && resolvedSlug && resolvedSku && numericPrice > 0 && Number.isFinite(numericPrice) && /^\d+$/.test(stock.trim()) && validWeight);
   const canSave = baseDetailsValid && (status !== 'published' || (hasValidCategory && validDimensions));
+  const canCreateCategory = Boolean((categoryParentId || categoryParentName.trim()) && categoryChildName.trim());
   const validationMessage = !name.trim() ? 'Enter a product name to continue.' :
     name.length > 180 ? 'Keep the product name within 180 characters.' :
     !Number.isFinite(numericPrice) || numericPrice <= 0 ? 'Enter a price greater than zero.' :
@@ -149,9 +158,40 @@ export const AddEditProduct: React.FC = () => {
     !validWeight ? 'Enter the packaged product weight in kilograms.' :
     status === 'published' && categoriesQuery.isLoading ? 'Loading product categories...' :
     status === 'published' && categoriesQuery.isError ? 'Categories could not be loaded. Retry before publishing.' :
-    status === 'published' && categoryOptions.length === 0 ? 'No product categories are available yet. Save as a draft or ask an administrator to add categories.' :
+    status === 'published' && categoryOptions.length === 0 ? 'Add a specific category before publishing.' :
     status === 'published' && !hasValidCategory ? 'Choose a specific category before publishing.' :
     status === 'published' && !validDimensions ? 'Enter package length, width, and height below 100 cm.' : undefined;
+
+  const createCategory = async () => {
+    if (!canCreateCategory || categoryCreating) return;
+    setCategoryCreating(true);
+    setCategoryCreateError(undefined);
+    try {
+      const created = await productService.createCategoryPath({
+        parentId: categoryParentId,
+        parentName: categoryParentId ? undefined : categoryParentName,
+        childName: categoryChildName,
+      });
+      queryClient.setQueryData<CatalogCategory[]>(catalogKeys.categories, current => {
+        const merged = new Map((current ?? []).map(category => [category.id, category]));
+        merged.set(created.parent.id, created.parent);
+        merged.set(created.child.id, created.child);
+        return [...merged.values()];
+      });
+      setCategoryId(created.child.id);
+      setCategoryPickerOpen(false);
+      setCategoryCreatorOpen(false);
+      setCategoryQuery('');
+      setCategoryParentId(undefined);
+      setCategoryParentName('');
+      setCategoryChildName('');
+      await queryClient.invalidateQueries({ queryKey: catalogKeys.categories });
+    } catch (createError) {
+      setCategoryCreateError(createError instanceof Error ? createError.message : 'Unable to add this category.');
+    } finally {
+      setCategoryCreating(false);
+    }
+  };
 
   const save = async () => {
     if (!canSave || saving) return;
@@ -205,8 +245,7 @@ export const AddEditProduct: React.FC = () => {
     <Text style={styles.label}>Specific category</Text>
     {categoriesQuery.isLoading ? <Text style={styles.optionMessage}>Loading categories...</Text> :
       categoriesQuery.isError ? <View style={styles.optionFailure}><Text style={styles.optionError}>Unable to load categories.</Text><Button size="sm" variant="tertiary" onPress={() => void categoriesQuery.refetch()} accessibilityLabel="Retry loading product categories">Retry</Button></View> :
-        categoryOptions.length === 0 ? <Text style={styles.optionMessage}>No categories are available. You can save a draft, but a category is required to publish.</Text> :
-          <View style={styles.categoryPicker}>
+        <View style={styles.categoryPicker}>
             <Pressable
               onPress={() => setCategoryPickerOpen(value => !value)}
               style={[styles.categoryField, categoryId && styles.categoryFieldSelected]}
@@ -222,15 +261,42 @@ export const AddEditProduct: React.FC = () => {
                 <Search color={theme.colors.muted} size={18} />
                 <TextInput value={categoryQuery} onChangeText={setCategoryQuery} placeholder="Search categories" placeholderTextColor={theme.colors.muted} style={styles.categorySearchInput} accessibilityLabel="Search product categories" />
               </View>
-              <ScrollView style={styles.categoryTree} contentContainerStyle={styles.categoryTreeContent} nestedScrollEnabled keyboardShouldPersistTaps="handled">{visibleCategoryOptions.map(({ category }) => {
+              {categoryOptions.length ? <ScrollView style={styles.categoryTree} contentContainerStyle={styles.categoryTreeContent} nestedScrollEnabled keyboardShouldPersistTaps="handled">{visibleCategoryOptions.map(({ category }) => {
                 const selected = categoryId === category.id;
                 return <Pressable key={category.id} onPress={() => { setCategoryId(category.id); setCategoryPickerOpen(false); setCategoryQuery(''); }}
                   style={[styles.categoryBranch, selected && styles.categoryActive]}
                   accessibilityRole="radio" accessibilityState={{ selected }} accessibilityLabel={`Choose ${category.label}`}>
                   <Text numberOfLines={2} style={[styles.categoryText, selected && styles.categoryTextActive]}>{pathForCategory(category.id).map(item => item.label).join(' / ')}</Text>
                 </Pressable>;
-              })}</ScrollView>
-              {!visibleCategoryOptions.length ? <Text style={styles.optionMessage}>No matching categories.</Text> : null}
+              })}</ScrollView> : null}
+              {!visibleCategoryOptions.length ? <Text style={styles.optionMessage}>{categoryOptions.length ? 'No matching categories.' : 'No categories are available yet.'}</Text> : null}
+              <Button
+                size="sm"
+                variant="tertiary"
+                icon={<Plus color={theme.colors.primary.DEFAULT} size={17} />}
+                onPress={() => {
+                  setCategoryCreatorOpen(value => !value);
+                  if (!categoryChildName && categoryQuery.trim()) setCategoryChildName(categoryQuery.trim());
+                  setCategoryCreateError(undefined);
+                }}
+                accessibilityState={{ expanded: categoryCreatorOpen }}
+              >Add missing category</Button>
+              {categoryCreatorOpen ? <View style={styles.categoryCreator}>
+                <Text style={styles.creatorTitle}>Main category</Text>
+                {mainCategoryOptions.length ? <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.parentOptions} keyboardShouldPersistTaps="handled">
+                  {mainCategoryOptions.map(category => {
+                    const selected = categoryParentId === category.id;
+                    return <Pressable key={category.id} onPress={() => { setCategoryParentId(category.id); setCategoryParentName(''); setCategoryCreateError(undefined); }}
+                      accessibilityRole="radio" accessibilityState={{ selected }} style={[styles.parentOption, selected && styles.parentOptionActive]}>
+                      <Text style={[styles.parentOptionText, selected && styles.parentOptionTextActive]}>{category.label}</Text>
+                    </Pressable>;
+                  })}
+                </ScrollView> : null}
+                <Input label="New main category" value={categoryParentName} onChangeText={value => { setCategoryParentName(value.slice(0, 100)); if (value.trim()) setCategoryParentId(undefined); setCategoryCreateError(undefined); }} placeholder="Only if it is not listed" />
+                <Input label="Child category" value={categoryChildName} onChangeText={value => { setCategoryChildName(value.slice(0, 100)); setCategoryCreateError(undefined); }} placeholder="Specific category" />
+                {categoryCreateError ? <Text accessibilityRole="alert" style={styles.optionError}>{categoryCreateError}</Text> : null}
+                <Button size="sm" onPress={createCategory} disabled={!canCreateCategory} loading={categoryCreating}>Add category</Button>
+              </View> : null}
             </View> : null}
           </View>}
     <TagPicker
@@ -309,6 +375,13 @@ const styles = StyleSheet.create({
   categoryActive: { backgroundColor: theme.colors.primary.DEFAULT, borderColor: theme.colors.primary.DEFAULT },
   categoryText: { color: theme.colors.ink, fontSize: theme.typography.small.fontSize },
   categoryTextActive: { color: theme.colors.white, fontWeight: '700' },
+  categoryCreator: { gap: theme.spacing.sm, marginTop: theme.spacing.sm, paddingTop: theme.spacing.sm, borderTopWidth: 1, borderTopColor: theme.colors.border },
+  creatorTitle: { color: theme.colors.ink, fontWeight: '700', fontSize: theme.typography.small.fontSize },
+  parentOptions: { gap: theme.spacing.xs, paddingBottom: theme.spacing.xs },
+  parentOption: { minHeight: 36, justifyContent: 'center', paddingHorizontal: theme.spacing.sm, borderWidth: 1, borderColor: theme.colors.border, borderRadius: theme.radii.sm, backgroundColor: theme.colors.white },
+  parentOptionActive: { borderColor: theme.colors.primary.DEFAULT, backgroundColor: theme.colors.primary.tint },
+  parentOptionText: { color: theme.colors.ink, fontSize: theme.typography.small.fontSize },
+  parentOptionTextActive: { color: theme.colors.primary.dark, fontWeight: '700' },
   twoColumns: { flexDirection: 'row', gap: theme.spacing.md },
   column: { flex: 1 },
   statusOptions: { flexDirection: 'row', gap: theme.spacing.sm },

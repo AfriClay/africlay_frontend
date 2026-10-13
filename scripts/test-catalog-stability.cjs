@@ -5,13 +5,24 @@ const path = require('node:path');
 const vm = require('node:vm');
 const ts = require('typescript');
 const { QueryClient } = require('@tanstack/react-query');
-const { TabRouter, CommonActions } = require('@react-navigation/routers');
+const { TabRouter, StackRouter, CommonActions } = require('@react-navigation/routers');
+const { getPathFromState, getStateFromPath } = require('@react-navigation/core');
 
 const category = { id: 'category-id', slug: 'handmade', name: 'Handmade', parent: null };
 const tag = { id: 'tag-id', slug: 'woven', name: 'Woven' };
 const store = { id: 'store-id', owner: 'seller-id', slug: 'artisan-shop', name: 'Artisan Shop', description: 'Handmade goods', city: 'Nairobi', country: 'Kenya', logo: '/media/logo.png', banner: null, average_rating: '4.25', total_reviews: 4, total_products: 1, status: 'active' };
-const product = { id: 'product-id', store: store.id, category: category.id, tags: [tag.id], images: [{ image: '/media/rug.png', is_primary: true, display_order: 1 }, { image: null, is_primary: false, display_order: 2 }], name: 'Sisal Rug', slug: 'sisal-rug', description: 'Handwoven', sku: 'RUG-001', price: '3200.50', currency: 'KES', stock_quantity: 5, status: 'published', average_rating: 4.5, review_count: 12 };
+const product = { id: 'product-id', store: store.id, category: category.id, tags: [tag.id], images: [{ image: '/media/rug.png', is_primary: true, display_order: 1 }, { image: null, is_primary: false, display_order: 2 }], name: 'Sisal Rug', slug: 'sisal-rug', description: 'Handwoven', sku: 'RUG-001', price: '3200.50', currency: 'KES', stock_quantity: 5, weight_kg: '1.250', length_cm: '40.00', width_cm: '30.00', height_cm: '12.00', status: 'published', average_rating: 4.5, review_count: 12 };
+const childCategory = { id: 'child-category-id', slug: 'farm-tools', name: 'Farm Tools', parent: category.id };
 const json = (body, status = 200) => new Response(JSON.stringify(body), { status });
+
+function loadTypeScriptExports(file) {
+  const exports = {};
+  const code = ts.transpileModule(readFileSync(file, 'utf8'), {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+  }).outputText;
+  vm.runInNewContext(code, { exports });
+  return exports;
+}
 
 function harness(responder = () => undefined) {
   const requests = [];
@@ -39,6 +50,7 @@ function harness(responder = () => undefined) {
         const answer = await responder(route, init);
         if (answer) return answer;
         if (route.pathname.endsWith('/categories/')) return json([category]);
+        if (route.pathname.endsWith('/categories/path/') && init.method === 'POST') return json({ parent: category, child: childCategory, created: true }, 201);
         if (route.pathname.endsWith('/tags/')) return json([tag]);
         if (route.pathname.endsWith('/products/')) return json([product]);
         if (route.pathname.endsWith('/stores/')) return json([store]);
@@ -77,6 +89,43 @@ test('tab history returns to the immediate previous tab', () => {
   state = router.getStateForAction(state, CommonActions.navigate('Sell'), options);
   state = router.getStateForAction(state, CommonActions.goBack(), options);
   assert.equal(state.routes[state.index].name, 'Search');
+});
+
+test('nested stack back returns to the immediately previous route with its params', () => {
+  const router = StackRouter({ initialRouteName: 'HomeFeed' });
+  const options = { routeNames: ['HomeFeed', 'ProductListing', 'ProductDetails'], routeParamList: {}, routeGetIdList: {} };
+  let state = router.getInitialState(options);
+  state = router.getStateForAction(state, CommonActions.navigate('ProductListing', { categoryId: 'handmade' }), options);
+  state = router.getStateForAction(state, CommonActions.navigate('ProductDetails', { productId: 'sisal-rug' }), options);
+  state = router.getStateForAction(state, CommonActions.goBack(), options);
+  assert.equal(state.routes[state.index].name, 'ProductListing');
+  assert.equal(state.routes[state.index].params.categoryId, 'handmade');
+});
+
+test('web navigation uses React Navigation linking and a reduced-motion-aware horizontal stack', () => {
+  const root = readFileSync(path.join(__dirname, '../src/navigation/RootNavigator.tsx'), 'utf8');
+  const stack = readFileSync(path.join(__dirname, '../src/navigation/appStack.ts'), 'utf8');
+  const links = readFileSync(path.join(__dirname, '../src/navigation/linking.ts'), 'utf8');
+  assert.match(root, /<NavigationContainer[^>]*linking=\{linking\}/);
+  assert.match(stack, /Platform\.OS === 'web'/);
+  assert.match(stack, /CardStyleInterpolators\.forHorizontalIOS/);
+  assert.match(stack, /CardStyleInterpolators\.forNoAnimation/);
+  assert.match(links, /ProductDetails: 'product\/:productId'/);
+  assert.match(links, /AddEditProduct: 'products\/edit\/:productId\?'/);
+  assert.doesNotMatch(root + links, /window\.location/);
+});
+
+test('product deep links round-trip without inventing a previous in-app route', () => {
+  const { linking } = loadTypeScriptExports(path.join(__dirname, '../src/navigation/linking.ts'));
+  const state = getStateFromPath('/product/sisal-rug', linking.config);
+  const tabs = state.routes[0].state;
+  const home = tabs.routes[tabs.index ?? 0].state;
+  assert.equal(state.routes[0].name, 'AppTabs');
+  assert.equal(tabs.routes[tabs.index ?? 0].name, 'Home');
+  assert.equal(home.routes.length, 1);
+  assert.equal(home.routes[0].name, 'ProductDetails');
+  assert.equal(home.routes[0].params.productId, 'sisal-rug');
+  assert.equal(getPathFromState(state, linking.config), '/product/sisal-rug');
 });
 
 test('product list maps backend IDs, category, tags, decimal price, stock and image objects', async () => {
@@ -217,7 +266,7 @@ test('seller product list and detail require bearer and use manage UUID routes',
   }
 });
 
-const draft = { name: 'Sisal Rug', slug: 'sisal-rug', sku: 'RUG-001', description: 'Handwoven', categoryId: category.id, tagIds: [tag.id], price: 3200.5, availableQuantity: 5, status: 'draft' };
+const draft = { name: 'Sisal Rug', slug: 'sisal-rug', sku: 'RUG-001', description: 'Handwoven', categoryId: category.id, tagIds: [tag.id], price: 3200.5, availableQuantity: 5, weightKg: 1.25, lengthCm: 40, widthCm: 30, heightCm: 12, status: 'draft' };
 
 test('create and update use backend fields, POST and PATCH, not local storage', async () => {
   const { api, service, requests, storage } = harness((route, init) => route.pathname.includes('/manage/') && ['POST', 'PATCH'].includes(init.method) ? json({ ...product, status: 'draft' }, init.method === 'POST' ? 201 : 200) : undefined);
@@ -226,7 +275,7 @@ test('create and update use backend fields, POST and PATCH, not local storage', 
   await service.updateSellerProduct(store.owner, product.id, { ...draft, status: 'published' });
   const mutations = requests.filter(item => item.init.method === 'POST' || item.init.method === 'PATCH');
   assert.deepEqual(mutations.map(item => [item.path, item.init.method]), [['/api/products/manage/', 'POST'], ['/api/products/manage/product-id/', 'PATCH']]);
-  assert.deepEqual(JSON.parse(mutations[0].init.body), { name: 'Sisal Rug', slug: 'sisal-rug', sku: 'RUG-001', description: 'Handwoven', category: category.id, tags: [tag.id], price: '3200.50', currency: 'KES', stock_quantity: 5, status: 'draft' });
+  assert.deepEqual(JSON.parse(mutations[0].init.body), { name: 'Sisal Rug', slug: 'sisal-rug', sku: 'RUG-001', description: 'Handwoven', category: category.id, tags: [tag.id], price: '3200.50', currency: 'KES', stock_quantity: 5, status: 'draft', weight_kg: '1.250', length_cm: '40.00', width_cm: '30.00', height_cm: '12.00' });
   assert.equal(JSON.parse(mutations[1].init.body).status, 'published');
   assert.equal(mutations[0].init.headers.get('Authorization'), 'Bearer seller-access');
   assert.equal(storage.has('africlay-seller-catalog-v1'), false);
@@ -241,6 +290,18 @@ test('seller UI exposes listing status and makes current visibility explicit', (
   assert.doesNotMatch(editor, /label="Product URL slug"|label="SKU"/);
   assert.match(editor, /accessibilityLabel="Add product images"/);
   assert.match(management, /\{item\.status\}/);
+});
+
+test('seller can add a missing main and child category through the authenticated path endpoint', async () => {
+  const { api, service, requests } = harness();
+  await api.tokenManager.setTokens({ access: 'seller-access', refresh: 'seller-refresh' });
+  const result = await service.createCategoryPath({ parentId: category.id, childName: 'Farm Tools' });
+  assert.equal(result.parent.id, category.id);
+  assert.equal(result.child.id, childCategory.id);
+  const request = requests.find(item => item.path.endsWith('/categories/path/'));
+  assert.equal(request.init.method, 'POST');
+  assert.equal(request.init.headers.get('Authorization'), 'Bearer seller-access');
+  assert.deepEqual(JSON.parse(request.init.body), { parent: category.id, child_name: 'Farm Tools' });
 });
 
 test('messaging is absent from active buyer and seller navigation', () => {

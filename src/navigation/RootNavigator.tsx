@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { Platform } from 'react-native';
 import { NavigationContainer, useNavigationContainerRef } from '@react-navigation/native';
 import { MarketplaceShell } from '../components/layout/MarketplaceShell';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { AuthStack } from './AuthStack';
 import { AppTabs } from './AppTabs';
 import { Cart } from '../screens/cart/Cart';
@@ -11,6 +10,8 @@ import { Splash } from '../screens/auth/Splash';
 import { useAuth } from '../hooks/useAuth';
 import { StatusBar } from 'expo-status-bar';
 import { AdminPortal } from '../screens/admin/AdminPortal';
+import { createAppStackNavigator, useAppStackScreenOptions } from './appStack';
+import { linking } from './linking';
 
 
 export type RootStackParamList = {
@@ -21,10 +22,11 @@ export type RootStackParamList = {
   AdminPortal: undefined;
 };
 
-const Stack = createNativeStackNavigator<RootStackParamList>();
+const Stack = createAppStackNavigator<RootStackParamList>();
 
 export const RootNavigator = () => {
   const { user, isGuest, initialized } = useAuth();
+  const stackOptions = useAppStackScreenOptions();
   const navigationRef = useNavigationContainerRef<RootStackParamList>();
   const [currentRoute, setCurrentRoute] = useState<{ name: string; category?: string }>({ name: 'AuthStack' });
   const updateRoute = () => {
@@ -48,7 +50,7 @@ export const RootNavigator = () => {
   const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
 
   const navigator = (
-    <Stack.Navigator key={isAdmin ? 'admin' : appStateKey} screenOptions={{ headerShown: false }}>
+    <Stack.Navigator key={isAdmin ? 'admin' : appStateKey} screenOptions={{ ...stackOptions, headerShown: false }}>
       {!user && !isGuest ? (
         <Stack.Screen name="AuthStack" component={AuthStack} />
       ) : isAdmin ? (
@@ -56,9 +58,9 @@ export const RootNavigator = () => {
       ) : (
         <>
           <Stack.Screen name="AppTabs" component={AppTabs} />
-          <Stack.Screen name="Cart" component={Cart} options={{ presentation: 'modal' }} />
-          <Stack.Screen name="Checkout" component={Checkout} options={{ presentation: 'modal' }} />
-          {isGuest ? <Stack.Screen name="AuthStack" component={AuthStack} options={{ presentation: 'modal' }} /> : null}
+          <Stack.Screen name="Cart" component={Cart} options={{ presentation: Platform.OS === 'web' ? 'card' : 'modal' }} />
+          <Stack.Screen name="Checkout" component={Checkout} options={{ presentation: Platform.OS === 'web' ? 'card' : 'modal' }} />
+          {isGuest ? <Stack.Screen name="AuthStack" component={AuthStack} options={{ presentation: Platform.OS === 'web' ? 'card' : 'modal' }} /> : null}
         </>
       )}
     </Stack.Navigator>
@@ -66,7 +68,7 @@ export const RootNavigator = () => {
 
   return (
     <>
-    <NavigationContainer ref={navigationRef} onReady={updateRoute} onStateChange={updateRoute}>
+    <NavigationContainer ref={navigationRef} linking={linking} onReady={updateRoute} onStateChange={updateRoute}>
       {isAdmin ? navigator : <MarketplaceShell route={currentRoute.name} category={currentRoute.category} navigate={destination => {
         if (!navigationRef.isReady()) return;
         if (destination.root) navigationRef.navigate(destination.root);

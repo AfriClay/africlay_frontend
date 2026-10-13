@@ -1,4 +1,3 @@
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Splash } from '../screens/auth/Splash';
 import { GetStarted } from '../screens/auth/GetStarted';
 import { Login } from '../screens/auth/Login';
@@ -11,6 +10,7 @@ import { KYCUpload } from '../screens/auth/KYCUpload';
 import { VerificationPending } from '../screens/auth/VerificationPending';
 import { StorefrontSetup } from '../screens/auth/StorefrontSetup';
 import { useAuth } from '../hooks/useAuth';
+import { createAppStackNavigator, useAppStackScreenOptions } from './appStack';
 
 export type AuthStackParamList = {
   Splash: undefined;
@@ -26,10 +26,11 @@ export type AuthStackParamList = {
   ForgotPassword: undefined;
 };
 
-const Stack = createNativeStackNavigator<AuthStackParamList>();
+const Stack = createAppStackNavigator<AuthStackParamList>();
 
 export const AuthStack = () => {
   const { pendingEmail, pendingUser, pendingVerification } = useAuth();
+  const stackOptions = useAppStackScreenOptions();
 
   const initialRouteName = pendingVerification && pendingEmail
     ? 'OTPVerification'
@@ -40,7 +41,7 @@ export const AuthStack = () => {
   return (
     <Stack.Navigator
       initialRouteName={initialRouteName}
-      screenOptions={{ headerShown: false }}
+      screenOptions={{ ...stackOptions, headerShown: false }}
     >
       <Stack.Screen name="Splash" component={Splash} />
       <Stack.Screen name="GetStarted" component={GetStarted} />

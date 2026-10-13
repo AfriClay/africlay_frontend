@@ -41,6 +41,7 @@ type BackendProduct = z.infer<typeof productSchema>;
 type BackendStore = z.infer<typeof storeSchema>;
 export type CatalogCategory = { id: string; slug: string; label: string; icon: string; parent?: string };
 export type CatalogTag = { id: string; slug: string; label: string; categoryIds: string[] };
+export type SellerCategoryPathDraft = { parentId?: string; parentName?: string; childName: string };
 export type SellerProductDraft = {
   name: string;
   slug: string;
@@ -83,6 +84,14 @@ const asPrice = (value: string | number): number => {
   return amount;
 };
 
+const toCategory = (item: z.infer<typeof categorySchema>): CatalogCategory => ({
+  id: item.id,
+  slug: item.slug,
+  label: item.name,
+  icon: 'Tag',
+  parent: item.parent ?? undefined,
+});
+
 const toProduct = (raw: BackendProduct, categories: CatalogCategory[]): Product => {
   const category = categories.find(item => item.id === raw.category);
   const orderedImages = [...raw.images].sort((a, b) => Number(Boolean(b.is_primary)) - Number(Boolean(a.is_primary)) || (a.display_order ?? 0) - (b.display_order ?? 0));
@@ -124,9 +133,21 @@ let storesInFlight: Promise<Seller[]> | undefined;
 export const productService = {
   fetchCategories: (): Promise<CatalogCategory[]> => {
     categoriesInFlight ??= apiClient('/products/categories/', { auth: false })
-      .then(raw => list(categorySchema, raw).map(item => ({ id: item.id, slug: item.slug, label: item.name, icon: 'Tag', parent: item.parent ?? undefined })))
+      .then(raw => list(categorySchema, raw).map(toCategory))
       .finally(() => { categoriesInFlight = undefined; });
     return categoriesInFlight;
+  },
+  createCategoryPath: async (draft: SellerCategoryPathDraft): Promise<{ parent: CatalogCategory; child: CatalogCategory; created: boolean }> => {
+    const raw = await apiClient('/products/categories/path/', {
+      method: 'POST',
+      body: {
+        parent: draft.parentId,
+        parent_name: draft.parentName?.trim() || undefined,
+        child_name: draft.childName.trim(),
+      },
+    });
+    const parsed = parse(z.object({ parent: categorySchema, child: categorySchema, created: z.boolean() }), raw);
+    return { parent: toCategory(parsed.parent), child: toCategory(parsed.child), created: parsed.created };
   },
   fetchTags: async (): Promise<CatalogTag[]> => list(tagSchema, await apiClient('/products/tags/', { auth: false }))
     .map(item => ({ id: item.id, slug: item.slug, label: item.name, categoryIds: item.categories })),
