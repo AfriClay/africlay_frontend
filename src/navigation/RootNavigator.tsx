@@ -9,10 +9,13 @@ import { Checkout } from '../screens/cart/Checkout';
 import { Splash } from '../screens/auth/Splash';
 import { useAuth } from '../hooks/useAuth';
 import { StatusBar } from 'expo-status-bar';
-import { AdminPortal } from '../screens/admin/AdminPortal';
+import { SalesDashboard } from '../screens/admin/SalesDashboard';
+import { FinanceDashboard } from '../screens/admin/FinanceDashboard';
+import { SuperAdminDashboard } from '../screens/admin/SuperAdminDashboard';
 import { createAppStackNavigator, useAppStackScreenOptions } from './appStack';
 import { linking } from './linking';
 import type { AuthStackParamList } from './AuthStack';
+import { canAccessOperations, hasStaffRole, isSuperAdmin } from '../utils/roles';
 
 
 export type RootStackParamList = {
@@ -20,7 +23,9 @@ export type RootStackParamList = {
   AppTabs: { screen?: 'Home' | 'Search' | 'Sell' | 'Profile'; params?: { screen?: string; params?: object } } | undefined;
   Cart: undefined;
   Checkout: { orderId?: string } | undefined;
-  AdminPortal: undefined;
+  SalesDashboard: undefined;
+  FinanceDashboard: undefined;
+  SuperAdminDashboard: undefined;
 };
 
 const Stack = createAppStackNavigator<RootStackParamList>();
@@ -42,7 +47,9 @@ export const RootNavigator = () => {
     return () => clearTimeout(timeout);
   }, []);
 
-  const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
+  const operationsAccess = canAccessOperations(user);
+  const initialOperationsRoute = isSuperAdmin(user) ? 'SuperAdminDashboard'
+    : hasStaffRole(user, 'sales_reviewer') ? 'SalesDashboard' : 'FinanceDashboard';
 
   const leaveAuthAfterSignIn = useCallback(() => {
     if (!user || !navigationRef.isReady()) return;
@@ -64,9 +71,11 @@ export const RootNavigator = () => {
     return <><Splash /><StatusBar style="light" /></>;
   }
 
-  const navigator = isAdmin ? (
-    <Stack.Navigator key="admin" screenOptions={{ ...stackOptions, headerShown: false }}>
-        <Stack.Screen name="AdminPortal" component={AdminPortal} />
+  const navigator = operationsAccess ? (
+    <Stack.Navigator key="operations" initialRouteName={initialOperationsRoute} screenOptions={{ ...stackOptions, headerShown: false }}>
+      <Stack.Screen name="SalesDashboard" component={SalesDashboard} />
+      <Stack.Screen name="FinanceDashboard" component={FinanceDashboard} />
+      <Stack.Screen name="SuperAdminDashboard" component={SuperAdminDashboard} />
     </Stack.Navigator>
   ) : (
     <Stack.Navigator key="marketplace" initialRouteName="AppTabs" screenOptions={{ ...stackOptions, headerShown: false }}>
@@ -74,13 +83,16 @@ export const RootNavigator = () => {
       <Stack.Screen name="Cart" component={Cart} options={{ presentation: Platform.OS === 'web' ? 'card' : 'modal' }} />
       <Stack.Screen name="Checkout" component={Checkout} options={{ presentation: Platform.OS === 'web' ? 'card' : 'modal' }} />
       <Stack.Screen name="AuthStack" component={AuthStack} options={{ presentation: Platform.OS === 'web' ? 'card' : 'modal' }} />
+      <Stack.Screen name="SalesDashboard" component={SalesDashboard} />
+      <Stack.Screen name="FinanceDashboard" component={FinanceDashboard} />
+      <Stack.Screen name="SuperAdminDashboard" component={SuperAdminDashboard} />
     </Stack.Navigator>
   );
 
   return (
     <>
     <NavigationContainer ref={navigationRef} linking={linking} onReady={() => { updateRoute(); leaveAuthAfterSignIn(); }} onStateChange={updateRoute}>
-      {isAdmin ? navigator : <MarketplaceShell route={currentRoute.name} category={currentRoute.category} navigate={destination => {
+      {operationsAccess ? navigator : <MarketplaceShell route={currentRoute.name} category={currentRoute.category} navigate={destination => {
         if (!navigationRef.isReady()) return;
         if (destination.root) navigationRef.navigate(destination.root);
         else navigationRef.navigate('AppTabs', { screen: destination.tab, params: destination.screen ? { screen: destination.screen, params: destination.params } : undefined });

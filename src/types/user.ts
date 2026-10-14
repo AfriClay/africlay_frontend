@@ -5,6 +5,7 @@ export interface Stats {
 }
 
 export type UserRole = 'buyer' | 'seller' | 'both' | 'admin' | 'super_admin';
+export type StaffRole = 'sales_reviewer' | 'finance';
 export type RegistrationRole = Extract<UserRole, 'buyer' | 'seller' | 'both'>;
 
 export interface User {
@@ -18,5 +19,6 @@ export interface User {
   onboardingCompleted: boolean;
   stats: Stats;
   role: UserRole;
+  staffRoles: StaffRole[];
   avatarUrl?: string;
 }

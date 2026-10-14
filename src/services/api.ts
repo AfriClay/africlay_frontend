@@ -227,6 +227,28 @@ export const apiClient = async <T>(endpoint: string, options: RequestOptions = {
   return data as T;
 };
 
+export const apiDownload = async (endpoint: string, retryOnUnauthorized = true): Promise<Blob> => {
+  const accessToken = await tokenManager.getAccessToken();
+  const headers = buildHeaders();
+  if (accessToken) headers.set('Authorization', `Bearer ${accessToken}`);
+  const response = await fetch(endpointUrl(endpoint), { credentials: 'omit', headers });
+  if (response.status === 401 && retryOnUnauthorized) {
+    try {
+      await refreshTokens();
+      return apiDownload(endpoint, false);
+    } catch {
+      await tokenManager.clearTokens();
+      sessionListeners.forEach(listener => listener());
+      throw new ApiError(401, undefined, 'Your session has expired. Please log in again.');
+    }
+  }
+  if (!response.ok) {
+    const data = await parseResponse(response);
+    throw new ApiError(response.status, data, 'Unable to download this report.');
+  }
+  return response.blob();
+};
+
 export const getApiErrorMessage = (error: unknown, fallback: string): string => {
   if (error instanceof ApiError && !extractApiErrorMessage(error.data)) {
     return fallback;

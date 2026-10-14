@@ -73,6 +73,7 @@ export const linking = {
               Notifications: 'account/notifications',
               MyBookings: 'account/bookings',
               Wallet: 'account/wallet',
+              DashboardAccessRequests: 'account/operations-access',
               Settings: 'account/settings',
               SupportHelp: 'account/support',
               ProductDetails: 'account/product/:productId',
@@ -84,7 +85,9 @@ export const linking = {
       },
       Cart: 'cart',
       Checkout: 'checkout/:orderId?',
-      AdminPortal: 'admin-portal',
+      SalesDashboard: 'operations/sales',
+      FinanceDashboard: 'operations/finance',
+      SuperAdminDashboard: 'operations/admin',
     },
   },
 } as LinkingOptions<RootStackParamList>;

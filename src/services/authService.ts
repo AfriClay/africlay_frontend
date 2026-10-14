@@ -1,5 +1,5 @@
 import { apiClient, getApiErrorMessage, TokenPair, tokenManager } from './api';
-import { RegistrationRole, User, UserRole } from '../types/user';
+import { RegistrationRole, StaffRole, User, UserRole } from '../types/user';
 
 type BackendRole = UserRole;
 
@@ -15,6 +15,7 @@ type BackendUser = {
   email?: string;
   phone_number?: string | null;
   role?: BackendRole;
+  staff_roles?: StaffRole[];
   is_verified?: boolean;
   full_name?: string;
   profile?: BackendProfile | null;
@@ -40,6 +41,7 @@ export const mapBackendUser = (backendUser: BackendUser): User => {
     verified: backendUser.is_verified ?? false,
     onboardingCompleted: true,
     role: backendUser.role ?? 'buyer',
+    staffRoles: backendUser.staff_roles ?? [],
     avatarUrl: profile?.avatar_url ?? undefined,
     stats: {
       orders: 0,

@@ -7,6 +7,7 @@ export const currentUser: User = {
   verified: true,
   onboardingCompleted: true,
   role: 'buyer',
+  staffRoles: [],
   stats: {
     orders: 12,
     wishlist: 8,

@@ -20,6 +20,9 @@ export interface Wallet {
   balance: number;
   heldBalance: number;
   availableBalance: number;
+  pendingPayoutBalance: number;
+  orderHeldBalance: number;
+  minimumPayout: number;
   isFrozen: boolean;
   createdAt: string;
 }
@@ -53,6 +56,34 @@ export interface PaymentAttempt {
   providerReceipt: string;
   resultDescription: string;
   createdAt: string;
+}
+
+export type PayoutStatus = 'requested' | 'processing' | 'succeeded' | 'failed' | 'unknown';
+
+export interface PayoutAccount {
+  id: string;
+  provider: 'mpesa';
+  phoneNumber: string;
+  accountName: string;
+  isActive: boolean;
+  confirmedAt: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Payout {
+  id: string;
+  provider: 'mpesa';
+  amount: number;
+  currency: string;
+  status: PayoutStatus;
+  destinationPhone: string;
+  destinationName: string;
+  transactionReceipt: string;
+  failureMessage: string;
+  createdAt: string;
+  updatedAt: string;
+  processedAt?: string;
 }
 
 export interface PaginatedResult<T> {

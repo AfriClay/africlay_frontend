@@ -13,6 +13,7 @@ import { useAuth } from './src/hooks/useAuth';
 import { WishlistProvider } from './src/contexts/WishlistContext';
 import { NativeNotificationBridge } from './src/components/notifications/NativeNotificationBridge';
 import { ThemeProvider } from './src/contexts/ThemeContext';
+import { canAccessOperations } from './src/utils/roles';
 
 if (Platform.OS !== 'web') {
   SplashScreen.preventAutoHideAsync();
@@ -22,7 +23,6 @@ const queryClient = new QueryClient();
 
 const AppContent = () => {
   const user = useAuth().user;
-  const role = user?.role;
   const activeIdentity = user?.id ?? 'guest';
   const previousIdentity = useRef<string | undefined>(undefined);
   const client = useQueryClient();
@@ -31,7 +31,7 @@ const AppContent = () => {
     previousIdentity.current = activeIdentity;
   }, [activeIdentity, client]);
   const navigator = <AppFrame><NativeNotificationBridge /><RootNavigator /></AppFrame>;
-  return role === 'admin' || role === 'super_admin' ? navigator : <CartProvider><WishlistProvider>{navigator}</WishlistProvider></CartProvider>;
+  return canAccessOperations(user) ? navigator : <CartProvider><WishlistProvider>{navigator}</WishlistProvider></CartProvider>;
 };
 
 export default function App() {

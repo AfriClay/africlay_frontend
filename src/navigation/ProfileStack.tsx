@@ -9,6 +9,7 @@ import { Notifications } from '../screens/notifications/Notifications';
 import { MyBookings } from '../screens/profile/MyBookings';
 import { ServiceDetails } from '../screens/home/ServiceDetails';
 import { Wallet } from '../screens/profile/Wallet';
+import { DashboardAccessRequests } from '../screens/profile/DashboardAccessRequests';
 import { createAppStackNavigator, useAppStackScreenOptions } from './appStack';
 import { useAuth } from '../hooks/useAuth';
 import { AuthRequiredState } from '../components/ui/AuthRequiredState';
@@ -22,6 +23,7 @@ export type ProfileStackParamList = {
   Notifications: undefined;
   MyBookings: undefined;
   Wallet: undefined;
+  DashboardAccessRequests: undefined;
   Settings: undefined;
   SupportHelp: undefined;
   ProductDetails: { productId: string };
@@ -46,6 +48,7 @@ const ProtectedWishlist = protectedScreen(Wishlist, 'Log in to view saved items'
 const ProtectedNotifications = protectedScreen(Notifications, 'Log in to view notifications', 'Order, booking, and account notifications are private.');
 const ProtectedBookings = protectedScreen(MyBookings, 'Log in to view bookings', 'Service bookings are linked to your account.');
 const ProtectedWallet = protectedScreen(Wallet, 'Log in to view your wallet', 'Balances and transactions are private account information.');
+const ProtectedDashboardAccess = protectedScreen(DashboardAccessRequests, 'Log in to request access', 'Operations access requests are tied to your account.');
 const ProtectedSettings = protectedScreen(Settings, 'Log in to manage your account', 'Profile and account settings are available after authentication.');
 
 export const ProfileStack = () => {
@@ -59,6 +62,7 @@ export const ProfileStack = () => {
     <Stack.Screen name="Notifications" component={ProtectedNotifications} />
     <Stack.Screen name="MyBookings" component={ProtectedBookings} options={{ title: 'My Bookings' }} />
     <Stack.Screen name="Wallet" component={ProtectedWallet} options={{ title: 'Wallet' }} />
+    <Stack.Screen name="DashboardAccessRequests" component={ProtectedDashboardAccess} options={{ title: 'Operations Access' }} />
     <Stack.Screen name="Settings" component={ProtectedSettings} />
     <Stack.Screen name="SupportHelp" component={SupportHelp} options={{ title: 'Help & Support' }} />
     <Stack.Screen name="ProductDetails" component={ProductDetails} options={{ title: '' }} />
