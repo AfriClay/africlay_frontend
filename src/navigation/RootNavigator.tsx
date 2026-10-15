@@ -12,6 +12,7 @@ import { StatusBar } from 'expo-status-bar';
 import { SalesDashboard } from '../screens/admin/SalesDashboard';
 import { FinanceDashboard } from '../screens/admin/FinanceDashboard';
 import { SuperAdminDashboard } from '../screens/admin/SuperAdminDashboard';
+import { OperationsLogin } from '../screens/admin/OperationsLogin';
 import { createAppStackNavigator, useAppStackScreenOptions } from './appStack';
 import { linking } from './linking';
 import type { AuthStackParamList } from './AuthStack';
@@ -26,6 +27,7 @@ export type RootStackParamList = {
   SalesDashboard: undefined;
   FinanceDashboard: undefined;
   SuperAdminDashboard: undefined;
+  OperationsLogin: undefined;
 };
 
 const Stack = createAppStackNavigator<RootStackParamList>();
@@ -73,6 +75,7 @@ export const RootNavigator = () => {
 
   const navigator = operationsAccess ? (
     <Stack.Navigator key="operations" initialRouteName={initialOperationsRoute} screenOptions={{ ...stackOptions, headerShown: false }}>
+      <Stack.Screen name="OperationsLogin" component={OperationsLogin} />
       <Stack.Screen name="SalesDashboard" component={SalesDashboard} />
       <Stack.Screen name="FinanceDashboard" component={FinanceDashboard} />
       <Stack.Screen name="SuperAdminDashboard" component={SuperAdminDashboard} />
@@ -86,13 +89,14 @@ export const RootNavigator = () => {
       <Stack.Screen name="SalesDashboard" component={SalesDashboard} />
       <Stack.Screen name="FinanceDashboard" component={FinanceDashboard} />
       <Stack.Screen name="SuperAdminDashboard" component={SuperAdminDashboard} />
+      <Stack.Screen name="OperationsLogin" component={OperationsLogin} />
     </Stack.Navigator>
   );
 
   return (
     <>
     <NavigationContainer ref={navigationRef} linking={linking} onReady={() => { updateRoute(); leaveAuthAfterSignIn(); }} onStateChange={updateRoute}>
-      {operationsAccess ? navigator : <MarketplaceShell route={currentRoute.name} category={currentRoute.category} navigate={destination => {
+      {operationsAccess || currentRoute.name === 'OperationsLogin' ? navigator : <MarketplaceShell route={currentRoute.name} category={currentRoute.category} navigate={destination => {
         if (!navigationRef.isReady()) return;
         if (destination.root) navigationRef.navigate(destination.root);
         else navigationRef.navigate('AppTabs', { screen: destination.tab, params: destination.screen ? { screen: destination.screen, params: destination.params } : undefined });

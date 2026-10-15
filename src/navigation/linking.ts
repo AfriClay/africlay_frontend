@@ -85,6 +85,7 @@ export const linking = {
       },
       Cart: 'cart',
       Checkout: 'checkout/:orderId?',
+      OperationsLogin: 'operations',
       SalesDashboard: 'operations/sales',
       FinanceDashboard: 'operations/finance',
       SuperAdminDashboard: 'operations/admin',
