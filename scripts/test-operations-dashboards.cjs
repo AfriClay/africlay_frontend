@@ -69,10 +69,14 @@ test('dashboard services use role-specific backend contracts', () => {
 test('operations dashboards keep a bounded mobile scroll region', () => {
   const scaffold = source('src/screens/admin/OperationsScaffold.tsx');
   assert.match(scaffold, /nestedScrollEnabled/);
+  assert.match(scaffold, /testID="operations-scroll"/);
   assert.match(scaffold, /contentContainerStyle=\{\[styles\.content/);
   assert.match(scaffold, /root: \{ flex: 1, minHeight: 0/);
   assert.match(scaffold, /scroll: \{ flex: 1, minHeight: 0/);
-  assert.match(scaffold, /useWindowDimensions\(\)\.width < 720/);
+  assert.match(scaffold, /const \{ width, height \} = useWindowDimensions\(\)/);
+  assert.match(scaffold, /Platform\.OS === 'web' \? \{ height, maxHeight: height \}/);
+  assert.match(scaffold, /style=\{compact \? styles\.navViewportCompact : styles\.navViewport\}/);
+  assert.match(scaffold, /navViewportCompact: \{ flexGrow: 0, flexShrink: 0, width: '100%', height: 44 \}/);
 });
 
 test('super admin has catalog moderation and read-only order oversight', () => {

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Platform, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -46,20 +46,22 @@ export const StatusPill = ({ value }: { value: string }) => {
 export const OperationsScaffold = ({ title, subtitle, children }: { title: string; subtitle: string; children: React.ReactNode }) => {
   const auth = useAuth();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const compact = useWindowDimensions().width < 720;
+  const { width, height } = useWindowDimensions();
+  const compact = width < 720;
+  const webViewport = Platform.OS === 'web' ? { height, maxHeight: height } : undefined;
   const links = [
     hasStaffRole(auth.user, 'sales_reviewer') && { label: 'Sales review', route: 'SalesDashboard' as const, icon: BadgeCheck },
     hasStaffRole(auth.user, 'finance') && { label: 'Finance', route: 'FinanceDashboard' as const, icon: Landmark },
     isSuperAdmin(auth.user) && { label: 'Administration', route: 'SuperAdminDashboard' as const, icon: ShieldCheck },
   ].filter(Boolean) as Array<{ label: string; route: 'SalesDashboard' | 'FinanceDashboard' | 'SuperAdminDashboard'; icon: typeof BadgeCheck }>;
 
-  const navigationLinks = <ScrollView horizontal style={[styles.navViewport, compact && styles.navViewportCompact]} showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.navigation, compact && styles.navigationCompact]}>
+  const navigationLinks = <ScrollView horizontal style={compact ? styles.navViewportCompact : styles.navViewport} showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.navigation, compact && styles.navigationCompact]}>
         {links.map(link => { const Icon = link.icon; return <Pressable key={link.route} onPress={() => navigation.navigate(link.route)} accessibilityRole="link" style={styles.navLink}>
           <Icon size={17} color={operationsColors.green} /><Text style={styles.navText}>{link.label}</Text>
         </Pressable>; })}
       </ScrollView>;
 
-  return <SafeAreaView style={styles.root}>
+  return <SafeAreaView style={[styles.root, webViewport]}>
     <View style={[styles.header, compact && styles.headerCompact]}>
       <View style={[styles.headerMain, compact && styles.headerMainCompact]}>
         <View style={styles.brand}><Text style={styles.brandMark}>A</Text><View><Text style={styles.brandName}>AfriClay</Text><Text style={styles.brandSub}>Operations</Text></View></View>
@@ -75,6 +77,7 @@ export const OperationsScaffold = ({ title, subtitle, children }: { title: strin
       keyboardShouldPersistTaps="handled"
       nestedScrollEnabled
       showsVerticalScrollIndicator
+      testID="operations-scroll"
     >
       <View style={styles.heading}><Text style={styles.title}>{title}</Text><Text style={styles.subtitle}>{subtitle}</Text></View>
       {children}
@@ -90,7 +93,7 @@ const styles = StyleSheet.create({
   headerMainCompact: { minHeight: 58, justifyContent: 'space-between', paddingHorizontal: 12 },
   brand: { flexDirection: 'row', alignItems: 'center', gap: 9 }, brandMark: { width: 34, height: 34, textAlign: 'center', textAlignVertical: 'center', borderRadius: 5, overflow: 'hidden', backgroundColor: operationsColors.green, color: '#FFF', fontSize: 20, fontWeight: '800' },
   brandName: { color: operationsColors.ink, fontSize: 15, fontWeight: '800' }, brandSub: { color: operationsColors.muted, fontSize: 10 },
-  navViewport: { flex: 1, minWidth: 0 }, navViewportCompact: { flexGrow: 0, width: '100%', maxHeight: 48 },
+  navViewport: { flex: 1, minWidth: 0 }, navViewportCompact: { flexGrow: 0, flexShrink: 0, width: '100%', height: 44 },
   navigation: { flexGrow: 1, justifyContent: 'center', gap: 6 }, navigationCompact: { justifyContent: 'flex-start', paddingHorizontal: 8 }, navLink: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10 }, navText: { color: operationsColors.ink, fontSize: 12, fontWeight: '700' },
   scroll: { flex: 1, minHeight: 0 }, content: { flexGrow: 1, width: '100%', maxWidth: 1280, alignSelf: 'center', padding: 20, paddingBottom: 120 }, contentCompact: { padding: 14, paddingBottom: 144 }, heading: { marginBottom: 18 },
   title: { color: operationsColors.ink, fontSize: 25, fontWeight: '800' }, subtitle: { color: operationsColors.muted, fontSize: 13, lineHeight: 19, marginTop: 4, maxWidth: 760 },
