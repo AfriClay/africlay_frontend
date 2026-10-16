@@ -213,7 +213,7 @@ test('category and tag filters use exact backend slug parameters and clear corre
   const products = requests.filter(item => item.path === '/api/products/');
   assert.equal(products[0].search.get('category'), 'handmade');
   assert.equal(products[0].search.get('tag'), 'woven');
-  assert.equal(products[1].search.toString(), '');
+  assert.equal(products[1].search.toString(), 'limit=24');
 });
 
 test('array and paginated results normalize, including empty lists', async () => {
@@ -251,9 +251,11 @@ test('store list and detail map real store identifiers and media URLs', async ()
 });
 
 test('store products use public products and the real store UUID', async () => {
-  const { service } = harness();
+  const { service, requests } = harness();
   assert.equal((await service.fetchProductsBySeller(store.id)).length, 1);
-  assert.equal((await service.fetchProductsBySeller('another-store')).length, 0);
+  const request = requests.find(item => item.path === '/api/products/' && item.search.get('store'));
+  assert.equal(request.search.get('store'), store.id);
+  assert.equal(request.search.get('limit'), '100');
 });
 
 test('seller product list and detail require bearer and use manage UUID routes', async () => {

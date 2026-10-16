@@ -39,6 +39,7 @@ const storeSchema = z.object({
 
 type BackendProduct = z.infer<typeof productSchema>;
 type BackendStore = z.infer<typeof storeSchema>;
+export type CatalogPage<T> = { results: T[]; count: number; nextOffset?: number };
 export type CatalogCategory = { id: string; slug: string; label: string; icon: string; parent?: string };
 export type CatalogTag = { id: string; slug: string; label: string; categoryIds: string[] };
 export type SellerCategoryPathDraft = { parentId?: string; parentName?: string; childName: string };
@@ -70,6 +71,27 @@ const list = <T>(schema: z.ZodType<T>, value: unknown): T[] => {
   const parsed = z.array(schema).safeParse(results);
   if (!parsed.success) throw new CatalogDataError();
   return parsed.data;
+};
+
+const page = <T>(schema: z.ZodType<T>, value: unknown, offset: number): CatalogPage<T> => {
+  if (Array.isArray(value)) {
+    const results = list(schema, value);
+    return { results, count: results.length };
+  }
+  const parsed = z.object({
+    count: z.number().int().nonnegative(),
+    next: z.string().url().nullable(),
+    results: z.array(schema),
+  }).safeParse(value);
+  if (!parsed.success) throw new CatalogDataError();
+  const nextOffset = parsed.data.next
+    ? Number(new URL(parsed.data.next).searchParams.get('offset') ?? offset + parsed.data.results.length)
+    : undefined;
+  return {
+    results: parsed.data.results,
+    count: parsed.data.count,
+    nextOffset: Number.isFinite(nextOffset) ? nextOffset : undefined,
+  };
 };
 
 const parse = <T>(schema: z.ZodType<T>, value: unknown): T => {
@@ -151,15 +173,21 @@ export const productService = {
   },
   fetchTags: async (): Promise<CatalogTag[]> => list(tagSchema, await apiClient('/products/tags/', { auth: false }))
     .map(item => ({ id: item.id, slug: item.slug, label: item.name, categoryIds: item.categories })),
-  fetchProducts: async (filters: { category?: string; tag?: string } = {}): Promise<Product[]> => {
+  fetchProductPage: async (filters: { category?: string; tag?: string; store?: string; limit?: number; offset?: number } = {}): Promise<CatalogPage<Product>> => {
     const params = new URLSearchParams();
     if (filters.category) params.set('category', filters.category);
     if (filters.tag) params.set('tag', filters.tag);
+    if (filters.store) params.set('store', filters.store);
+    params.set('limit', String(filters.limit ?? 24));
+    if (filters.offset) params.set('offset', String(filters.offset));
     const query = params.toString();
     const path = `/products/${query ? `?${query}` : ''}`;
     const [raw, categories] = await Promise.all([apiClient(path, { auth: false }), productService.fetchCategories()]);
-    return list(productSchema, raw).map(item => toProduct(item, categories));
+    const response = page(productSchema, raw, filters.offset ?? 0);
+    return { ...response, results: response.results.map(item => toProduct(item, categories)) };
   },
+  fetchProducts: async (filters: { category?: string; tag?: string; store?: string; limit?: number; offset?: number } = {}): Promise<Product[]> =>
+    (await productService.fetchProductPage(filters)).results,
   fetchProductById: async (slug: string): Promise<Product | null> => {
     if (!recordId(slug)) return null;
     try {
@@ -237,8 +265,8 @@ export const productService = {
   },
   updateStore: async (slug: string, changes: { name?: string; description?: string; city?: string }): Promise<Seller> =>
     toSeller(parse(storeSchema, await apiClient(`/stores/${encodeURIComponent(slug)}/`, { method: 'PATCH', body: changes }))),
-  fetchProductsBySeller: async (sellerId: string): Promise<Product[]> => (await productService.fetchProducts()).filter(item => item.sellerId === sellerId),
-  fetchServices: (): Promise<Service[]> => serviceService.list(),
+  fetchProductsBySeller: async (sellerId: string): Promise<Product[]> => productService.fetchProducts({ store: sellerId, limit: 100 }),
+  fetchServices: (options: { limit?: number; offset?: number; store?: string } = {}): Promise<Service[]> => serviceService.list(options),
   fetchServicesBySeller: async (sellerId: string): Promise<Service[]> => (await serviceService.managed()).filter(item => item.providerId === sellerId),
   fetchServiceById: (slug: string): Promise<Service | null> => serviceService.detail(slug),
 };

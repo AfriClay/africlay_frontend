@@ -70,7 +70,7 @@ export const PromotionalCarousel = ({ products, loading, onProductPress }: Promo
                 </View>
                 <View style={styles.imageArea}>
                   {product.images[0] && !failedImages[product.id] ? (
-                    <Image source={{ uri: product.images[0] }} style={StyleSheet.absoluteFill} contentFit="cover" transition={reducedMotion ? 0 : 180}
+                    <Image source={{ uri: product.images[0] }} style={StyleSheet.absoluteFill} contentFit="cover" cachePolicy="memory-disk" transition={reducedMotion ? 0 : 180}
                       onError={() => setFailedImages(current => ({ ...current, [product.id]: true }))} />
                   ) : <ImageOff size={36} strokeWidth={1.5} color={theme.colors.primary.DEFAULT} />}
                 </View>

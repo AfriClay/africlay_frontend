@@ -2,6 +2,7 @@ import type { QueryClient } from '@tanstack/react-query';
 
 export const catalogKeys = {
   products: ['products'] as const,
+  featuredProducts: (limit: number) => ['products', 'featured', limit] as const,
   productsFiltered: (category?: string, tag?: string) => ['products', { category: category ?? '', tag: tag ?? '' }] as const,
   categories: ['categories'] as const,
   tags: ['tags'] as const,
@@ -14,6 +15,15 @@ export const catalogKeys = {
   sellerAccess: (ownerId: string) => ['seller-access', ownerId] as const,
   storeServices: (id: string) => ['sellerServices', id] as const,
 };
+
+const PUBLIC_QUERY_ROOTS = new Set([
+  'products', 'product', 'categories', 'tags', 'sellers', 'seller',
+  'sellerProducts', 'sellerServices', 'services', 'service',
+  'service-categories', 'reviews', 'shipping-towns',
+]);
+
+export const isPublicCatalogQuery = (queryKey: readonly unknown[]): boolean =>
+  typeof queryKey[0] === 'string' && PUBLIC_QUERY_ROOTS.has(queryKey[0]);
 
 // Public and owned product queries have different permissions and result sets.
 export const invalidateCatalog = (client: QueryClient, ownerId: string, storeId: string, productSlug?: string, ownedProductId?: string) => Promise.all([

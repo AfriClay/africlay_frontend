@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useResponsiveLayout } from '../../contexts/ResponsiveLayoutContext';
 import { FlatList, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { productService } from '../../services/productService';
 import { ProductCard } from '../../components/domain/ProductCard';
 import { theme } from '../../theme';
@@ -13,6 +13,7 @@ import { ErrorState } from '../../components/ui/ErrorState';
 import { catalogKeys } from '../../services/catalogQueries';
 import { rootCategories } from '../../utils/categoryTree';
 import { SearchField } from '../../components/ui/SearchField';
+import { Button } from '../../components/ui/Button';
 
 export const ProductListing: React.FC = () => {
   const { isExpanded, productColumns } = useResponsiveLayout();
@@ -24,11 +25,22 @@ export const ProductListing: React.FC = () => {
   useEffect(() => setActiveCategory(route.params?.categoryId), [route.params?.categoryId]);
   const categoriesQuery = useQuery({ queryKey: catalogKeys.categories, queryFn: productService.fetchCategories });
   const tagsQuery = useQuery({ queryKey: catalogKeys.tags, queryFn: productService.fetchTags });
-  const productsQuery = useQuery({
+  const productsQuery = useInfiniteQuery({
     queryKey: catalogKeys.productsFiltered(activeCategory, activeTag),
-    queryFn: () => productService.fetchProducts({ category: activeCategory, tag: activeTag }),
+    queryFn: ({ pageParam }) => productService.fetchProductPage({
+      category: activeCategory,
+      tag: activeTag,
+      limit: 24,
+      offset: pageParam,
+    }),
+    initialPageParam: 0,
+    getNextPageParam: lastPage => lastPage.nextOffset,
   });
-  const { data: products = [], isLoading } = productsQuery;
+  const products = useMemo(
+    () => productsQuery.data?.pages.flatMap(page => page.results) ?? [],
+    [productsQuery.data],
+  );
+  const { isLoading } = productsQuery;
   const categoryOptions = useMemo(() => {
     const categories = categoriesQuery.data ?? [];
     const roots = rootCategories(categories);
@@ -82,6 +94,20 @@ export const ProductListing: React.FC = () => {
             </View>
           )}
           ListEmptyComponent={<EmptyState title="No products found" description="Try another search or choose a different category." />}
+          ListFooterComponent={productsQuery.hasNextPage ? (
+            <Button
+              variant="outline"
+              onPress={() => void productsQuery.fetchNextPage()}
+              loading={productsQuery.isFetchingNextPage}
+              loadingLabel="Loading more"
+            >Load more</Button>
+          ) : null}
+          onEndReached={() => {
+            if (productsQuery.hasNextPage && !productsQuery.isFetchingNextPage) {
+              void productsQuery.fetchNextPage();
+            }
+          }}
+          onEndReachedThreshold={0.4}
           contentContainerStyle={filtered.length === 0 ? styles.emptyList : styles.list}
           columnWrapperStyle={styles.column}
         />

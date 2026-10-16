@@ -6,9 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { HomeStack } from './HomeStack';
-import { SearchStack } from './SearchStack';
-import { SellTab } from './SellTab';
-import { ProfileStack } from './ProfileStack';
+import { lazyScreen } from '../components/ui/LazyScreen';
 import { theme } from '../theme';
 import { useResponsiveLayout } from '../contexts/ResponsiveLayoutContext';
 import { useAuth } from '../hooks/useAuth';
@@ -23,6 +21,9 @@ export type AppTabParamList = {
 };
 
 const Tab = createBottomTabNavigator<AppTabParamList>();
+const SearchStack = lazyScreen(() => import('./SearchStack').then(module => ({ default: module.SearchStack })));
+const SellTab = lazyScreen(() => import('./SellTab').then(module => ({ default: module.SellTab })));
+const ProfileStack = lazyScreen(() => import('./ProfileStack').then(module => ({ default: module.ProfileStack })));
 
 type CompactItem = {
   name: 'Home' | 'CategoriesAction' | 'Sell' | 'OrdersAction' | 'Profile';

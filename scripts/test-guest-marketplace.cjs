@@ -63,7 +63,7 @@ test('catalog, store, service and review reads are anonymous', () => {
   assert.match(products, /apiClient\('\/stores\/', \{ auth: false \}\)/);
   assert.match(products, /`\/products\/\$\{encodeURIComponent\(slug\)\}\/`, \{ auth: false \}/);
   assert.match(products, /`\/stores\/\$\{encodeURIComponent\(slug\)\}\/`, \{ auth: false \}/);
-  assert.match(services, /apiClient\('\/services\/', \{ auth: false \}\)/);
+  assert.match(services, /apiClient\(`\/services\/\?\$\{params\}`, \{ auth: false \}\)/);
   assert.match(services, /`\/services\/\$\{encodeURIComponent\(slug\)\}\/`, \{ auth: false \}/);
   assert.match(reviews, /apiClient\(`\/reviews\/\?\$\{target\.type\}=\$\{encodeURIComponent\(target\.id\)\}`, \{ auth: false \}\)/);
 });
@@ -142,11 +142,14 @@ test('guest cart transfer only removes items after the existing cart API accepts
   assert.doesNotMatch(context, /mergeGuestCart|\/cart\/merge/);
 });
 
-test('logout and account switches clear private query caches and scope cart queries by user', () => {
+test('logout and account switches clear only private query caches and scope cart queries by user', () => {
   const app = source('App.tsx');
+  const catalogQueries = source('src/services/catalogQueries.ts');
   const cart = source('src/contexts/CartContext.tsx');
   assert.match(app, /activeIdentity = user\?\.id \?\? 'guest'/);
-  assert.match(app, /previousIdentity\.current !== activeIdentity\) client\.clear\(\)/);
+  assert.match(app, /client\.removeQueries\(\{ predicate: query => !isPublicCatalogQuery\(query\.queryKey\) \}\)/);
+  assert.doesNotMatch(app, /client\.clear\(\)/);
+  assert.match(catalogQueries, /PUBLIC_QUERY_ROOTS[\s\S]*'products'[\s\S]*'categories'[\s\S]*'services'[\s\S]*'reviews'/);
   assert.match(cart, /const cartKey = \(userId: string\) => \['cart', userId\]/);
   assert.match(cart, /removeQueries\(\{ queryKey: cartKey\(previousUserId\.current\), exact: true \}\)/);
 });

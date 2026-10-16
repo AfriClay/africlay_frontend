@@ -35,8 +35,12 @@ export const SellerStore: React.FC = () => {
   const { data: seller, isLoading: sellerLoading } = sellerQuery;
   const productsQuery = useQuery<Product[]>({ queryKey: catalogKeys.storeProducts(sellerId), queryFn: () => productService.fetchProductsBySeller(sellerId), enabled: Boolean(seller) });
   const { data: products = [], isLoading: productsLoading } = productsQuery;
-  const servicesQuery = useQuery({ queryKey: ['services'], queryFn: serviceService.list, enabled: activeTab === 'Services' });
-  const services = (servicesQuery.data ?? []).filter(service => service.providerId === seller?.id);
+  const servicesQuery = useQuery({
+    queryKey: ['services', { store: sellerId }],
+    queryFn: () => serviceService.list({ store: sellerId, limit: 100 }),
+    enabled: activeTab === 'Services' && Boolean(sellerId),
+  });
+  const services = servicesQuery.data ?? [];
 
   if (sellerQuery.isError) return <ErrorState message="Unable to load this seller." onRetry={() => void sellerQuery.refetch()} />;
 
@@ -51,9 +55,9 @@ export const SellerStore: React.FC = () => {
   const columns = isExpanded ? Math.min(productColumns, 6) : 2;
   const serviceColumns = isExpanded ? 2 : 1;
   const storeHeader = <>
-    {seller.bannerUrl ? <Image source={{ uri: seller.bannerUrl }} style={[styles.banner, isExpanded && styles.desktopBanner]} contentFit="cover" /> : null}
+    {seller.bannerUrl ? <Image source={{ uri: seller.bannerUrl }} style={[styles.banner, isExpanded && styles.desktopBanner]} contentFit="cover" cachePolicy="memory-disk" /> : null}
     <View style={styles.header}>
-      <View style={styles.storeIdentity}><View style={styles.logo}>{seller.logoUrl ? <Image source={{ uri: seller.logoUrl }} style={styles.logoImage} contentFit="cover" /> : <Text style={styles.logoText}>{seller.name.slice(0, 2).toUpperCase()}</Text>}</View><View style={styles.storeCopy}><Text style={styles.name}>{seller.name}</Text><View style={styles.metaRow}><MapPin color={theme.colors.muted} size={14} /><Text style={styles.meta}>{seller.location}</Text></View></View></View>
+      <View style={styles.storeIdentity}><View style={styles.logo}>{seller.logoUrl ? <Image source={{ uri: seller.logoUrl }} style={styles.logoImage} contentFit="cover" cachePolicy="memory-disk" /> : <Text style={styles.logoText}>{seller.name.slice(0, 2).toUpperCase()}</Text>}</View><View style={styles.storeCopy}><Text style={styles.name}>{seller.name}</Text><View style={styles.metaRow}><MapPin color={theme.colors.muted} size={14} /><Text style={styles.meta}>{seller.location}</Text></View></View></View>
       <View style={styles.badgeRow}>
         {seller.reviewCount > 0 && <RatingBadge rating={seller.rating} reviewCount={seller.reviewCount} />}
         {seller.verified ? <View style={styles.verifiedRow}><BadgeCheck color={theme.colors.success} size={16} /><Text style={styles.verified}>Verified Seller</Text></View> : null}

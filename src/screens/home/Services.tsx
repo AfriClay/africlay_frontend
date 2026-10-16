@@ -25,7 +25,7 @@ export const Services: React.FC = () => {
   const columns = Math.max(2, Math.min(4, Math.floor((contentWidth - 48) / 236)));
   const navigation = useNavigation<ServicesNavigation>();
   const [query, setQuery] = useState('');
-  const servicesQuery = useQuery({ queryKey: ['services'], queryFn: productService.fetchServices });
+  const servicesQuery = useQuery({ queryKey: ['services', { limit: 48 }], queryFn: () => serviceService.list({ limit: 48 }) });
   const categoriesQuery = useQuery({ queryKey: ['service-categories'], queryFn: serviceService.categories });
   const { data: services = [], isLoading } = servicesQuery;
   const serviceCategories = categoriesQuery.data ?? [];

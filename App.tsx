@@ -7,19 +7,44 @@ import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/reac
 import { AuthProvider } from './src/contexts/AuthContext';
 import { CartProvider } from './src/contexts/CartContext';
 import { RootNavigator } from './src/navigation/RootNavigator';
-import { useFonts, Inter_400Regular, Inter_600SemiBold, Inter_700Bold, Inter_800ExtraBold } from '@expo-google-fonts/inter';
+import { useFonts } from 'expo-font';
+import { Inter_400Regular } from '@expo-google-fonts/inter/400Regular';
+import { Inter_600SemiBold } from '@expo-google-fonts/inter/600SemiBold';
+import { Inter_700Bold } from '@expo-google-fonts/inter/700Bold';
+import { Inter_800ExtraBold } from '@expo-google-fonts/inter/800ExtraBold';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useAuth } from './src/hooks/useAuth';
 import { WishlistProvider } from './src/contexts/WishlistContext';
 import { NativeNotificationBridge } from './src/components/notifications/NativeNotificationBridge';
 import { ThemeProvider } from './src/contexts/ThemeContext';
 import { canAccessOperations } from './src/utils/roles';
+import { catalogKeys, isPublicCatalogQuery } from './src/services/catalogQueries';
 
 if (Platform.OS !== 'web') {
   SplashScreen.preventAutoHideAsync();
 }
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 60_000,
+      gcTime: 30 * 60_000,
+      refetchOnWindowFocus: false,
+      retry: 1,
+    },
+  },
+});
+
+const PUBLIC_CATALOG_STALE_TIME = 10 * 60_000;
+[
+  catalogKeys.products,
+  catalogKeys.categories,
+  catalogKeys.tags,
+  catalogKeys.sellers,
+  ['services'],
+  ['service-categories'],
+  ['reviews'],
+].forEach(queryKey => queryClient.setQueryDefaults(queryKey, { staleTime: PUBLIC_CATALOG_STALE_TIME }));
 
 const AppContent = () => {
   const user = useAuth().user;
@@ -27,7 +52,9 @@ const AppContent = () => {
   const previousIdentity = useRef<string | undefined>(undefined);
   const client = useQueryClient();
   useEffect(() => {
-    if (previousIdentity.current && previousIdentity.current !== activeIdentity) client.clear();
+    if (previousIdentity.current && previousIdentity.current !== activeIdentity) {
+      client.removeQueries({ predicate: query => !isPublicCatalogQuery(query.queryKey) });
+    }
     previousIdentity.current = activeIdentity;
   }, [activeIdentity, client]);
   const navigator = <AppFrame><NativeNotificationBridge /><RootNavigator /></AppFrame>;

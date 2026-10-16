@@ -12,7 +12,7 @@ export const CatalogImage = ({ uri, label, style, contentFit = 'cover' }: Props)
   const reducedMotion = useReducedMotionSafe();
   const available = Boolean(uri && uri !== failedUri);
   return <View style={[styles.frame, style]} accessibilityRole="image" accessibilityLabel={available ? label : `Image unavailable: ${label}`}>
-    {available ? <Image source={{ uri }} style={StyleSheet.absoluteFill} contentFit={contentFit}
+    {available ? <Image source={{ uri }} style={StyleSheet.absoluteFill} contentFit={contentFit} cachePolicy="memory-disk"
       transition={reducedMotion ? 0 : 150} onError={() => setFailedUri(uri)} />
       : <ImageOff size={28} color={theme.colors.muted} />}
   </View>;

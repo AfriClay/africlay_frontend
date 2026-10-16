@@ -85,7 +85,7 @@ export const Search: React.FC<SearchProps> = ({ presentation = 'screen', focusRe
     return () => task.cancel();
   }, [focusRequest]);
 
-  const productsQuery = useQuery({ queryKey: catalogKeys.products, queryFn: () => productService.fetchProducts(), staleTime: 60_000 });
+  const productsQuery = useQuery({ queryKey: catalogKeys.products, queryFn: () => productService.fetchProducts({ limit: 100 }) });
   const sellersQuery = useQuery({ queryKey: catalogKeys.sellers, queryFn: productService.fetchSellers, staleTime: 60_000 });
   const products = productsQuery.data ?? [];
   const sellers = sellersQuery.data ?? [];

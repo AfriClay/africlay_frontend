@@ -1,10 +1,6 @@
 import { Home } from '../screens/home/Home';
-import { ProductListing } from '../screens/home/ProductListing';
-import { ProductDetails } from '../screens/home/ProductDetails';
-import { SellerStore } from '../screens/home/SellerStore';
-import { Services } from '../screens/home/Services';
-import { ServiceDetails } from '../screens/home/ServiceDetails';
 import { useResponsiveLayout } from '../contexts/ResponsiveLayoutContext';
+import { lazyScreen } from '../components/ui/LazyScreen';
 import { createAppStackNavigator, useAppStackScreenOptions } from './appStack';
 
 export type HomeStackParamList = {
@@ -17,6 +13,11 @@ export type HomeStackParamList = {
 };
 
 const Stack = createAppStackNavigator<HomeStackParamList>();
+const ProductListing = lazyScreen(() => import('../screens/home/ProductListing').then(module => ({ default: module.ProductListing })));
+const ProductDetails = lazyScreen(() => import('../screens/home/ProductDetails').then(module => ({ default: module.ProductDetails })));
+const SellerStore = lazyScreen(() => import('../screens/home/SellerStore').then(module => ({ default: module.SellerStore })));
+const Services = lazyScreen(() => import('../screens/home/Services').then(module => ({ default: module.Services })));
+const ServiceDetails = lazyScreen(() => import('../screens/home/ServiceDetails').then(module => ({ default: module.ServiceDetails })));
 
 export const HomeStack = () => {
   const { isExpanded } = useResponsiveLayout();

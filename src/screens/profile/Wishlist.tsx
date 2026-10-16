@@ -22,7 +22,7 @@ export const Wishlist: React.FC = () => {
   const { user } = useAuth();
   const wishlist = useWishlist();
   const [removeError, setRemoveError] = useState<string>();
-  const products = useQuery({ queryKey: catalogKeys.products, queryFn: () => productService.fetchProducts(), enabled: Boolean(user && wishlist.items.length) });
+  const products = useQuery({ queryKey: catalogKeys.products, queryFn: () => productService.fetchProducts({ limit: 100 }), enabled: Boolean(user && wishlist.items.length) });
   if (!user) return <EmptyState title="Sign in to view your wishlist" description="Saved products are linked to your account." />;
   if (wishlist.error) return <ErrorState message="Unable to load your wishlist." onRetry={() => void wishlist.refresh()} />;
   const productsById = new Map((products.data ?? []).map(product => [product.id, product]));

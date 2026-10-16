@@ -53,8 +53,11 @@ const payload = (draft: ServiceDraft) => ({ ...draft, price: draft.price.toFixed
 
 export const serviceService = {
   categories: async (): Promise<ServiceCategory[]> => parseList(categorySchema, await apiClient('/services/categories/', { auth: false })),
-  list: async (): Promise<Service[]> => {
-    const [raw, categories] = await Promise.all([apiClient('/services/', { auth: false }), serviceService.categories()]);
+  list: async (options: { limit?: number; offset?: number; store?: string } = {}): Promise<Service[]> => {
+    const params = new URLSearchParams({ limit: String(options.limit ?? 24) });
+    if (options.offset) params.set('offset', String(options.offset));
+    if (options.store) params.set('store', options.store);
+    const [raw, categories] = await Promise.all([apiClient(`/services/?${params}`, { auth: false }), serviceService.categories()]);
     return parseList(serviceSchema, raw).map(item => toService(item, categories));
   },
   detail: async (slug: string): Promise<Service | null> => {

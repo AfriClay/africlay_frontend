@@ -2,17 +2,11 @@ import { useCallback, useEffect, useState } from 'react';
 import { Platform } from 'react-native';
 import { CommonActions, NavigationContainer, NavigatorScreenParams, useNavigationContainerRef } from '@react-navigation/native';
 import { MarketplaceShell } from '../components/layout/MarketplaceShell';
-import { AuthStack } from './AuthStack';
 import { AppTabs } from './AppTabs';
-import { Cart } from '../screens/cart/Cart';
-import { Checkout } from '../screens/cart/Checkout';
 import { Splash } from '../screens/auth/Splash';
 import { useAuth } from '../hooks/useAuth';
 import { StatusBar } from 'expo-status-bar';
-import { SalesDashboard } from '../screens/admin/SalesDashboard';
-import { FinanceDashboard } from '../screens/admin/FinanceDashboard';
-import { SuperAdminDashboard } from '../screens/admin/SuperAdminDashboard';
-import { OperationsLogin } from '../screens/admin/OperationsLogin';
+import { lazyScreen } from '../components/ui/LazyScreen';
 import { createAppStackNavigator, useAppStackScreenOptions } from './appStack';
 import { linking } from './linking';
 import type { AuthStackParamList } from './AuthStack';
@@ -31,6 +25,13 @@ export type RootStackParamList = {
 };
 
 const Stack = createAppStackNavigator<RootStackParamList>();
+const AuthStack = lazyScreen(() => import('./AuthStack').then(module => ({ default: module.AuthStack })));
+const Cart = lazyScreen(() => import('../screens/cart/Cart').then(module => ({ default: module.Cart })));
+const Checkout = lazyScreen(() => import('../screens/cart/Checkout').then(module => ({ default: module.Checkout })));
+const SalesDashboard = lazyScreen(() => import('../screens/admin/SalesDashboard').then(module => ({ default: module.SalesDashboard })));
+const FinanceDashboard = lazyScreen(() => import('../screens/admin/FinanceDashboard').then(module => ({ default: module.FinanceDashboard })));
+const SuperAdminDashboard = lazyScreen(() => import('../screens/admin/SuperAdminDashboard').then(module => ({ default: module.SuperAdminDashboard })));
+const OperationsLogin = lazyScreen(() => import('../screens/admin/OperationsLogin').then(module => ({ default: module.OperationsLogin })));
 
 export const RootNavigator = () => {
   const { user, initialized } = useAuth();

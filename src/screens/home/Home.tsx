@@ -48,9 +48,16 @@ export const Home: React.FC = () => {
   const [focusRequest, setFocusRequest] = useState(0);
   const categoriesQuery = useQuery({ queryKey: catalogKeys.categories, queryFn: productService.fetchCategories });
   const { data: categories = [], isLoading: categoriesLoading } = categoriesQuery;
-  const productsQuery = useQuery({ queryKey: catalogKeys.products, queryFn: () => productService.fetchProducts() });
+  const productLimit = isExpanded ? 12 : 4;
+  const productsQuery = useQuery({
+    queryKey: catalogKeys.featuredProducts(productLimit),
+    queryFn: () => productService.fetchProducts({ limit: productLimit }),
+  });
   const { data: products = [], isLoading: productsLoading } = productsQuery;
-  const serviceQuery = useQuery({ queryKey: ['services'], queryFn: productService.fetchServices });
+  const serviceQuery = useQuery({
+    queryKey: ['services', 'featured', 4],
+    queryFn: () => productService.fetchServices({ limit: 4 }),
+  });
   const { data: services = [] } = serviceQuery;
   const featured = useMemo(() => products.slice(0, 4), [products]);
   const recommendedServices = useMemo(() => services.slice(0, 2), [services]);
