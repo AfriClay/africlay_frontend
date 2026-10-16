@@ -53,7 +53,6 @@ export const ConversationThread: React.FC = () => {
           contentContainerStyle={[styles.list, messages.length === 0 && styles.emptyList]}
           keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'} keyboardShouldPersistTaps="handled"
           onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: false })}
-          onRefresh={() => void query.refetch()} refreshing={query.isFetching}
           ListEmptyComponent={<Text style={styles.notice}>No messages yet.</Text>} />}
       {error && <Text style={styles.error} accessibilityRole="alert">{error}</Text>}
       <View style={styles.composer}>

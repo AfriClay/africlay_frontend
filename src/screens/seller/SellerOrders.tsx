@@ -74,8 +74,6 @@ export const SellerOrders: React.FC = () => {
   if (query.isError) return <ErrorState message={getApiErrorMessage(query.error, 'Unable to load seller orders.')} onRetry={() => void query.refetch()} />;
   return <SafeAreaView style={styles.container} edges={['bottom']}><FlatList
     data={query.data ?? []}
-    refreshing={query.isFetching}
-    onRefresh={() => void query.refetch()}
     keyExtractor={item => item.id}
     contentContainerStyle={(query.data?.length ?? 0) ? styles.content : styles.empty}
     ListEmptyComponent={query.isLoading ? <Text style={styles.loading}>Loading orders...</Text> : <EmptyState title="No seller orders" description="Orders containing your products will appear here." />}

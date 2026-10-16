@@ -39,8 +39,6 @@ export const Wishlist: React.FC = () => {
   return <SafeAreaView style={styles.container} edges={['bottom']}>
     <FlatList
       data={wishlist.items}
-      refreshing={wishlist.isFetching}
-      onRefresh={() => void wishlist.refresh()}
       keyExtractor={item => item.id}
       contentContainerStyle={wishlist.items.length ? styles.list : styles.empty}
       ListHeaderComponent={removeError

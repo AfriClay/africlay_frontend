@@ -24,8 +24,6 @@ export const SellerBookings = () => {
   if (query.isError || update.isError) return <ErrorState message="Unable to update service bookings." onRetry={() => { update.reset(); void query.refetch(); }} />;
   return <SafeAreaView style={styles.container} edges={['bottom']}><FlatList
     data={query.data ?? []}
-    refreshing={query.isFetching}
-    onRefresh={() => void query.refetch()}
     keyExtractor={item => item.id}
     contentContainerStyle={(query.data?.length ?? 0) ? styles.list : styles.empty}
     ListEmptyComponent={query.isLoading ? <Text style={styles.loading}>Loading bookings...</Text> : <EmptyState title="No service bookings" description="Customer bookings will appear here." />}

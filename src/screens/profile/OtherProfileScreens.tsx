@@ -44,7 +44,7 @@ export const MyAddresses: React.FC = () => {
     {editing ? <ScrollView contentContainerStyle={styles.content}><AddressForm key={editing === 'new' ? 'new' : editing.id}
       initial={editing === 'new' ? undefined : editing} onSave={save} onCancel={() => setEditing(null)} /></ScrollView> :
       query.isLoading ? <Text style={styles.note}>Loading addresses...</Text> : <FlatList data={query.data ?? []} keyExtractor={item => item.id}
-        refreshing={query.isFetching} onRefresh={() => void query.refetch()} contentContainerStyle={styles.content}
+        contentContainerStyle={styles.content}
         renderItem={({ item }) => <View style={styles.row}>
           <MapPin color={theme.colors.primary.DEFAULT} size={20} />
           <View style={styles.rowContent}><Text style={styles.name}>{item.street_address}{item.is_default ? ' (Default)' : ''}</Text>

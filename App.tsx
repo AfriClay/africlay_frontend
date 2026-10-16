@@ -16,6 +16,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useAuth } from './src/hooks/useAuth';
 import { WishlistProvider } from './src/contexts/WishlistContext';
 import { NativeNotificationBridge } from './src/components/notifications/NativeNotificationBridge';
+import { MobileWebPullToRefresh } from './src/components/MobileWebPullToRefresh';
 import { ThemeProvider } from './src/contexts/ThemeContext';
 import { canAccessOperations } from './src/utils/roles';
 import { catalogKeys, isPublicCatalogQuery } from './src/services/catalogQueries';
@@ -57,7 +58,7 @@ const AppContent = () => {
     }
     previousIdentity.current = activeIdentity;
   }, [activeIdentity, client]);
-  const navigator = <AppFrame><NativeNotificationBridge /><RootNavigator /></AppFrame>;
+  const navigator = <AppFrame><MobileWebPullToRefresh /><NativeNotificationBridge /><RootNavigator /></AppFrame>;
   return canAccessOperations(user) ? navigator : <CartProvider><WishlistProvider>{navigator}</WishlistProvider></CartProvider>;
 };
 

@@ -40,7 +40,7 @@ export const Cart: React.FC = () => {
       ) : cart.itemCount === 0 ? (
         <View style={[styles.empty, isExpanded && styles.desktopEmpty]}><Text style={styles.emptyText}>Your cart is empty. Add items to continue.</Text></View>
       ) : (
-        <FlatList style={isExpanded && styles.desktopList} data={cart.items} keyExtractor={item => item.id} refreshing={cart.refreshing} onRefresh={() => void cart.refresh().catch(() => {})} renderItem={({ item }) => (
+        <FlatList style={isExpanded && styles.desktopList} data={cart.items} keyExtractor={item => item.id} renderItem={({ item }) => (
           <View style={styles.itemRow}>
             <Pressable onPress={() => openProduct(item.productSlug)} disabled={!item.productSlug} accessibilityRole="link"
               accessibilityLabel={`View ${item.name}`} accessibilityState={{ disabled: !item.productSlug }}

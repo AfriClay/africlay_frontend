@@ -21,6 +21,7 @@ async function main() {
   });
   const page = await context.newPage();
   const errors = [];
+  let productRequests = 0;
   page.on('pageerror', error => errors.push(error.message));
   await page.route('**/api/**', route => {
     const pathname = new URL(route.request().url()).pathname;
@@ -48,7 +49,10 @@ async function main() {
     if (pathname.endsWith('/products/tags/')) return route.fulfill(json([]));
     if (pathname.endsWith('/services/categories/')) return route.fulfill(json([]));
     if (pathname.endsWith('/stores/')) return route.fulfill(json([]));
-    if (pathname.endsWith('/products/')) return route.fulfill(json({ count: 0, next: null, previous: null, results: [] }));
+    if (pathname.endsWith('/products/')) {
+      productRequests += 1;
+      return route.fulfill(json({ count: 0, next: null, previous: null, results: [] }));
+    }
     if (pathname.endsWith('/services/')) return route.fulfill(json({ count: 0, next: null, previous: null, results: [] }));
     return route.fulfill({ status: 404, contentType: 'application/json', body: '{}' });
   });
@@ -104,6 +108,39 @@ async function main() {
     await page.goto(`${origin}/home`, { waitUntil: 'domcontentloaded', timeout: 60_000 });
     await page.getByText('Explore categories', { exact: true }).waitFor({ timeout: 30_000 });
     const homeScroll = page.getByTestId('home-scroll');
+    assert.equal(await page.evaluate(() => document.documentElement.style.overscrollBehaviorY), 'none', 'Compact touch web should install pull to refresh');
+    await homeScroll.evaluate(node => { node.scrollTop = 0; });
+    const requestsBeforePull = productRequests;
+    await homeScroll.evaluate(node => {
+      const makeTouch = (clientY) => new Touch({
+        identifier: 1,
+        target: node,
+        clientX: 150,
+        clientY,
+        pageX: 150,
+        pageY: clientY,
+        screenX: 150,
+        screenY: clientY,
+      });
+      const dispatch = (type, clientY, ended = false) => {
+        const touch = makeTouch(clientY);
+        node.dispatchEvent(new TouchEvent(type, {
+          bubbles: true,
+          cancelable: true,
+          touches: ended ? [] : [touch],
+          targetTouches: ended ? [] : [touch],
+          changedTouches: [touch],
+        }));
+      };
+      dispatch('touchstart', 100);
+      dispatch('touchmove', 150);
+      dispatch('touchmove', 240);
+      dispatch('touchend', 240, true);
+    });
+    await page.getByLabel('Refreshing page data').waitFor({ state: 'visible', timeout: 2_000 });
+    for (let attempt = 0; attempt < 20 && productRequests <= requestsBeforePull; attempt += 1) await page.waitForTimeout(100);
+    assert.ok(productRequests > requestsBeforePull, 'Pull gesture did not refetch the active product query');
+    await page.getByLabel('Refreshing page data').waitFor({ state: 'hidden', timeout: 5_000 });
     await homeScroll.evaluate(node => { node.scrollTop = node.scrollHeight; });
     assert.ok(await page.getByText('Services for you', { exact: true }).isVisible());
     assert.ok(await page.getByRole('tab', { name: 'Home', exact: true }).isVisible());
@@ -116,8 +153,11 @@ async function main() {
     await page.goto(`${origin}/services`, { waitUntil: 'domcontentloaded', timeout: 60_000 });
     await page.getByLabel('Search services', { exact: true }).waitFor({ timeout: 30_000 });
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.waitForFunction(() => document.documentElement.style.overscrollBehaviorY !== 'none');
+    assert.equal(await page.getByTestId('mobile-web-refresh').count(), 0, 'Desktop web should not install pull to refresh');
     assert.deepEqual(errors, []);
-    console.log('PASS checkout, auth, seller onboarding, operations, home, products, and services remain responsive');
+    console.log('PASS responsive pages and compact-web-only pull to refresh');
   } finally {
     await context.close();
     await browser.close();

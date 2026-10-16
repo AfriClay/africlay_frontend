@@ -69,8 +69,6 @@ export const Notifications: React.FC = () => {
     <DevicePermissionPrompt />
     <FlatList
       data={query.data ?? []}
-      refreshing={query.isFetching}
-      onRefresh={() => void query.refetch()}
       keyExtractor={item => item.id}
       contentContainerStyle={(query.data?.length ?? 0) ? styles.list : styles.empty}
       ListEmptyComponent={query.isLoading ? <Text style={styles.loading}>Loading notifications...</Text> : <EmptyState title="No notifications" description="Order, booking, and account updates will appear here." />}

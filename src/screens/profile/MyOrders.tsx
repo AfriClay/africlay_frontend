@@ -48,8 +48,6 @@ export const MyOrders: React.FC = () => {
       ) : (
         <FlatList
           data={filteredOrders}
-          refreshing={ordersQuery.isFetching}
-          onRefresh={() => void ordersQuery.refetch()}
           keyExtractor={item => item.id}
           renderItem={({ item }) => <OrderCard order={item} onPress={() => navigation.navigate('OrderDetails', { orderId: item.id })} />}
           ListEmptyComponent={<EmptyState title={`No ${activeTab.toLowerCase()} orders`} description="Your orders will appear here as their status changes." />}

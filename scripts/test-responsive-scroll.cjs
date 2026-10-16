@@ -58,3 +58,35 @@ test('every content screen has a vertical scrolling owner or an intentional exem
   }).map(file => path.relative(root, file));
   assert.deepEqual(missing, []);
 });
+
+test('pull to refresh is compact-web-only and does not ship a native gesture', () => {
+  const app = source('App.tsx');
+  const webRefresh = source('src/components/MobileWebPullToRefresh.web.tsx');
+  const nativeRefresh = source('src/components/MobileWebPullToRefresh.tsx');
+  assert.match(app, /<MobileWebPullToRefresh \/>/);
+  assert.match(webRefresh, /max-width: 767px/);
+  assert.match(webRefresh, /pointer: coarse/);
+  assert.match(webRefresh, /refetchQueries\(\{ type: 'active' \}\)/);
+  assert.match(webRefresh, /touchstart/);
+  assert.match(webRefresh, /touchmove/);
+  assert.match(webRefresh, /overscrollBehaviorY = 'none'/);
+  assert.match(nativeRefresh, /MobileWebPullToRefresh = \(\) => null/);
+  assert.doesNotMatch(nativeRefresh, /touch|refetch|RefreshControl/);
+
+  const nativePullScreens = [
+    'src/screens/cart/Cart.tsx',
+    'src/screens/messages/ConversationThread.tsx',
+    'src/screens/notifications/Notifications.tsx',
+    'src/screens/seller/SellerBookings.tsx',
+    'src/screens/seller/SellerOrders.tsx',
+    'src/screens/profile/MyBookings.tsx',
+    'src/screens/profile/MyOrders.tsx',
+    'src/screens/profile/OtherProfileScreens.tsx',
+    'src/screens/profile/Wallet.tsx',
+    'src/screens/profile/Wishlist.tsx',
+  ];
+  for (const screen of nativePullScreens) {
+    const contents = source(screen);
+    assert.doesNotMatch(contents, /\brefreshControl=\{|\brefreshing=\{|\bonRefresh=\{/, `${screen} still enables native pull to refresh`);
+  }
+});

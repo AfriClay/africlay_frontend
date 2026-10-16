@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, useState } from 'react';
-import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { randomUUID } from 'expo-crypto';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AlertTriangle, CircleCheckBig, CircleX, Clock3, ShieldCheck, WalletCards } from 'lucide-react-native';
@@ -195,9 +195,7 @@ export const Wallet: React.FC = () => {
       : attempt?.status === 'unknown'
         ? 'The provider result is not confirmed. Refresh wallet activity before retrying.'
         : attempt ? attempt.resultDescription || 'Complete the M-Pesa prompt on your phone.' : undefined;
-  const refreshing = wallets.isFetching || transactions.isFetching || payoutAccount.isFetching || payouts.isFetching;
-
-  return <ScrollView style={styles.container} contentContainerStyle={styles.content} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void refresh()} />}>
+  return <ScrollView style={styles.container} contentContainerStyle={styles.content}>
     <View style={styles.balanceSection}>
       <View style={styles.balanceIcon}><WalletCards size={24} color={theme.colors.primary.dark} /></View>
       <Text style={styles.label}>Available balance</Text>
