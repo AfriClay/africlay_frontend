@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, AppState, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, AppState, FlatList, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -30,6 +30,7 @@ const PAYMENT_POLL_INTERVAL = 5_000;
 
 export const Checkout: React.FC = () => {
   const navigation = useNavigation<CheckoutNavigation>();
+  const compactPaymentOptions = useWindowDimensions().width < 360;
   const cart = useCart();
   const auth = useAuth();
   const userId = auth.user?.id ?? '';
@@ -214,14 +215,16 @@ export const Checkout: React.FC = () => {
 
   if (!auth.user) return <SafeAreaView style={styles.container}>
     <GuestAuthSheet visible={authSheet} onClose={() => setAuthSheet(false)} description="Your cart is saved. Log in or create an account to choose delivery and place the order." />
-    <View style={styles.content}><Text style={styles.title}>Checkout</Text><Text style={styles.note}>An account is required for delivery details, order history, and payment confirmation. No order or payment will be started automatically after sign-in.</Text><Button onPress={() => setAuthSheet(true)}>Continue to Login</Button></View>
+    <ScrollView testID="checkout-scroll" style={styles.scroll} contentContainerStyle={styles.gateContent} keyboardShouldPersistTaps="handled"><Text style={styles.title}>Checkout</Text><Text style={styles.note}>An account is required for delivery details, order history, and payment confirmation. No order or payment will be started automatically after sign-in.</Text><Button onPress={() => setAuthSheet(true)}>Continue to Login</Button></ScrollView>
   </SafeAreaView>;
 
   if (!cart.available) return <SafeAreaView style={styles.confirmation}>
-    <AlertTriangle color={theme.colors.error} size={64} />
-    <Text style={styles.title}>Buyer account required</Text>
-    <Text style={styles.confirmationText}>Checkout is available to buyer-enabled accounts.</Text>
-    <Button variant="secondary" onPress={() => navigation.goBack()}>Go Back</Button>
+    <ScrollView testID="checkout-scroll" style={styles.scroll} contentContainerStyle={styles.confirmationContent}>
+      <AlertTriangle color={theme.colors.error} size={64} />
+      <Text style={styles.title}>Buyer account required</Text>
+      <Text style={styles.confirmationText}>Checkout is available to buyer-enabled accounts.</Text>
+      <Button variant="secondary" onPress={() => navigation.goBack()}>Go Back</Button>
+    </ScrollView>
   </SafeAreaView>;
 
   if (orderId && stage !== 'idle') {
@@ -239,20 +242,22 @@ export const Checkout: React.FC = () => {
           ? 'The payment was not completed. Your order remains unpaid.'
           : 'The order was created, but the payment result could not be confirmed.';
     return <SafeAreaView style={styles.confirmation}>
-      {stage === 'requesting-payment' ? <ActivityIndicator size="large" color={theme.colors.primary.DEFAULT} /> : <Icon color={succeeded ? theme.colors.success : pending ? theme.colors.secondary.dark : theme.colors.error} size={68} />}
-      <Text style={styles.title}>{title}</Text>
-      <Text style={styles.confirmationText}>{description}</Text>
-      <Text style={styles.orderMeta}>{formatCurrency(payment?.amount ?? orderTotal, payment?.currency ?? 'KES')}</Text>
-      {payment?.receiptNumber ? <Text style={styles.note}>Receipt {payment.receiptNumber}</Text> : null}
-      {error ? <Text style={styles.error} accessibilityRole="alert">{error}</Text> : null}
-      {statusError ? <Text style={styles.error} accessibilityRole="alert">{statusError}</Text> : null}
-      <View style={styles.actions}>
-        {payment?.id && pending ? <Button variant="secondary" onPress={() => void checkPaymentStatus()}>Check Payment Status</Button> : null}
-        {!payment?.id && stage === 'payment-unknown' ? <Button onPress={() => void requestPayment(orderId)}>Recover Payment</Button> : null}
-        {stage === 'payment-failed' ? <Button onPress={() => void requestPayment(orderId)}>Try Payment Again</Button> : null}
-        <Button variant={succeeded ? 'primary' : 'secondary'} onPress={() => navigation.navigate('AppTabs', { screen: 'Profile', params: { screen: 'MyOrders' } })}>View My Orders</Button>
-        {succeeded ? <Button variant="tertiary" onPress={() => navigation.navigate('AppTabs', { screen: 'Home' })}>Continue Shopping</Button> : null}
-      </View>
+      <ScrollView testID="checkout-scroll" style={styles.scroll} contentContainerStyle={styles.confirmationContent}>
+        {stage === 'requesting-payment' ? <ActivityIndicator size="large" color={theme.colors.primary.DEFAULT} /> : <Icon color={succeeded ? theme.colors.success : pending ? theme.colors.secondary.dark : theme.colors.error} size={68} />}
+        <Text style={styles.title}>{title}</Text>
+        <Text style={styles.confirmationText}>{description}</Text>
+        <Text style={styles.orderMeta}>{formatCurrency(payment?.amount ?? orderTotal, payment?.currency ?? 'KES')}</Text>
+        {payment?.receiptNumber ? <Text style={styles.note}>Receipt {payment.receiptNumber}</Text> : null}
+        {error ? <Text style={styles.error} accessibilityRole="alert">{error}</Text> : null}
+        {statusError ? <Text style={styles.error} accessibilityRole="alert">{statusError}</Text> : null}
+        <View style={styles.actions}>
+          {payment?.id && pending ? <Button variant="secondary" onPress={() => void checkPaymentStatus()}>Check Payment Status</Button> : null}
+          {!payment?.id && stage === 'payment-unknown' ? <Button onPress={() => void requestPayment(orderId)}>Recover Payment</Button> : null}
+          {stage === 'payment-failed' ? <Button onPress={() => void requestPayment(orderId)}>Try Payment Again</Button> : null}
+          <Button variant={succeeded ? 'primary' : 'secondary'} onPress={() => navigation.navigate('AppTabs', { screen: 'Profile', params: { screen: 'MyOrders' } })}>View My Orders</Button>
+          {succeeded ? <Button variant="tertiary" onPress={() => navigation.navigate('AppTabs', { screen: 'Home' })}>Continue Shopping</Button> : null}
+        </View>
+      </ScrollView>
     </SafeAreaView>;
   }
 
@@ -268,12 +273,12 @@ export const Checkout: React.FC = () => {
     {creating ? <AddressForm onSave={createAddress} onCancel={() => setCreating(false)} /> :
       <Button variant="secondary" onPress={() => setCreating(true)}>Add Address</Button>}
     <Text style={styles.sectionTitle}>Payment option</Text>
-    <View style={styles.paymentOptions}>
-      <Pressable onPress={() => setPaymentOption('pay_now')} accessibilityRole="radio" accessibilityState={{ selected: paymentOption === 'pay_now' }} style={[styles.paymentOption, paymentOption === 'pay_now' && styles.paymentOptionSelected]}>
+    <View style={[styles.paymentOptions, compactPaymentOptions && styles.paymentOptionsCompact]}>
+      <Pressable onPress={() => setPaymentOption('pay_now')} accessibilityRole="radio" accessibilityState={{ selected: paymentOption === 'pay_now' }} style={[styles.paymentOption, compactPaymentOptions && styles.paymentOptionCompact, paymentOption === 'pay_now' && styles.paymentOptionSelected]}>
         <Text style={[styles.paymentOptionTitle, paymentOption === 'pay_now' && styles.paymentOptionTitleSelected]}>Pay Now</Text>
         <Text style={styles.paymentOptionNote}>Items and delivery</Text>
       </Pressable>
-      <Pressable onPress={() => setPaymentOption('pay_on_delivery')} accessibilityRole="radio" accessibilityState={{ selected: paymentOption === 'pay_on_delivery' }} style={[styles.paymentOption, paymentOption === 'pay_on_delivery' && styles.paymentOptionSelected]}>
+      <Pressable onPress={() => setPaymentOption('pay_on_delivery')} accessibilityRole="radio" accessibilityState={{ selected: paymentOption === 'pay_on_delivery' }} style={[styles.paymentOption, compactPaymentOptions && styles.paymentOptionCompact, paymentOption === 'pay_on_delivery' && styles.paymentOptionSelected]}>
         <Text style={[styles.paymentOptionTitle, paymentOption === 'pay_on_delivery' && styles.paymentOptionTitleSelected]}>Pay on Delivery</Text>
         <Text style={styles.paymentOptionNote}>Delivery fee now</Text>
       </Pressable>
@@ -314,7 +319,7 @@ export const Checkout: React.FC = () => {
     {orderCreationUncertain ? <Button variant="secondary" onPress={() => navigation.navigate('AppTabs', { screen: 'Profile', params: { screen: 'MyOrders' } })}>View My Orders</Button> : null}
     <Button onPress={() => void submit()} loading={busy} loadingLabel={stage === 'creating-order' ? 'Creating order' : 'Requesting payment'} disabled={busy || orderCreationUncertain || cart.loading || cart.mutating || !cart.itemCount || !selected || !isOrderPaymentPhone(phoneNumber) || addressesQuery.isError || quoteQuery.isLoading || quoteQuery.isError || !quote || creating || Boolean(cart.error)}>{paymentOption === 'pay_on_delivery' ? 'Pay Delivery Fee & Place Order' : 'Place Order & Pay'}</Button>
   </View>;
-  return <SafeAreaView style={styles.container}><FlatList data={cart.items} keyExtractor={item => item.id}
+  return <SafeAreaView style={styles.container}><FlatList testID="checkout-scroll" style={styles.scroll} data={cart.items} keyExtractor={item => item.id}
     renderItem={({ item }) => <View style={styles.itemRow}><Text style={styles.itemName}>{item.name} x {item.quantity}</Text><Text style={styles.itemPrice}>{formatCurrency(item.price * item.quantity)}</Text></View>}
     ListHeaderComponent={header} ListFooterComponent={footer}
     ListEmptyComponent={<Text style={styles.note}>{cart.error ? 'Cart unavailable. Return to the cart and retry.' : 'Your cart is empty.'}</Text>} contentContainerStyle={styles.content} /></SafeAreaView>;
@@ -322,7 +327,9 @@ export const Checkout: React.FC = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.cream },
-  content: { padding: theme.spacing.lg, paddingBottom: theme.spacing.xl },
+  scroll: { flex: 1, minHeight: 0 },
+  content: { padding: theme.spacing.lg, paddingBottom: theme.spacing.xxl },
+  gateContent: { flexGrow: 1, justifyContent: 'center', gap: theme.spacing.md, padding: theme.spacing.lg, paddingBottom: theme.spacing.xxl },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   title: { fontSize: theme.typography.h2.fontSize, fontWeight: '800', color: theme.colors.ink, marginTop: theme.spacing.sm },
   sectionTitle: { fontSize: theme.typography.h3.fontSize, fontWeight: '800', color: theme.colors.ink, marginTop: theme.spacing.lg, marginBottom: theme.spacing.sm },
@@ -338,7 +345,9 @@ const styles = StyleSheet.create({
   total: { fontSize: theme.typography.h3.fontSize, fontWeight: '800', color: theme.colors.ink },
   summaryAmount: { color: theme.colors.ink, fontWeight: '700' },
   paymentOptions: { flexDirection: 'row', gap: theme.spacing.sm },
+  paymentOptionsCompact: { flexDirection: 'column' },
   paymentOption: { flex: 1, minHeight: 76, padding: theme.spacing.md, borderWidth: 1, borderColor: theme.colors.border, borderRadius: theme.radii.md, backgroundColor: theme.colors.white },
+  paymentOptionCompact: { flex: 0, width: '100%' },
   paymentOptionSelected: { borderColor: theme.colors.primary.DEFAULT, backgroundColor: theme.colors.primary.tint },
   paymentOptionTitle: { color: theme.colors.ink, fontWeight: '800' },
   paymentOptionTitleSelected: { color: theme.colors.primary.dark },
@@ -347,7 +356,8 @@ const styles = StyleSheet.create({
   quoteError: { gap: theme.spacing.sm, alignItems: 'stretch' },
   quoteHint: { color: theme.colors.muted, textAlign: 'center', fontSize: theme.typography.small.fontSize, lineHeight: 18 },
   error: { color: theme.colors.error, textAlign: 'center' },
-  confirmation: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: theme.spacing.xl, backgroundColor: theme.colors.cream },
+  confirmation: { flex: 1, minHeight: 0, backgroundColor: theme.colors.cream },
+  confirmationContent: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', padding: theme.spacing.xl, paddingBottom: theme.spacing.xxl },
   confirmationText: { maxWidth: 520, textAlign: 'center', color: theme.colors.muted, marginTop: theme.spacing.md, lineHeight: 22 },
   orderMeta: { color: theme.colors.ink, fontSize: theme.typography.h3.fontSize, fontWeight: '800', marginTop: theme.spacing.md },
   actions: { alignSelf: 'stretch', maxWidth: 520, width: '100%', gap: theme.spacing.sm, marginTop: theme.spacing.lg },

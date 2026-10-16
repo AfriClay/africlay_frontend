@@ -1,9 +1,10 @@
 import type { PropsWithChildren } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import { theme } from '../theme';
 
 export const AppFrame = ({ children }: PropsWithChildren) => {
-  return <View style={styles.frame}>{children}</View>;
+  const { height } = useWindowDimensions();
+  return <View style={[styles.frame, { height, maxHeight: height }]}>{children}</View>;
 };
 
 const styles = StyleSheet.create({

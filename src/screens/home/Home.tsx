@@ -177,6 +177,7 @@ export const Home: React.FC = () => {
       {isCompact && searchExpanded ? <Pressable accessible={false} onPress={closeSearch} style={styles.searchBackdrop} /> : null}
 
       <Animated.ScrollView
+        testID="home-scroll"
         style={styles.contentScroll}
         contentContainerStyle={[styles.content, isExpanded && { maxWidth: 1440 }]}
         showsVerticalScrollIndicator={false}

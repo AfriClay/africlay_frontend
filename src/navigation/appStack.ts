@@ -21,6 +21,7 @@ export const useAppStackScreenOptions = (): NativeStackNavigationOptions => {
     headerBackButtonDisplayMode: 'minimal',
     ...(Platform.OS === 'web'
       ? {
+          cardStyle: { flex: 1, minHeight: 0, height: '100%', maxHeight: '100%', overflow: 'hidden' },
           cardStyleInterpolator: reducedMotion
             ? CardStyleInterpolators.forNoAnimation
             : CardStyleInterpolators.forHorizontalIOS,

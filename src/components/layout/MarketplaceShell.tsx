@@ -83,7 +83,7 @@ export const MarketplaceShell = ({ children, route, category, navigate }: Props)
 };
 
 const styles = StyleSheet.create({
-  mobile: { flex: 1, minWidth: 0 },
+  mobile: { flex: 1, minHeight: 0, minWidth: 0 },
   desktopChrome: { position: 'relative', zIndex: 20, backgroundColor: theme.colors.white },
   header: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm, paddingHorizontal: theme.spacing.md,
     minHeight: 80, backgroundColor: theme.colors.white, borderBottomWidth: 1, borderBottomColor: theme.colors.border },
@@ -104,7 +104,7 @@ const styles = StyleSheet.create({
   focused: { borderColor: theme.colors.primary.DEFAULT },
   badge: { minWidth: 18, height: 18, borderRadius: 9, paddingHorizontal: 4, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.error },
   badgeText: { color: theme.colors.white, fontSize: 10, fontWeight: '800' },
-  main: { flex: 1, minWidth: 0, padding: theme.spacing.md, alignItems: 'center', backgroundColor: theme.colors.cream },
-  route: { flex: 1, width: '100%', minWidth: 0 },
+  main: { flex: 1, minHeight: 0, minWidth: 0, padding: theme.spacing.md, alignItems: 'center', backgroundColor: theme.colors.cream },
+  route: { flex: 1, minHeight: 0, width: '100%', minWidth: 0 },
   focusPage: { flex: 1, alignItems: 'center', backgroundColor: theme.colors.cream },
 });

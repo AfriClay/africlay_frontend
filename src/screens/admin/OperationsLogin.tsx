@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { ShieldCheck } from 'lucide-react-native';
@@ -46,18 +46,18 @@ export const OperationsLogin = () => {
     }
   };
 
-  if (auth.user && !canAccessOperations(auth.user)) return <SafeAreaView style={styles.root}>
-    <View style={styles.panel}>
+  if (auth.user && !canAccessOperations(auth.user)) return <SafeAreaView style={styles.safe}>
+    <ScrollView testID="operations-login-scroll" style={styles.scroll} contentContainerStyle={styles.root} keyboardShouldPersistTaps="handled"><View style={styles.panel}>
       <ShieldCheck size={34} color={operationsColors.green} />
       <Text style={styles.title}>Operations access required</Text>
       <Text style={styles.copy}>Your marketplace account is signed in, but no Sales Review or Finance assignment is active.</Text>
       <Button fullWidth onPress={() => void auth.logout()}>Sign in with another account</Button>
       <Button fullWidth variant="outline" onPress={() => navigation.navigate('AppTabs')}>Return to marketplace</Button>
-    </View>
+    </View></ScrollView>
   </SafeAreaView>;
 
-  return <SafeAreaView style={styles.root}>
-    <View style={styles.panel}>
+  return <SafeAreaView style={styles.safe}>
+    <ScrollView testID="operations-login-scroll" style={styles.scroll} contentContainerStyle={styles.root} keyboardShouldPersistTaps="handled"><View style={styles.panel}>
       <View style={styles.brand}><Text style={styles.brandMark}>A</Text><View><Text style={styles.brandName}>AfriClay</Text><Text style={styles.brandSub}>Operations</Text></View></View>
       <Text style={styles.title}>Operations sign in</Text>
       <Text style={styles.copy}>Use your assigned staff account. Your credentials will open the dashboard roles granted to your account.</Text>
@@ -68,12 +68,14 @@ export const OperationsLogin = () => {
       <Button fullWidth variant="tertiary" onPress={() => navigation.navigate('AuthStack', { screen: 'ForgotPassword' })}>Forgot password?</Button>
       <View style={styles.notice}><ShieldCheck size={17} color={operationsColors.green} /><Text style={styles.noticeText}>Dashboard access is assigned and audited by a super administrator.</Text></View>
       <Button fullWidth variant="outline" onPress={() => navigation.navigate('AppTabs')}>Back to marketplace</Button>
-    </View>
+    </View></ScrollView>
   </SafeAreaView>;
 };
 
 const styles = StyleSheet.create({
-  root: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 18, backgroundColor: operationsColors.canvas },
+  safe: { flex: 1, minHeight: 0, backgroundColor: operationsColors.canvas },
+  scroll: { flex: 1, minHeight: 0 },
+  root: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', padding: 18, paddingBottom: 40 },
   panel: { width: '100%', maxWidth: 480, gap: 13, padding: 22, borderWidth: 1, borderColor: operationsColors.border, borderRadius: 7, backgroundColor: operationsColors.panel },
   brand: { flexDirection: 'row', alignItems: 'center', gap: 9, marginBottom: 7 },
   brandMark: { width: 38, height: 38, textAlign: 'center', textAlignVertical: 'center', borderRadius: 5, overflow: 'hidden', backgroundColor: operationsColors.green, color: '#FFF', fontSize: 22, fontWeight: '800' },
