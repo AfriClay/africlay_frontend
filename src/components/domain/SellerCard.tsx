@@ -14,7 +14,6 @@ export const SellerCard: React.FC<SellerCardProps> = ({ seller, onPress, marketp
   <Pressable style={({ pressed }) => [styles.root, marketplace && styles.marketplaceRoot, pressed && { opacity: 0.9 }]} onPress={onPress} accessibilityRole="button" accessibilityLabel={`View ${seller.name} store`}>
     <View>
       <Text style={[styles.name, marketplace && styles.marketplaceName]}>{seller.name}</Text>
-      <Text style={styles.location}>{seller.location}</Text>
     </View>
     {seller.reviewCount > 0 && <RatingBadge rating={seller.rating} reviewCount={seller.reviewCount} />}
   </Pressable>
@@ -33,10 +32,5 @@ const styles = StyleSheet.create({
     color: theme.colors.ink,
     fontSize: theme.typography.body.fontSize,
     fontWeight: '700',
-  },
-  location: {
-    color: theme.colors.muted,
-    marginTop: theme.spacing.xs,
-    fontSize: theme.typography.small.fontSize,
   },
 });

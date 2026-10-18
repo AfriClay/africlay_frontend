@@ -117,13 +117,13 @@ export const Search: React.FC<SearchProps> = ({ presentation = 'screen', focusRe
     const normalized = debouncedQuery.toLocaleLowerCase();
     if (!normalized) return [];
     return sellers
-      .filter(seller => `${seller.name} ${seller.location} ${seller.bio}`.toLocaleLowerCase().includes(normalized))
+      .filter(seller => `${seller.name} ${seller.bio}`.toLocaleLowerCase().includes(normalized))
       .map(seller => ({
         key: `seller-${seller.id}`,
         id: seller.slug ?? seller.id,
         type: 'seller',
         title: seller.name,
-        meta: seller.location || 'AfriClay seller',
+        meta: seller.verified ? 'Verified seller' : 'AfriClay seller',
         imageUrl: seller.logoUrl,
       }));
   }, [debouncedQuery, sellers]);
@@ -197,7 +197,7 @@ export const Search: React.FC<SearchProps> = ({ presentation = 'screen', focusRe
     </View> : null}
     {!inline ? <View style={[styles.discoveryCard, { backgroundColor: colors.accentSoft }]}>
       <PackageSearch size={26} color={colors.accentPressed} />
-      <View style={styles.discoveryCopy}><Text style={[styles.discoveryTitle, { color: colors.text }]}>Search the marketplace</Text><Text style={[styles.supportingText, { color: colors.textMuted }]}>Search product names, descriptions, seller names, and locations.</Text></View>
+      <View style={styles.discoveryCopy}><Text style={[styles.discoveryTitle, { color: colors.text }]}>Search the marketplace</Text><Text style={[styles.supportingText, { color: colors.textMuted }]}>Search product names, descriptions, and seller names.</Text></View>
     </View> : null}
   </View>;
 
@@ -233,7 +233,7 @@ export const Search: React.FC<SearchProps> = ({ presentation = 'screen', focusRe
         <View style={styles.resultCopy}><View style={styles.resultType}>{item.type === 'seller' ? <Store size={15} color={colors.accent} /> : <PackageSearch size={15} color={colors.accent} />}<Text style={[styles.typeText, { color: colors.accentPressed }]}>{item.type === 'seller' ? 'Seller' : 'Product'}</Text></View><Match text={item.title} query={debouncedQuery} color={colors.text} highlight={colors.accentPressed} /><Text numberOfLines={1} style={[styles.resultMeta, { color: colors.textMuted }]}>{item.meta}</Text></View>
       </Pressable>;
     }}
-    ListEmptyComponent={<EmptyState title="No matches found" description="Try a product name, seller, or location." />}
+    ListEmptyComponent={<EmptyState title="No matches found" description="Try a product name or seller." />}
   />;
 
   const searchContent = hasBlockingFailure ? (

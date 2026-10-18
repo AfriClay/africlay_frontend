@@ -114,7 +114,6 @@ export const ProductDetails: React.FC = () => {
         {sellerQuery.isError ? <ErrorState message="Unable to load seller details." onRetry={() => void sellerQuery.refetch()} /> : <Pressable disabled={!seller} accessibilityState={{ disabled: !seller }} style={styles.sellerCard} onPress={() => seller && (navigation as any).navigate('SellerStore', { sellerId: seller.id })} accessibilityRole="button">
           <View>
             <Text style={styles.sellerName}>{seller?.name ?? (sellerQuery.isLoading ? 'Loading seller...' : 'Seller unavailable')}</Text>
-            <Text style={styles.sellerMeta}>{seller?.location}</Text>
           </View>
           {seller && <Text style={styles.sellerLink}>View Store</Text>}
         </Pressable>}
@@ -189,10 +188,6 @@ const styles = StyleSheet.create({
   sellerName: {
     color: theme.colors.ink,
     fontWeight: '700',
-  },
-  sellerMeta: {
-    color: theme.colors.muted,
-    marginTop: theme.spacing.xs,
   },
   sellerLink: {
     color: theme.colors.primary.DEFAULT,

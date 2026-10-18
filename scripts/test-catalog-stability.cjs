@@ -250,6 +250,21 @@ test('store list and detail map real store identifiers and media URLs', async ()
   assert.equal((await service.fetchOwnStore(store.owner)).id, store.id);
 });
 
+test('public marketplace surfaces do not expose seller dispatch locations', () => {
+  const publicFiles = [
+    '../src/screens/home/ProductDetails.tsx',
+    '../src/screens/home/SellerStore.tsx',
+    '../src/screens/search/Search.tsx',
+    '../src/components/domain/SellerCard.tsx',
+  ];
+  for (const file of publicFiles) {
+    assert.doesNotMatch(readFileSync(path.join(__dirname, file), 'utf8'), /seller\.location/);
+  }
+  const settings = readFileSync(path.join(__dirname, '../src/screens/seller/StoreSettings.tsx'), 'utf8');
+  assert.match(settings, /Dispatch location/);
+  assert.match(settings, /updateStore\(store\.slug, \{ city \}\)/);
+});
+
 test('store products use public products and the real store UUID', async () => {
   const { service, requests } = harness();
   assert.equal((await service.fetchProductsBySeller(store.id)).length, 1);

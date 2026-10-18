@@ -12,7 +12,7 @@ import { RatingBadge } from '../../components/ui/RatingBadge';
 import { ProductCard } from '../../components/domain/ProductCard';
 import { HomeStackParamList } from '../../navigation/HomeStack';
 import { Image } from 'expo-image';
-import { BadgeCheck, MapPin } from 'lucide-react-native';
+import { BadgeCheck } from 'lucide-react-native';
 import { ErrorState } from '../../components/ui/ErrorState';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { recordId } from '../../services/catalogContract';
@@ -57,7 +57,7 @@ export const SellerStore: React.FC = () => {
   const storeHeader = <>
     {seller.bannerUrl ? <Image source={{ uri: seller.bannerUrl }} style={[styles.banner, isExpanded && styles.desktopBanner]} contentFit="cover" cachePolicy="memory-disk" /> : null}
     <View style={styles.header}>
-      <View style={styles.storeIdentity}><View style={styles.logo}>{seller.logoUrl ? <Image source={{ uri: seller.logoUrl }} style={styles.logoImage} contentFit="cover" cachePolicy="memory-disk" /> : <Text style={styles.logoText}>{seller.name.slice(0, 2).toUpperCase()}</Text>}</View><View style={styles.storeCopy}><Text style={styles.name}>{seller.name}</Text><View style={styles.metaRow}><MapPin color={theme.colors.muted} size={14} /><Text style={styles.meta}>{seller.location}</Text></View></View></View>
+      <View style={styles.storeIdentity}><View style={styles.logo}>{seller.logoUrl ? <Image source={{ uri: seller.logoUrl }} style={styles.logoImage} contentFit="cover" cachePolicy="memory-disk" /> : <Text style={styles.logoText}>{seller.name.slice(0, 2).toUpperCase()}</Text>}</View><View style={styles.storeCopy}><Text style={styles.name}>{seller.name}</Text></View></View>
       <View style={styles.badgeRow}>
         {seller.reviewCount > 0 && <RatingBadge rating={seller.rating} reviewCount={seller.reviewCount} />}
         {seller.verified ? <View style={styles.verifiedRow}><BadgeCheck color={theme.colors.success} size={16} /><Text style={styles.verified}>Verified Seller</Text></View> : null}
@@ -138,11 +138,6 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     marginBottom: theme.spacing.xs,
   },
-  meta: {
-    color: theme.colors.muted,
-    marginLeft: theme.spacing.xs,
-  },
-  metaRow: { flexDirection: 'row', alignItems: 'center', marginBottom: theme.spacing.sm },
   badgeRow: {
     flexDirection: 'row',
     alignItems: 'center',
