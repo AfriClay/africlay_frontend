@@ -73,8 +73,8 @@ export const ForgotPassword: React.FC = () => {
         <Text style={styles.title}>Enter Reset Code</Text>
         <Text style={styles.copy}>We sent a 6-digit code to your email. Enter it below and choose a new password.</Text>
         <OTPInput value={code} onChange={setCode} onComplete={() => undefined} error={submitError ?? undefined} accessibilityLabel="Password reset code" />
-        <Input label="New password" value={password} onChangeText={setPassword} secureTextEntry placeholder="New password" accessibilityLabel="New password" />
-        <Input label="Confirm password" value={confirmPassword} onChangeText={setConfirmPassword} secureTextEntry placeholder="Repeat new password" accessibilityLabel="Confirm new password" />
+        <Input label="New password" required value={password} onChangeText={setPassword} secureTextEntry placeholder="New password" accessibilityLabel="New password" autoComplete="new-password" />
+        <Input label="Confirm password" required value={confirmPassword} onChangeText={setConfirmPassword} secureTextEntry placeholder="Repeat new password" accessibilityLabel="Confirm new password" autoComplete="new-password" />
         <Button fullWidth onPress={handleReset} loading={loading} loadingLabel="Resetting password" disabled={loading} accessibilityLabel="Reset password">Reset Password</Button>
       </FormFrame>
     );
@@ -98,6 +98,7 @@ export const ForgotPassword: React.FC = () => {
             autoCorrect={false}
             error={fieldState.error?.message}
             accessibilityLabel="Email"
+            required
           />
         )}
       />

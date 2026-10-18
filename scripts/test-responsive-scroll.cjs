@@ -29,7 +29,10 @@ test('checkout and short-screen entry pages own a vertical scroll viewport', () 
   assert.match(operationsLogin, /<ScrollView[^>]+contentContainerStyle=\{styles\.root\}/);
   assert.match(startSelling, /<ScrollView[^>]+contentContainerStyle=\{styles\.content\}/);
   assert.match(nativeForms, /<ScrollView/);
-  assert.match(nativeForms, /contentContainerStyle=\{\[style, \{ flexGrow: 1, flexShrink: 0, flexBasis: 'auto' \}\]\}/);
+  assert.match(nativeForms, /contentContainerStyle=\{styles\.content\}/);
+  assert.match(nativeForms, /content: \{ flexGrow: 1, flexShrink: 0, flexBasis: 'auto'/);
+  assert.match(nativeForms, /<View style=\{\[styles\.inner, style\]\}>/);
+  assert.match(nativeForms, /maxWidth: 560/);
 });
 
 test('every content screen has a vertical scrolling owner or an intentional exemption', () => {

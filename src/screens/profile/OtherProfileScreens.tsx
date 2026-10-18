@@ -92,9 +92,9 @@ export const Settings: React.FC = () => {
   return <SafeAreaView style={styles.container} edges={['bottom']}><ScrollView contentContainerStyle={styles.content}>
     <Text style={styles.heading}>Profile</Text>
     {profileQuery.isLoading ? <Text style={styles.note}>Loading profile...</Text> : editing ? <>
-      <Input label="Full name" accessibilityLabel="Full name" value={name} onChangeText={setName} />
-      <Input label="Phone" accessibilityLabel="Phone" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
-      <Input label="Bio" accessibilityLabel="Bio" value={bio} onChangeText={setBio} />
+      <Input label="Full name" required accessibilityLabel="Full name" value={name} onChangeText={setName} autoComplete="name" />
+      <Input label="Phone" optional accessibilityLabel="Phone" value={phone} onChangeText={setPhone} keyboardType="phone-pad" autoComplete="tel" />
+      <Input label="Bio" optional accessibilityLabel="Bio" value={bio} onChangeText={setBio} multiline placeholder="Tell customers a little about yourself" />
       {error && <Text style={styles.error} accessibilityRole="alert">{error}</Text>}
       <Button onPress={() => void save()} loading={saving}>Save Profile</Button>
       <Button variant="outline" onPress={() => setEditing(false)} disabled={saving}>Cancel</Button>

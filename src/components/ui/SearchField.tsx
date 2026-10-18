@@ -26,18 +26,19 @@ type Props = {
   autoFocus?: boolean;
   showCancel?: boolean;
   cancelAsIcon?: boolean;
+  editable?: boolean;
   containerStyle?: StyleProp<ViewStyle>;
   onKeyPress?: (event: NativeSyntheticEvent<TextInputKeyPressEventData>) => void;
 };
 
 export const SearchField = forwardRef<TextInput, Props>(({ value, onChangeText, onSubmit, onCancel,
   placeholder = 'Search products and sellers', accessibilityLabel = 'Search products and sellers', autoFocus,
-  showCancel = false, cancelAsIcon = false, containerStyle, onKeyPress }, ref) => {
+  showCancel = false, cancelAsIcon = false, editable = true, containerStyle, onKeyPress }, ref) => {
   const { colors } = useAppTheme();
   const [focused, setFocused] = useState(false);
   return (
     <View style={[styles.row, containerStyle]}>
-      <View style={[styles.field, { backgroundColor: colors.surface, borderColor: focused ? colors.focusRing : colors.border }]}>
+      <View style={[styles.field, { backgroundColor: colors.surface, borderColor: focused ? colors.focusRing : colors.border }, !editable && styles.disabled]}>
         <Search color={focused ? colors.accent : colors.textMuted} size={20} strokeWidth={1.9} />
         <TextInput
           ref={ref}
@@ -55,11 +56,12 @@ export const SearchField = forwardRef<TextInput, Props>(({ value, onChangeText, 
           autoCapitalize="none"
           autoCorrect={false}
           clearButtonMode="never"
+          editable={editable}
           style={[styles.input, { color: colors.text }, Platform.OS === 'web' ? ({ outlineStyle: 'none' } as object) : null]}
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
         />
-        {value.length > 0 ? <Button variant="icon" size="sm" icon={<X size={19} color={colors.textMuted} />} onPress={() => onChangeText('')} accessibilityLabel="Clear search" /> : null}
+        {value.length > 0 ? <Button variant="icon" size="sm" disabled={!editable} icon={<X size={19} color={colors.textMuted} />} onPress={() => onChangeText('')} accessibilityLabel="Clear search" /> : null}
       </View>
       {showCancel && onCancel ? cancelAsIcon
         ? <Button variant="icon" size="sm" icon={<X size={20} color={colors.text} />} onPress={onCancel} accessibilityLabel="Close search" />
@@ -112,6 +114,7 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.body.fontSize,
     lineHeight: theme.typography.body.lineHeight,
   },
+  disabled: { opacity: 0.55 },
   trigger: {
     minHeight: 52,
     minWidth: 0,

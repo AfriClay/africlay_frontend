@@ -1,7 +1,8 @@
 import React, { useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { Search, X } from 'lucide-react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { X } from 'lucide-react-native';
 import { Button } from '../ui/Button';
+import { SearchField } from '../ui/SearchField';
 import type { CatalogTag } from '../../services/productService';
 import { theme } from '../../theme';
 
@@ -76,18 +77,7 @@ export const TagPicker: React.FC<Props> = ({
         <X color={theme.colors.white} size={14} />
       </Pressable>)}
     </View> : null}
-    <View style={styles.searchField}>
-      <Search color={theme.colors.muted} size={18} />
-      <TextInput
-        value={query}
-        onChangeText={setQuery}
-        editable={!disabled}
-        placeholder="Search tags"
-        placeholderTextColor={theme.colors.muted}
-        style={styles.searchInput}
-        accessibilityLabel="Search tags"
-      />
-    </View>
+    <SearchField value={query} onChangeText={setQuery} editable={!disabled} placeholder="Search tags" accessibilityLabel="Search tags" />
     <View style={styles.options}>
       {visibleTags.map(tag => <Pressable
         key={tag.id}
@@ -117,8 +107,6 @@ const styles = StyleSheet.create({
   selectedList: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.xs, marginBottom: theme.spacing.sm },
   selectedChip: { minHeight: 36, flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs, paddingHorizontal: theme.spacing.sm, borderRadius: theme.radii.pill, backgroundColor: theme.colors.primary.DEFAULT },
   selectedText: { color: theme.colors.white, fontSize: theme.typography.small.fontSize, fontWeight: '700' },
-  searchField: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm, paddingHorizontal: theme.spacing.md, borderWidth: 1, borderColor: theme.colors.border, borderRadius: theme.radii.md, backgroundColor: theme.colors.white },
-  searchInput: { flex: 1, minWidth: 0, paddingVertical: theme.spacing.sm, color: theme.colors.ink },
   options: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.xs, marginTop: theme.spacing.sm },
   optionChip: { minHeight: 36, justifyContent: 'center', paddingHorizontal: theme.spacing.sm, borderRadius: theme.radii.pill, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.white },
   optionDisabled: { opacity: 0.45 },

@@ -14,6 +14,7 @@ import { getApiErrorMessage } from '../../services/api';
 import { catalogKeys } from '../../services/catalogQueries';
 import { shippingService } from '../../services/shippingService';
 import { theme } from '../../theme';
+import { FormField } from '../../components/ui/FormField';
 
 export const StorefrontSetup: React.FC = () => {
   const navigation = useNavigation<any>();
@@ -54,11 +55,13 @@ export const StorefrontSetup: React.FC = () => {
     <View style={styles.headingIcon}><Store color={theme.colors.primary.DEFAULT} size={30} /></View>
     <Text style={styles.title}>Set up your storefront</Text>
     <Text style={styles.copy}>Create your store before submitting verification documents.</Text>
-    <Pressable style={styles.logoPicker} onPress={() => void pickLogo()} accessibilityRole="button" accessibilityLabel="Choose store logo">
-      {logo ? <Image source={{ uri: logo.uri }} style={styles.logo} /> : <Camera color={theme.colors.primary.DEFAULT} size={28} />}
-      <Text style={styles.logoText}>{logo ? 'Change logo' : 'Add store logo'}</Text>
-    </Pressable>
-    <Input label="Store name" value={name} onChangeText={setName} placeholder="Your business name" accessibilityLabel="Store name" />
+    <FormField label="Store logo" optional helperText="Use a square JPG or PNG for the clearest result.">
+      <Pressable style={styles.logoPicker} onPress={() => void pickLogo()} accessibilityRole="button" accessibilityLabel="Choose store logo">
+        {logo ? <Image source={{ uri: logo.uri }} style={styles.logo} /> : <Camera color={theme.colors.primary.DEFAULT} size={28} />}
+        <Text style={styles.logoText}>{logo ? 'Change logo' : 'Add store logo'}</Text>
+      </Pressable>
+    </FormField>
+    <Input label="Store name" required value={name} onChangeText={setName} placeholder="Your business name" accessibilityLabel="Store name" />
     <DispatchTownPicker
       towns={townsQuery.data ?? []}
       value={city}
@@ -78,7 +81,7 @@ const styles = StyleSheet.create({
   headingIcon: { width: 60, height: 60, borderRadius: 30, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.primary.tint },
   title: { marginTop: theme.spacing.md, color: theme.colors.ink, fontSize: theme.typography.h2.fontSize, fontWeight: '800' },
   copy: { color: theme.colors.muted, lineHeight: 22, marginTop: theme.spacing.sm, marginBottom: theme.spacing.lg },
-  logoPicker: { height: 150, borderRadius: theme.radii.lg, backgroundColor: theme.colors.white, alignItems: 'center', justifyContent: 'center', marginBottom: theme.spacing.lg, ...theme.shadows.sm },
+  logoPicker: { minHeight: 140, borderRadius: theme.radii.control, borderWidth: 1, borderStyle: 'dashed', borderColor: theme.colors.border, backgroundColor: theme.colors.white, alignItems: 'center', justifyContent: 'center' },
   logo: { width: 88, height: 88, borderRadius: 44 },
   logoText: { marginTop: theme.spacing.sm, color: theme.colors.primary.DEFAULT, fontWeight: '700' },
   error: { color: theme.colors.error, marginBottom: theme.spacing.md },

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Star } from 'lucide-react-native';
 import { useAuth } from '../../hooks/useAuth';
@@ -10,6 +10,7 @@ import { Button } from '../ui/Button';
 import { ErrorState } from '../ui/ErrorState';
 import { GuestAuthSheet } from '../ui/GuestAuthSheet';
 import { ReviewCard } from './ReviewCard';
+import { Input } from '../ui/Input';
 
 export const ReviewSection = ({ target }: { target: ReviewTarget }) => {
   const { user } = useAuth();
@@ -55,7 +56,7 @@ export const ReviewSection = ({ target }: { target: ReviewTarget }) => {
     {(user && (composing || editingId)) && <View style={styles.form}>
       <Text style={styles.label}>{editingId ? 'Edit your review' : 'Your rating'}</Text>
       <View style={styles.stars}>{[1, 2, 3, 4, 5].map(value => <Pressable key={value} onPress={() => setRating(value)} accessibilityRole="button" accessibilityLabel={`${value} star rating`}><Star size={26} color={theme.colors.secondary.dark} fill={value <= rating ? theme.colors.secondary.DEFAULT : 'transparent'} /></Pressable>)}</View>
-      <TextInput value={comment} onChangeText={setComment} placeholder="Share your experience" placeholderTextColor={theme.colors.muted} multiline style={styles.comment} accessibilityLabel="Review comment" />
+      <Input label="Review" value={comment} onChangeText={setComment} placeholder="Share your experience" multiline accessibilityLabel="Review comment" />
       <View style={styles.formActions}>
         <Button size="sm" variant="ghost" onPress={() => { setEditingId(undefined); setComposing(false); setComment(''); setActionError(undefined); }}>Cancel</Button>
         <Button size="sm" onPress={() => void save.mutateAsync()} loading={save.isPending}>{editingId ? 'Save review' : 'Post review'}</Button>
@@ -76,7 +77,6 @@ const styles = StyleSheet.create({
   form: { backgroundColor: theme.colors.white, borderRadius: theme.radii.lg, padding: theme.spacing.md, marginBottom: theme.spacing.md, borderWidth: 1, borderColor: theme.colors.border },
   label: { color: theme.colors.ink, fontWeight: '700', marginBottom: theme.spacing.sm },
   stars: { flexDirection: 'row', gap: theme.spacing.xs, marginBottom: theme.spacing.md },
-  comment: { minHeight: 96, textAlignVertical: 'top', color: theme.colors.ink, borderWidth: 1, borderColor: theme.colors.border, borderRadius: theme.radii.md, padding: theme.spacing.md },
   formActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: theme.spacing.sm, marginTop: theme.spacing.md },
   error: { color: theme.colors.error, marginTop: theme.spacing.sm },
 });

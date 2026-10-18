@@ -49,12 +49,12 @@ export function AddressForm({ initial, onSave, onCancel }: {
   };
 
   return <View style={styles.form}>
-    <Input label="Recipient" value={recipient} onChangeText={setRecipient} accessibilityLabel="Recipient" />
-    <Input label="Phone" value={phone} onChangeText={setPhone} keyboardType="phone-pad" accessibilityLabel="Phone" />
-    <Input label="Street address" value={street} onChangeText={setStreet} accessibilityLabel="Street address" />
-    <Input label="City" value={city} onChangeText={setCity} accessibilityLabel="City" />
-    <Input label="Postal code" value={postal} onChangeText={setPostal} accessibilityLabel="Postal code" />
-    <Input label="Country" value={country} onChangeText={setCountry} accessibilityLabel="Country" />
+    <Input label="Recipient" optional value={recipient} onChangeText={setRecipient} accessibilityLabel="Recipient" autoComplete="name" />
+    <Input label="Phone" optional value={phone} onChangeText={setPhone} keyboardType="phone-pad" accessibilityLabel="Phone" autoComplete="tel" />
+    <Input label="Street address" required value={street} onChangeText={setStreet} accessibilityLabel="Street address" autoComplete="street-address" />
+    <Input label="City" required value={city} onChangeText={setCity} accessibilityLabel="City" autoComplete="postal-address-locality" />
+    <Input label="Postal code" required value={postal} onChangeText={setPostal} accessibilityLabel="Postal code" autoComplete="postal-code" />
+    <Input label="Country" required value={country} onChangeText={setCountry} accessibilityLabel="Country" autoComplete="country" />
     <View style={styles.defaultRow}><Text style={styles.label}>Default address</Text><Switch value={isDefault} onValueChange={setDefault} /></View>
     {error && <Text style={styles.error} accessibilityRole="alert">{error}</Text>}
     <View style={styles.actions}><Button variant="outline" onPress={onCancel} disabled={busy}>Cancel</Button><Button onPress={() => void save()} loading={busy}>Save Address</Button></View>

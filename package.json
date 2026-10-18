@@ -56,7 +56,7 @@
     "web": "expo start --web",
     "export:web": "expo export --platform web",
     "build": "expo export --platform web",
-    "test": "node scripts/test-catalog-stability.cjs && node scripts/test-guest-marketplace.cjs && node scripts/test-operations-dashboards.cjs && node scripts/test-responsive-scroll.cjs",
+    "test": "node scripts/test-catalog-stability.cjs && node scripts/test-guest-marketplace.cjs && node scripts/test-operations-dashboards.cjs && node scripts/test-responsive-scroll.cjs && node scripts/test-form-consistency.cjs",
     "test:guest": "node scripts/test-guest-marketplace.cjs"
   },
   "private": true,

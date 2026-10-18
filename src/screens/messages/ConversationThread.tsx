@@ -24,6 +24,7 @@ export const ConversationThread: React.FC = () => {
   const [text, setText] = useState('');
   const [error, setError] = useState<string>();
   const [sending, setSending] = useState(false);
+  const [composerFocused, setComposerFocused] = useState(false);
   const [authSheet, setAuthSheet] = useState(false);
   const busy = useRef(false);
   const listRef = useRef<FlatList<Message>>(null);
@@ -57,7 +58,9 @@ export const ConversationThread: React.FC = () => {
       {error && <Text style={styles.error} accessibilityRole="alert">{error}</Text>}
       <View style={styles.composer}>
         <TextInput value={text} onChangeText={setText} placeholder="Write a message..." placeholderTextColor={theme.colors.muted}
-          style={styles.input} accessibilityLabel="Message input" returnKeyType="send" onSubmitEditing={() => void send()} />
+          style={[styles.input, composerFocused && styles.inputFocused, Platform.OS === 'web' ? ({ outlineStyle: 'none' } as object) : null]}
+          accessibilityLabel="Message input" returnKeyType="send" onSubmitEditing={() => void send()}
+          onFocus={() => setComposerFocused(true)} onBlur={() => setComposerFocused(false)} />
         <Button onPress={() => void send()} disabled={!text.trim() || !userId} loading={sending} loadingLabel="Sending" style={styles.sendButton}>Send</Button>
       </View>
     </KeyboardAvoidingView>
@@ -73,6 +76,7 @@ const styles = StyleSheet.create({
   composer: { flexDirection: 'row', padding: theme.spacing.md, borderTopWidth: 1, borderTopColor: theme.colors.border, backgroundColor: theme.colors.white },
   input: { flex: 1, minHeight: 48, paddingHorizontal: theme.spacing.md, paddingVertical: theme.spacing.sm, color: theme.colors.ink,
     backgroundColor: theme.colors.cream, borderWidth: 1, borderColor: theme.colors.border, borderRadius: theme.radii.md, marginRight: theme.spacing.sm },
+  inputFocused: { borderColor: theme.colors.primary.DEFAULT },
   sendButton: { minWidth: 88 },
   notice: { color: theme.colors.muted, padding: theme.spacing.lg },
   error: { color: theme.colors.error, padding: theme.spacing.md },

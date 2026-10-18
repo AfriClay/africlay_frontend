@@ -14,6 +14,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../../navigation/AuthStack';
 import { getAuthErrorMessage } from '../../services/authService';
 import { Check } from 'lucide-react-native';
+import { ChoiceGroup } from '../../components/ui/ChoiceGroup';
 
 type RegisterForm = {
   name: string;
@@ -34,7 +35,7 @@ export const Register: React.FC = () => {
     if (root?.canGoBack()) root.goBack();
     else root?.reset({ index: 0, routes: [{ name: 'AppTabs' }] });
   };
-  const { control, handleSubmit, setValue } = useForm<RegisterForm>({
+  const { control, handleSubmit, setValue, formState } = useForm<RegisterForm>({
     resolver: zodResolver(registerSchema),
     defaultValues: { name: '', email: '', password: '', confirmPassword: '', acceptTerms: false },
   });
@@ -55,7 +56,7 @@ export const Register: React.FC = () => {
         control={control}
         name="name"
         render={({ field: { onChange, value }, fieldState }) => (
-          <Input label="Name" value={value} onChangeText={onChange} placeholder="Your name" error={fieldState.error?.message} accessibilityLabel="Name" />
+          <Input label="Name" required value={value} onChangeText={onChange} placeholder="Your name" error={fieldState.error?.message} accessibilityLabel="Name" autoComplete="name" />
         )}
       />
       <Controller
@@ -73,6 +74,7 @@ export const Register: React.FC = () => {
             autoCorrect={false}
             error={fieldState.error?.message}
             accessibilityLabel="Email"
+            required
           />
         )}
       />
@@ -80,21 +82,27 @@ export const Register: React.FC = () => {
         control={control}
         name="password"
         render={({ field: { onChange, value }, fieldState }) => (
-          <Input label="Password" value={value} onChangeText={onChange} placeholder="Create a password" secureTextEntry error={fieldState.error?.message} accessibilityLabel="Password" />
+          <Input label="Password" required value={value} onChangeText={onChange} placeholder="Create a password" secureTextEntry error={fieldState.error?.message} accessibilityLabel="Password" autoComplete="new-password" />
         )}
       />
       <Controller
         control={control}
         name="confirmPassword"
         render={({ field: { onChange, value }, fieldState }) => (
-          <Input label="Confirm password" value={value} onChangeText={onChange} placeholder="Repeat your password" secureTextEntry error={fieldState.error?.message} accessibilityLabel="Confirm password" />
+          <Input label="Confirm password" required value={value} onChangeText={onChange} placeholder="Repeat your password" secureTextEntry error={fieldState.error?.message} accessibilityLabel="Confirm password" autoComplete="new-password" />
         )}
       />
-      <Text style={styles.roleLabel}>Account type</Text>
-      <View style={styles.roleRow}>{(['buyer', 'seller', 'both'] as const).map(option =>
-        <Pressable key={option} onPress={() => setRole(option)} accessibilityRole="radio" accessibilityState={{ selected: role === option }} style={[styles.roleOption, role === option && styles.roleSelected]}>
-          <Text style={styles.roleText}>{option === 'both' ? 'Buy & Sell' : option === 'buyer' ? 'Buyer' : 'Seller'}</Text>
-        </Pressable>)}</View>
+      <ChoiceGroup
+        label="Account type"
+        required
+        value={role}
+        onChange={setRole}
+        options={[
+          { value: 'buyer', label: 'Buyer' },
+          { value: 'seller', label: 'Seller' },
+          { value: 'both', label: 'Buy & sell' },
+        ]}
+      />
       <Pressable
         onPress={() => {
           const nextValue = !acceptTerms;
@@ -108,6 +116,7 @@ export const Register: React.FC = () => {
         <View style={[styles.checkbox, acceptTerms ? styles.checkboxChecked : null]}>{acceptTerms ? <Check size={16} color={theme.colors.white} strokeWidth={3} /> : null}</View>
         <Text style={styles.checkboxLabel}>I agree to the Terms</Text>
       </Pressable>
+      {formState.errors.acceptTerms?.message ? <Text style={styles.error} accessibilityRole="alert">{formState.errors.acceptTerms.message}</Text> : null}
       {submitError ? <Text style={styles.error}>{submitError}</Text> : null}
       <Button fullWidth onPress={handleSubmit(onSubmit)} disabled={!acceptTerms || auth.loading} loading={auth.loading} loadingLabel="Creating account" accessibilityLabel="Create Account">Create Account</Button>
       <View style={styles.footer}><Text style={styles.footerText}>Already have an account?</Text><Button variant="tertiary" size="sm" onPress={() => navigation.navigate(ROUTES.Login)}>Log in</Button></View>
@@ -117,11 +126,6 @@ export const Register: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-  roleLabel: { color: theme.colors.ink, fontWeight: '700', marginBottom: theme.spacing.sm },
-  roleRow: { flexDirection: 'row', gap: theme.spacing.sm, marginBottom: theme.spacing.lg },
-  roleOption: { flex: 1, minHeight: 48, borderWidth: 1, borderColor: theme.colors.border, borderRadius: theme.radii.control, padding: theme.spacing.sm, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.white },
-  roleSelected: { borderColor: theme.colors.primary.DEFAULT, backgroundColor: theme.colors.primary.tint },
-  roleText: { color: theme.colors.ink, fontWeight: '700' },
   container: {
     flex: 1,
     padding: theme.spacing.lg,

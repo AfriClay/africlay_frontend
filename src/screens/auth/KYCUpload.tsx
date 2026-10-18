@@ -12,6 +12,8 @@ import { storeService } from '../../services/storeService';
 import { getApiErrorMessage } from '../../services/api';
 import { catalogKeys } from '../../services/catalogQueries';
 import { theme } from '../../theme';
+import { ChoiceGroup } from '../../components/ui/ChoiceGroup';
+import { FormField } from '../../components/ui/FormField';
 
 const documentTypes = [
   { label: 'National ID', value: 'national_id' }, { label: 'Passport', value: 'passport' },
@@ -88,19 +90,17 @@ export const KYCUpload: React.FC = () => {
     <View style={styles.icon}><FileCheck2 color={theme.colors.primary.DEFAULT} size={32} /></View>
     <Text style={styles.title}>Verify your seller account</Text>
     {kycQuery.data?.status === 'rejected' && <Text style={styles.error}>Previous submission rejected: {kycQuery.data.rejection_reason || 'Please review your documents.'}</Text>}
-    <Input label="Business name" value={businessName} onChangeText={setBusinessName} />
-    <Input label="Registration number" value={registrationNumber} onChangeText={setRegistrationNumber} />
-    <Input label="Tax identification number" value={taxNumber} onChangeText={setTaxNumber} />
-    <Text style={styles.label}>Document type</Text>
-    <View style={styles.chips}>{documentTypes.map(type => <Pressable key={type.value} onPress={() => setDocumentType(type.value)} style={[styles.chip, documentType === type.value && styles.chipActive]} accessibilityRole="radio" accessibilityState={{ selected: documentType === type.value }}>
-      <Text style={[styles.chipText, documentType === type.value && styles.chipTextActive]}>{type.label}</Text>
-    </Pressable>)}</View>
-    <Pressable style={styles.upload} onPress={() => void pickDocument()} accessibilityRole="button" accessibilityLabel="Select verification document">
-      <Upload color={theme.colors.primary.DEFAULT} size={26} />
-      <Text style={styles.uploadTitle}>{document ? 'Change document' : 'Select document image'}</Text>
-      <Text style={styles.uploadCopy}>JPG or PNG, up to 10 MB</Text>
-    </Pressable>
-    {document && <Image source={{ uri: document.uri }} style={styles.preview} />}
+    <Input label="Business name" required value={businessName} onChangeText={setBusinessName} />
+    <Input label="Registration number" required value={registrationNumber} onChangeText={setRegistrationNumber} />
+    <Input label="Tax identification number" required value={taxNumber} onChangeText={setTaxNumber} autoCapitalize="characters" />
+    <ChoiceGroup label="Document type" required value={documentType} onChange={setDocumentType} options={documentTypes} />
+    <FormField label="Verification document" required helperText="JPG or PNG, up to 10 MB">
+      <Pressable style={styles.upload} onPress={() => void pickDocument()} accessibilityRole="button" accessibilityLabel="Select verification document">
+        <Upload color={theme.colors.primary.DEFAULT} size={26} />
+        <Text style={styles.uploadTitle}>{document ? 'Change document' : 'Select document image'}</Text>
+      </Pressable>
+      {document && <Image source={{ uri: document.uri }} style={styles.preview} />}
+    </FormField>
     {error && <Text style={styles.error} accessibilityRole="alert">{error}</Text>}
     <Button onPress={() => void submit()} loading={loading} disabled={!document || kycQuery.isFetching}>Submit for Verification</Button>
   </ScrollView>;
@@ -111,15 +111,8 @@ const styles = StyleSheet.create({
   icon: { width: 64, height: 64, borderRadius: 32, backgroundColor: theme.colors.primary.tint, alignItems: 'center', justifyContent: 'center', marginBottom: theme.spacing.md },
   title: { color: theme.colors.ink, fontSize: theme.typography.h2.fontSize, fontWeight: '800' },
   copy: { color: theme.colors.muted, lineHeight: 22, marginTop: theme.spacing.sm, marginBottom: theme.spacing.lg },
-  label: { color: theme.colors.ink, fontWeight: '700', marginBottom: theme.spacing.sm },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm, marginBottom: theme.spacing.lg },
-  chip: { paddingHorizontal: theme.spacing.md, paddingVertical: theme.spacing.sm, borderRadius: theme.radii.pill, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.white },
-  chipActive: { backgroundColor: theme.colors.primary.DEFAULT, borderColor: theme.colors.primary.DEFAULT },
-  chipText: { color: theme.colors.ink, fontSize: theme.typography.small.fontSize },
-  chipTextActive: { color: theme.colors.white, fontWeight: '700' },
-  upload: { minHeight: 150, borderRadius: theme.radii.lg, borderWidth: 1, borderStyle: 'dashed', borderColor: theme.colors.primary.DEFAULT, backgroundColor: theme.colors.white, alignItems: 'center', justifyContent: 'center', padding: theme.spacing.lg },
+  upload: { minHeight: 140, borderRadius: theme.radii.control, borderWidth: 1, borderStyle: 'dashed', borderColor: theme.colors.border, backgroundColor: theme.colors.white, alignItems: 'center', justifyContent: 'center', padding: theme.spacing.lg },
   uploadTitle: { color: theme.colors.ink, fontWeight: '800', marginTop: theme.spacing.sm },
-  uploadCopy: { color: theme.colors.muted, marginTop: theme.spacing.xs },
   preview: { width: 92, height: 92, borderRadius: theme.radii.md, marginVertical: theme.spacing.md },
   error: { color: theme.colors.error, marginVertical: theme.spacing.md },
   actions: { gap: theme.spacing.sm },

@@ -286,6 +286,7 @@ export const Checkout: React.FC = () => {
     <Text style={styles.sectionTitle}>M-Pesa Payment</Text>
     <Input
       label="Phone number"
+      required
       value={phoneNumber}
       onChangeText={value => { setPhoneTouched(true); setPhoneNumber(value); setError(undefined); }}
       placeholder="254712345678"

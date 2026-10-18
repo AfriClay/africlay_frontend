@@ -93,8 +93,8 @@ export const SellerOrders: React.FC = () => {
         {item.status === 'shipped' && item.courierName ? <View style={styles.orderNotice}><Truck size={18} color={theme.colors.primary.dark} /><View style={styles.deliveryCopy}><Text style={styles.noticeTitle}>{item.courierName}</Text><Text style={styles.noticeText}>Tracking {item.trackingNumber} · {formatCurrency(item.shippingCost, item.currency)} shipping</Text></View></View> : null}
         {showShippingForm ? <View style={styles.shippingForm}>
           <Text style={styles.formTitle}>Shipping details</Text>
-          <Input label="Courier name" value={courierName} onChangeText={setCourierName} placeholder="Delivery provider" />
-          <Input label="Tracking number" value={trackingNumber} onChangeText={setTrackingNumber} placeholder="Tracking or consignment number" autoCapitalize="characters" />
+          <Input label="Courier name" required value={courierName} onChangeText={setCourierName} placeholder="Delivery provider" />
+          <Input label="Tracking number" required value={trackingNumber} onChangeText={setTrackingNumber} placeholder="Tracking or consignment number" autoCapitalize="characters" />
           {formError ? <Text style={styles.errorText} accessibilityRole="alert">{formError}</Text> : null}
           <View style={[styles.formActions, compactActions && styles.formActionsCompact]}><Button style={compactActions && styles.actionButton} fullWidth={compactActions} variant="secondary" disabled={isUpdating} onPress={() => { setShippingOrderId(undefined); setFormError(undefined); }}>Back</Button><Button style={compactActions && styles.actionButton} fullWidth={compactActions} loading={isUpdating} loadingLabel="Saving shipment" onPress={() => shipOrder(item.id)}>Confirm Shipment</Button></View>
         </View> : null}

@@ -218,19 +218,19 @@ export const Wallet: React.FC = () => {
           <Button size="sm" variant="secondary" onPress={() => setPayoutPhone(user.phoneNumber ?? '')}>Change</Button>
         </View>
         {payoutPhone ? <View style={styles.formBand}>
-          <Input label="New M-Pesa number" value={payoutPhone} onChangeText={setPayoutPhone} placeholder="254712345678" keyboardType="phone-pad" autoComplete="tel" />
-          <Input label="Account password" value={accountPassword} onChangeText={setAccountPassword} placeholder="Confirm your identity" secureTextEntry autoComplete="current-password" />
+          <Input label="New M-Pesa number" required value={payoutPhone} onChangeText={setPayoutPhone} placeholder="254712345678" keyboardType="phone-pad" autoComplete="tel" />
+          <Input label="Account password" required value={accountPassword} onChangeText={setAccountPassword} placeholder="Confirm your identity" secureTextEntry autoComplete="current-password" />
           <View style={styles.actions}><Button variant="secondary" onPress={() => { setPayoutPhone(''); setAccountPassword(''); setPayoutError(undefined); }}>Cancel</Button><Button loading={savePayoutAccount.isPending} loadingLabel="Saving" onPress={submitPayoutAccount}>Save number</Button></View>
         </View> : <>
-          <Input label="Payout amount (KSh)" value={payoutAmount} onChangeText={value => { setPayoutAmount(value); setPayoutError(undefined); requestPayout.reset(); }} placeholder={String(wallet?.minimumPayout ?? 500)} keyboardType="number-pad" />
+          <Input label="Payout amount (KSh)" required value={payoutAmount} onChangeText={value => { setPayoutAmount(value); setPayoutError(undefined); requestPayout.reset(); }} placeholder={String(wallet?.minimumPayout ?? 500)} keyboardType="number-pad" />
           <Text style={styles.meta}>Minimum {formatCurrency(wallet?.minimumPayout ?? 500, wallet?.currency ?? 'KES')}. Funds remain reserved until M-Pesa confirms the result.</Text>
           <Button loading={requestPayout.isPending} loadingLabel="Requesting payout" disabled={wallet?.isFrozen || !wallet || wallet.availableBalance < (wallet.minimumPayout || 500)} onPress={submitPayout}>Withdraw to M-Pesa</Button>
         </>}
       </> : <View style={styles.formBand}>
         <Text style={styles.subtitle}>Add your payout number</Text>
         <Text style={styles.meta}>Use an M-Pesa number you control. Your password is required whenever the number changes.</Text>
-        <Input label="M-Pesa number" value={payoutPhone} onChangeText={setPayoutPhone} placeholder={user.phoneNumber || '254712345678'} keyboardType="phone-pad" autoComplete="tel" />
-        <Input label="Account password" value={accountPassword} onChangeText={setAccountPassword} placeholder="Confirm your identity" secureTextEntry autoComplete="current-password" />
+        <Input label="M-Pesa number" required value={payoutPhone} onChangeText={setPayoutPhone} placeholder={user.phoneNumber || '254712345678'} keyboardType="phone-pad" autoComplete="tel" />
+        <Input label="Account password" required value={accountPassword} onChangeText={setAccountPassword} placeholder="Confirm your identity" secureTextEntry autoComplete="current-password" />
         <Button loading={savePayoutAccount.isPending} loadingLabel="Saving" onPress={submitPayoutAccount}>Save payout number</Button>
       </View>}
       {payoutError ? <Text style={styles.error} accessibilityRole="alert">{payoutError}</Text> : null}
@@ -242,8 +242,8 @@ export const Wallet: React.FC = () => {
     <View style={styles.section}>
       <Text style={styles.title}>Add money with M-Pesa</Text>
       <Text style={styles.meta}>Top-ups can be used for marketplace purchases.</Text>
-      <Input label="Amount (KSh)" value={amount} onChangeText={value => { setAmount(value); setAttempt(undefined); setFormError(undefined); topUp.reset(); }} placeholder="1000" keyboardType="number-pad" />
-      <Input label="Phone number" value={phoneNumber} onChangeText={value => { setPhoneNumber(value); setAttempt(undefined); setFormError(undefined); topUp.reset(); }} placeholder="254712345678" keyboardType="phone-pad" autoComplete="tel" />
+      <Input label="Amount (KSh)" required value={amount} onChangeText={value => { setAmount(value); setAttempt(undefined); setFormError(undefined); topUp.reset(); }} placeholder="1000" keyboardType="number-pad" />
+      <Input label="Phone number" required value={phoneNumber} onChangeText={value => { setPhoneNumber(value); setAttempt(undefined); setFormError(undefined); topUp.reset(); }} placeholder="254712345678" keyboardType="phone-pad" autoComplete="tel" />
       {formError ? <Text style={styles.error} accessibilityRole="alert">{formError}</Text> : null}
       {attemptMessage ? <View style={styles.attempt}>
         {attempt?.status === 'succeeded' ? <CircleCheckBig size={20} color={theme.colors.success} /> : <Clock3 size={20} color={theme.colors.secondary.dark} />}

@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { ScrollView, StyleSheet, Text } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
 import { theme } from '../../theme';
 import { Button } from '../../components/ui/Button';
 import { useAuth } from '../../hooks/useAuth';
 import { Input } from '../../components/ui/Input';
+import { FormFrame } from '../../components/layout/FormFrame';
 
 export const ProfileCompletion: React.FC = () => {
   const [phone, setPhone] = useState('');
@@ -30,15 +31,15 @@ export const ProfileCompletion: React.FC = () => {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <FormFrame style={styles.container}>
       <Text style={styles.title}>Complete your profile</Text>
       <Text style={styles.copy}>Add details to make checkout faster. You can skip this step and update later.</Text>
-      <Input label="Full name" value={name} onChangeText={setName} placeholder="Your name" accessibilityLabel="Full name" />
-      <Input label="Phone" value={phone} onChangeText={setPhone} placeholder="Phone number" keyboardType="phone-pad" accessibilityLabel="Phone number" />
+      <Input label="Full name" optional value={name} onChangeText={setName} placeholder="Your name" accessibilityLabel="Full name" autoComplete="name" />
+      <Input label="Phone" optional value={phone} onChangeText={setPhone} placeholder="Phone number" keyboardType="phone-pad" accessibilityLabel="Phone number" autoComplete="tel" />
       {error && <Text style={styles.copy} accessibilityRole="alert">{error}</Text>}
       <Button fullWidth onPress={() => void handleSave()} loading={saving} loadingLabel="Saving" accessibilityLabel="Save and Continue">Save & Continue</Button>
       <Button fullWidth variant="tertiary" onPress={handleSkip} disabled={saving}>Skip for now</Button>
-    </ScrollView>
+    </FormFrame>
   );
 };
 

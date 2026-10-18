@@ -1,9 +1,16 @@
-import { ScrollView, type ViewProps } from 'react-native';
+import { ScrollView, StyleSheet, View, type ViewProps } from 'react-native';
+import { theme } from '../../theme';
 
 // Keep a single route-level scroller so centered forms still work on short screens.
 export function FormFrame({ children, style, testID = 'form-scroll', ...props }: ViewProps) {
-  return <ScrollView {...props} testID={testID} style={{ flex: 1, minHeight: 0 }} keyboardShouldPersistTaps="handled"
-    contentContainerStyle={[style, { flexGrow: 1, flexShrink: 0, flexBasis: 'auto' }]}>
-    {children}
+  return <ScrollView {...props} testID={testID} style={styles.viewport} keyboardShouldPersistTaps="handled"
+    keyboardDismissMode="on-drag" contentContainerStyle={styles.content}>
+    <View style={[styles.inner, style]}>{children}</View>
   </ScrollView>;
 }
+
+const styles = StyleSheet.create({
+  viewport: { flex: 1, minHeight: 0, backgroundColor: theme.colors.cream },
+  content: { flexGrow: 1, flexShrink: 0, flexBasis: 'auto', backgroundColor: theme.colors.cream },
+  inner: { width: '100%', maxWidth: 560, alignSelf: 'center', flexGrow: 1 },
+});

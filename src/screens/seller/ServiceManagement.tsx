@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ImagePlus, X } from 'lucide-react-native';
@@ -15,6 +15,8 @@ import type { Service } from '../../types/product';
 import { theme } from '../../theme';
 import { useAuth } from '../../hooks/useAuth';
 import { slugifyProductName } from '../../utils/productIdentifiers';
+import { ChoiceGroup } from '../../components/ui/ChoiceGroup';
+import { FormField } from '../../components/ui/FormField';
 
 type ServiceStatus = ServiceDraft['status'];
 
@@ -198,19 +200,16 @@ export const ServiceManagement: React.FC = () => {
   if (editing) {
     return <ScrollView style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       <Text style={styles.heading}>{editing === 'new' ? 'Add service' : 'Edit service'}</Text>
-      <Input label="Service name" value={draft.name} onChangeText={name => setDraft(value => ({ ...value, name }))} placeholder="What service do you offer?" />
-      <Text style={styles.label}>Description</Text>
-      <TextInput
+      <Input label="Service name" required value={draft.name} onChangeText={name => setDraft(value => ({ ...value, name }))} placeholder="What service do you offer?" />
+      <Input label="Description" required
         value={draft.description}
         onChangeText={description => setDraft(value => ({ ...value, description }))}
         placeholder="Describe what is included and what customers can expect"
-        placeholderTextColor={theme.colors.muted}
         multiline
-        style={styles.description}
       />
       <View style={styles.twoColumns}>
-        <View style={styles.column}><Input label="Price (KSh)" value={String(draft.price)} onChangeText={price => setDraft(value => ({ ...value, price: Number(price.replace(/,/g, '')) }))} keyboardType="decimal-pad" /></View>
-        <View style={styles.column}><Input label="Duration (min)" value={String(draft.duration_minutes)} onChangeText={minutes => setDraft(value => ({ ...value, duration_minutes: Number(minutes) }))} keyboardType="number-pad" /></View>
+        <View style={styles.column}><Input label="Price (KSh)" required value={String(draft.price)} onChangeText={price => setDraft(value => ({ ...value, price: Number(price.replace(/,/g, '')) }))} keyboardType="decimal-pad" /></View>
+        <View style={styles.column}><Input label="Duration (min)" required value={String(draft.duration_minutes)} onChangeText={minutes => setDraft(value => ({ ...value, duration_minutes: Number(minutes) }))} keyboardType="number-pad" /></View>
       </View>
       <Input label="Booking buffer (minutes)" value={String(draft.booking_buffer_minutes)} onChangeText={minutes => setDraft(value => ({ ...value, booking_buffer_minutes: Number(minutes) }))} keyboardType="number-pad" />
 
@@ -239,27 +238,11 @@ export const ServiceManagement: React.FC = () => {
         disabled={busy}
       />
 
-      <Text style={styles.label}>Listing status</Text>
-      <View style={styles.statusOptions}>
-        {serviceStatuses.filter(option => option.value !== 'archived' || editing !== 'new').map(option => {
-          const selected = draft.status === option.value;
-          return <Pressable
-            key={option.value}
-            onPress={() => setDraft(value => ({ ...value, status: option.value }))}
-            disabled={busy}
-            accessibilityRole="radio"
-            accessibilityLabel={`${option.label}: ${option.summary}`}
-            accessibilityState={{ selected, disabled: busy }}
-            style={({ pressed }) => [styles.statusOption, selected && styles.statusOptionActive, pressed && styles.optionPressed]}
-          >
-            <Text style={[styles.statusOptionText, selected && styles.statusOptionTextActive]}>{option.label}</Text>
-          </Pressable>;
-        })}
-      </View>
-      <Text accessibilityLiveRegion="polite" style={styles.statusSummary}>{serviceStatuses.find(option => option.value === draft.status)?.summary}</Text>
+      <ChoiceGroup label="Listing status" required value={draft.status} onChange={status => setDraft(value => ({ ...value, status }))} disabled={busy}
+        options={serviceStatuses.filter(option => option.value !== 'archived' || editing !== 'new').map(option => ({ value: option.value, label: option.label, description: option.summary }))} />
 
-      <Text style={styles.label}>Images ({existingImages.length + images.length}/8)</Text>
-      <View style={styles.imageGrid}>
+      <FormField label={`Images (${existingImages.length + images.length}/8)`} optional helperText="Add clear JPG or PNG images. The first image is used as the cover.">
+        <View style={styles.imageGrid}>
         {existingImages.length + images.length < 8 && <Pressable style={styles.addImage} onPress={() => void pickImages()} accessibilityRole="button" accessibilityLabel="Add service images">
           <ImagePlus color={theme.colors.primary.DEFAULT} size={25} />
           <Text style={styles.addImageText}>Add images</Text>
@@ -272,7 +255,8 @@ export const ServiceManagement: React.FC = () => {
             setImages(current => current.filter(image => image.uri !== asset.uri));
           }} accessibilityLabel="Remove selected image" icon={<X color={theme.colors.white} size={15} />} />
         </View>)}
-      </View>
+        </View>
+      </FormField>
 
       {error && <Text style={styles.error} accessibilityRole="alert">{error}</Text>}
       {validationMessage && <Text style={styles.validationMessage} accessibilityLiveRegion="polite">{validationMessage}</Text>}
@@ -309,7 +293,6 @@ const styles = StyleSheet.create({
   content: { padding: theme.spacing.lg, paddingBottom: theme.spacing.xxl, gap: theme.spacing.md },
   heading: { color: theme.colors.ink, fontSize: theme.typography.h3.fontSize, fontWeight: '800', marginBottom: theme.spacing.md },
   label: { color: theme.colors.ink, fontSize: theme.typography.small.fontSize, fontWeight: '700', marginBottom: theme.spacing.xs },
-  description: { minHeight: 112, padding: theme.spacing.md, borderRadius: theme.radii.md, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.white, color: theme.colors.ink, textAlignVertical: 'top', marginBottom: theme.spacing.md },
   twoColumns: { flexDirection: 'row', gap: theme.spacing.md },
   column: { flex: 1 },
   options: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm, marginBottom: theme.spacing.md },
@@ -321,12 +304,6 @@ const styles = StyleSheet.create({
   optionMessage: { color: theme.colors.muted, lineHeight: 20, marginBottom: theme.spacing.md },
   optionFailure: { alignItems: 'flex-start', marginBottom: theme.spacing.md },
   optionError: { color: theme.colors.error, lineHeight: 20 },
-  statusOptions: { flexDirection: 'row', gap: theme.spacing.sm },
-  statusOption: { flex: 1, minHeight: 44, paddingHorizontal: theme.spacing.sm, alignItems: 'center', justifyContent: 'center', borderRadius: theme.radii.md, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.white },
-  statusOptionActive: { borderColor: theme.colors.primary.DEFAULT, backgroundColor: theme.colors.primary.tint },
-  statusOptionText: { color: theme.colors.muted, fontWeight: '700', textAlign: 'center' },
-  statusOptionTextActive: { color: theme.colors.primary.dark },
-  statusSummary: { color: theme.colors.muted, fontSize: theme.typography.small.fontSize, marginTop: theme.spacing.xs, marginBottom: theme.spacing.md },
   imageGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm, paddingBottom: theme.spacing.md },
   image: { width: 104, height: 104, borderRadius: theme.radii.md },
   removeImage: { position: 'absolute', top: 4, right: 4, width: 40, height: 40, minWidth: 40, minHeight: 40, borderRadius: 20, backgroundColor: theme.colors.error, borderColor: theme.colors.error },

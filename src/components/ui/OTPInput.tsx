@@ -1,5 +1,6 @@
-import React, { useEffect, useMemo, useRef } from 'react';
-import { Keyboard, StyleSheet, TextInput, View, Text } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Keyboard, Platform, StyleSheet, TextInput, View, Text } from 'react-native';
+import { useAppTheme } from '../../contexts/ThemeContext';
 import { theme } from '../../theme';
 
 interface OTPInputProps {
@@ -13,7 +14,9 @@ interface OTPInputProps {
 const CELL_COUNT = 6;
 
 export const OTPInput: React.FC<OTPInputProps> = ({ value, onChange, onComplete, error, accessibilityLabel }) => {
+  const { colors } = useAppTheme();
   const inputs = useRef<Array<TextInput | null>>([]);
+  const [focusedIndex, setFocusedIndex] = useState<number>();
   const digits = useMemo(() => Array.from({ length: CELL_COUNT }, (_, index) => value[index] ?? ''), [value]);
 
   useEffect(() => {
@@ -53,16 +56,18 @@ export const OTPInput: React.FC<OTPInputProps> = ({ value, onChange, onComplete,
             value={digit}
             onChangeText={text => handleChange(text, index)}
             onKeyPress={event => handleKeyPress(event, index)}
-            style={[styles.cell, error ? styles.cellError : null]}
+            style={[styles.cell, { color: colors.text, backgroundColor: colors.surface, borderColor: error ? colors.danger : focusedIndex === index ? colors.focusRing : colors.border }, Platform.OS === 'web' ? ({ outlineStyle: 'none' } as object) : null]}
             keyboardType="number-pad"
             maxLength={1}
             textContentType="oneTimeCode"
             accessible
             accessibilityLabel={`OTP digit ${index + 1}`}
+            onFocus={() => setFocusedIndex(index)}
+            onBlur={() => setFocusedIndex(current => current === index ? undefined : current)}
           />
         ))}
       </View>
-      {error ? <View style={styles.errorContainer}><View><Text style={styles.error}>{error}</Text></View></View> : null}
+      {error ? <View style={styles.errorContainer}><View><Text accessibilityRole="alert" style={[styles.error, { color: colors.danger }]}>{error}</Text></View></View> : null}
     </View>
   );
 };
@@ -74,26 +79,22 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    gap: theme.spacing.xs,
   },
   cell: {
-    width: 48,
+    flex: 1,
+    maxWidth: 48,
+    minWidth: 38,
     height: 56,
     borderRadius: theme.radii.md,
     borderWidth: 1,
-    borderColor: theme.colors.border,
     textAlign: 'center',
     fontSize: theme.typography.h2.fontSize,
-    color: theme.colors.ink,
-    backgroundColor: theme.colors.white,
-  },
-  cellError: {
-    borderColor: theme.colors.error,
   },
   errorContainer: {
     marginTop: theme.spacing.xs,
   },
   error: {
-    color: theme.colors.error,
     fontSize: theme.typography.small.fontSize,
   },
 });

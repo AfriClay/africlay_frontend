@@ -1,10 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ChevronDown, ImagePlus, Plus, Search, X } from 'lucide-react-native';
+import { ChevronDown, ImagePlus, Plus, X } from 'lucide-react-native';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { TagPicker } from '../../components/domain/TagPicker';
@@ -17,6 +17,9 @@ import { useAuth } from '../../hooks/useAuth';
 import { theme } from '../../theme';
 import { leafCategoryItems, rootCategories } from '../../utils/categoryTree';
 import { productIdentifiers } from '../../utils/productIdentifiers';
+import { ChoiceGroup } from '../../components/ui/ChoiceGroup';
+import { FormField } from '../../components/ui/FormField';
+import { SearchField } from '../../components/ui/SearchField';
 
 type AddEditRoute = RouteProp<SellerDashboardStackParamList, 'AddEditProduct'>;
 type AddEditNavigation = NativeStackNavigationProp<SellerDashboardStackParamList, 'AddEditProduct'>;
@@ -239,11 +242,10 @@ export const AddEditProduct: React.FC = () => {
   if (productId && productQuery.isLoading) return <Text style={styles.label}>Loading product...</Text>;
   if (productId && !product) return <EmptyState title="Product not found" description="This product can no longer be edited." />;
   return <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-    <Input label="Product name" value={name} onChangeText={setName} placeholder="What are you selling?" accessibilityLabel="Product name" />
-    <Text style={styles.label}>Description</Text>
-    <TextInput value={description} onChangeText={setDescription} placeholder="Describe the product, materials, and condition" placeholderTextColor={theme.colors.muted} multiline style={styles.description} />
-    <Text style={styles.label}>Specific category</Text>
-    {categoriesQuery.isLoading ? <Text style={styles.optionMessage}>Loading categories...</Text> :
+    <Input label="Product name" required value={name} onChangeText={setName} placeholder="What are you selling?" accessibilityLabel="Product name" />
+    <Input label="Description" required value={description} onChangeText={setDescription} placeholder="Describe the product, materials, and condition" multiline accessibilityLabel="Product description" />
+    <FormField label="Specific category" required>
+      {categoriesQuery.isLoading ? <Text style={styles.optionMessage}>Loading categories...</Text> :
       categoriesQuery.isError ? <View style={styles.optionFailure}><Text style={styles.optionError}>Unable to load categories.</Text><Button size="sm" variant="tertiary" onPress={() => void categoriesQuery.refetch()} accessibilityLabel="Retry loading product categories">Retry</Button></View> :
         <View style={styles.categoryPicker}>
             <Pressable
@@ -257,10 +259,7 @@ export const AddEditProduct: React.FC = () => {
               <ChevronDown color={theme.colors.primary.DEFAULT} size={20} />
             </Pressable>
             {categoryPickerOpen ? <View style={styles.categoryPanel}>
-              <View style={styles.categorySearch}>
-                <Search color={theme.colors.muted} size={18} />
-                <TextInput value={categoryQuery} onChangeText={setCategoryQuery} placeholder="Search categories" placeholderTextColor={theme.colors.muted} style={styles.categorySearchInput} accessibilityLabel="Search product categories" />
-              </View>
+              <SearchField value={categoryQuery} onChangeText={setCategoryQuery} placeholder="Search categories" accessibilityLabel="Search product categories" />
               {categoryOptions.length ? <ScrollView style={styles.categoryTree} contentContainerStyle={styles.categoryTreeContent} nestedScrollEnabled keyboardShouldPersistTaps="handled">{visibleCategoryOptions.map(({ category }) => {
                 const selected = categoryId === category.id;
                 return <Pressable key={category.id} onPress={() => { setCategoryId(category.id); setCategoryPickerOpen(false); setCategoryQuery(''); }}
@@ -299,6 +298,7 @@ export const AddEditProduct: React.FC = () => {
               </View> : null}
             </View> : null}
           </View>}
+    </FormField>
     <TagPicker
       tags={tagsQuery.data ?? []}
       selectedIds={tagIds}
@@ -310,45 +310,30 @@ export const AddEditProduct: React.FC = () => {
       disabled={saving}
     />
     <View style={styles.twoColumns}>
-      <View style={styles.column}><Input label="Price (KSh)" value={price} onChangeText={setPrice} keyboardType="decimal-pad" placeholder="0" accessibilityLabel="Product price" /></View>
-      <View style={styles.column}><Input label="Stock count" value={stock} onChangeText={setStock} keyboardType="number-pad" placeholder="0" accessibilityLabel="Stock count" /></View>
+      <View style={styles.column}><Input label="Price (KSh)" required value={price} onChangeText={setPrice} keyboardType="decimal-pad" placeholder="0" accessibilityLabel="Product price" /></View>
+      <View style={styles.column}><Input label="Stock count" required value={stock} onChangeText={setStock} keyboardType="number-pad" placeholder="0" accessibilityLabel="Stock count" /></View>
     </View>
     <Text style={styles.label}>Package measurements</Text>
     <View style={styles.twoColumns}>
-      <View style={styles.column}><Input label="Weight (kg)" value={weightKg} onChangeText={setWeightKg} keyboardType="decimal-pad" placeholder="1.0" accessibilityLabel="Packaged product weight in kilograms" /></View>
-      <View style={styles.column}><Input label="Length (cm)" value={lengthCm} onChangeText={setLengthCm} keyboardType="decimal-pad" placeholder="0" accessibilityLabel="Package length in centimetres" /></View>
+      <View style={styles.column}><Input label="Weight (kg)" required value={weightKg} onChangeText={setWeightKg} keyboardType="decimal-pad" placeholder="1.0" accessibilityLabel="Packaged product weight in kilograms" /></View>
+      <View style={styles.column}><Input label="Length (cm)" optional value={lengthCm} onChangeText={setLengthCm} keyboardType="decimal-pad" placeholder="0" accessibilityLabel="Package length in centimetres" /></View>
     </View>
     <View style={styles.twoColumns}>
-      <View style={styles.column}><Input label="Width (cm)" value={widthCm} onChangeText={setWidthCm} keyboardType="decimal-pad" placeholder="0" accessibilityLabel="Package width in centimetres" /></View>
-      <View style={styles.column}><Input label="Height (cm)" value={heightCm} onChangeText={setHeightCm} keyboardType="decimal-pad" placeholder="0" accessibilityLabel="Package height in centimetres" /></View>
+      <View style={styles.column}><Input label="Width (cm)" optional value={widthCm} onChangeText={setWidthCm} keyboardType="decimal-pad" placeholder="0" accessibilityLabel="Package width in centimetres" /></View>
+      <View style={styles.column}><Input label="Height (cm)" optional value={heightCm} onChangeText={setHeightCm} keyboardType="decimal-pad" placeholder="0" accessibilityLabel="Package height in centimetres" /></View>
     </View>
-    <Text style={styles.label}>Listing status</Text>
-    <View style={styles.statusOptions}>
-      {productStatuses.filter(option => option.value !== 'archived' || Boolean(productId)).map(option => {
-        const selected = status === option.value;
-        return <Pressable
-          key={option.value}
-          onPress={() => setStatus(option.value)}
-          disabled={saving}
-          accessibilityRole="radio"
-          accessibilityLabel={`${option.label}: ${option.summary}`}
-          accessibilityState={{ selected, disabled: saving }}
-          style={({ pressed }) => [styles.statusOption, selected && styles.statusOptionActive, pressed && styles.statusOptionPressed]}
-        >
-          <Text style={[styles.statusOptionText, selected && styles.statusOptionTextActive]}>{option.label}</Text>
-        </Pressable>;
-      })}
-    </View>
-    <Text accessibilityLiveRegion="polite" style={styles.statusSummary}>{productStatuses.find(option => option.value === status)?.summary}</Text>
-    <Text style={styles.label}>Images ({existingImages.length + images.length}/8)</Text>
-    <View style={styles.imageGrid}>
+    <ChoiceGroup label="Listing status" required value={status} onChange={setStatus} disabled={saving}
+      options={productStatuses.filter(option => option.value !== 'archived' || Boolean(productId)).map(option => ({ value: option.value, label: option.label, description: option.summary }))} />
+    <FormField label={`Images (${existingImages.length + images.length}/8)`} optional helperText="Add clear JPG or PNG images. The first image is used as the cover.">
+      <View style={styles.imageGrid}>
       {existingImages.length + images.length < 8 && <Pressable style={styles.addImage} onPress={pickImages} accessibilityRole="button" accessibilityLabel="Add product images"><ImagePlus color={theme.colors.primary.DEFAULT} size={25} /><Text style={styles.addImageText}>Add images</Text></Pressable>}
       {existingImages.map(uri => <Image key={uri} source={{ uri }} style={styles.image} />)}
       {images.map(asset => <View key={asset.uri}>
         <Image source={{ uri: asset.uri }} style={styles.image} />
         <Button variant="icon" size="sm" style={styles.removeImage} onPress={() => { pendingUploads.current = pendingUploads.current.filter(image => image.uri !== asset.uri); setImages(current => current.filter(image => image.uri !== asset.uri)); }} accessibilityLabel="Remove selected image" icon={<X color={theme.colors.white} size={15} />} />
       </View>)}
-    </View>
+      </View>
+    </FormField>
     {error && <Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
     {validationMessage && <Text accessibilityLiveRegion="polite" style={styles.validationMessage}>{validationMessage}</Text>}
     <Button onPress={save} disabled={!canSave} loading={saving}>
@@ -360,15 +345,12 @@ export const AddEditProduct: React.FC = () => {
 const styles = StyleSheet.create({
   container: { padding: theme.spacing.lg, paddingBottom: theme.spacing.xxl, backgroundColor: theme.colors.cream },
   label: { color: theme.colors.ink, fontSize: theme.typography.small.fontSize, marginBottom: theme.spacing.xs },
-  description: { minHeight: 112, padding: theme.spacing.md, borderRadius: theme.radii.md, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.white, color: theme.colors.ink, textAlignVertical: 'top', marginBottom: theme.spacing.md },
   categoryPicker: { marginBottom: theme.spacing.md },
   categoryField: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm, paddingHorizontal: theme.spacing.md, borderRadius: theme.radii.md, backgroundColor: theme.colors.white, borderWidth: 1, borderColor: theme.colors.border },
   categoryFieldSelected: { borderColor: theme.colors.primary.DEFAULT },
   categoryFieldText: { flex: 1, color: theme.colors.ink, fontSize: theme.typography.small.fontSize, lineHeight: 18 },
   categoryPlaceholder: { color: theme.colors.muted },
   categoryPanel: { marginTop: theme.spacing.xs, padding: theme.spacing.sm, borderWidth: 1, borderColor: theme.colors.border, borderRadius: theme.radii.md, backgroundColor: theme.colors.white },
-  categorySearch: { minHeight: 42, flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm, paddingHorizontal: theme.spacing.sm, borderWidth: 1, borderColor: theme.colors.border, borderRadius: theme.radii.sm },
-  categorySearchInput: { flex: 1, minWidth: 0, paddingVertical: theme.spacing.sm, color: theme.colors.ink },
   categoryTree: { marginTop: theme.spacing.sm, maxHeight: 300 },
   categoryTreeContent: { gap: 4 },
   categoryBranch: { minHeight: 42, flexDirection: 'row', alignItems: 'center', paddingHorizontal: theme.spacing.md, borderRadius: theme.radii.sm, backgroundColor: theme.colors.white, borderWidth: 1, borderColor: theme.colors.border },
@@ -384,13 +366,6 @@ const styles = StyleSheet.create({
   parentOptionTextActive: { color: theme.colors.primary.dark, fontWeight: '700' },
   twoColumns: { flexDirection: 'row', gap: theme.spacing.md },
   column: { flex: 1 },
-  statusOptions: { flexDirection: 'row', gap: theme.spacing.sm },
-  statusOption: { flex: 1, minHeight: 44, paddingHorizontal: theme.spacing.sm, alignItems: 'center', justifyContent: 'center', borderRadius: theme.radii.md, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.white },
-  statusOptionActive: { borderColor: theme.colors.primary.DEFAULT, backgroundColor: theme.colors.primary.tint },
-  statusOptionPressed: { opacity: 0.75 },
-  statusOptionText: { color: theme.colors.muted, fontWeight: '700', textAlign: 'center' },
-  statusOptionTextActive: { color: theme.colors.primary.dark },
-  statusSummary: { color: theme.colors.muted, fontSize: theme.typography.small.fontSize, marginTop: theme.spacing.xs, marginBottom: theme.spacing.md },
   imageGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm, paddingBottom: theme.spacing.md },
   image: { width: 104, height: 104, borderRadius: theme.radii.md },
   removeImage: { position: 'absolute', top: 4, right: 4, width: 40, height: 40, minWidth: 40, minHeight: 40, borderRadius: 20, backgroundColor: theme.colors.error, borderColor: theme.colors.error },

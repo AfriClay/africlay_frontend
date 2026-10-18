@@ -66,6 +66,7 @@ export const Login: React.FC = () => {
             autoCorrect={false}
             error={fieldState.error?.message}
             accessibilityLabel="Email"
+            required
           />
         )}
       />
@@ -81,6 +82,7 @@ export const Login: React.FC = () => {
             secureTextEntry
             error={fieldState.error?.message}
             accessibilityLabel="Password"
+            required
           />
         )}
       />

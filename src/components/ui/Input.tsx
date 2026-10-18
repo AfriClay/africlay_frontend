@@ -1,113 +1,108 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, TextInput, TextInputProps, View } from 'react-native';
+import { Platform, StyleSheet, TextInput, type StyleProp, type TextInputProps, type TextStyle, View, type ViewStyle } from 'react-native';
 import { theme } from '../../theme';
 import { Eye, EyeOff } from 'lucide-react-native';
 import { Button } from './Button';
+import { FormField } from './FormField';
+import { useAppTheme } from '../../contexts/ThemeContext';
 
-interface InputProps {
+export interface InputProps extends Omit<TextInputProps, 'value' | 'onChangeText' | 'style'> {
   label?: string;
   value: string;
   onChangeText: (text: string) => void;
-  placeholder?: string;
-  secureTextEntry?: boolean;
-  keyboardType?: 'default' | 'email-address' | 'phone-pad' | 'number-pad' | 'decimal-pad';
-  autoCapitalize?: TextInputProps['autoCapitalize'];
-  autoComplete?: TextInputProps['autoComplete'];
-  autoCorrect?: boolean;
   error?: string;
-  accessibilityLabel?: string;
+  helperText?: string;
+  required?: boolean;
+  optional?: boolean;
+  containerStyle?: StyleProp<ViewStyle>;
+  inputStyle?: StyleProp<TextStyle>;
 }
 
 export const Input: React.FC<InputProps> = ({
   label,
   value,
   onChangeText,
-  placeholder,
   secureTextEntry = false,
-  keyboardType = 'default',
-  autoCapitalize,
-  autoComplete,
-  autoCorrect,
   error,
+  helperText,
+  required,
+  optional,
+  containerStyle,
+  inputStyle,
+  multiline,
+  onFocus,
+  onBlur,
   accessibilityLabel,
+  ...inputProps
 }) => {
+  const { colors } = useAppTheme();
+  const disabled = inputProps.editable === false;
   const [visible, setVisible] = useState(!secureTextEntry);
   const [focused, setFocused] = useState(false);
   return (
-    <View style={styles.root}>
-      {label ? <Text style={styles.label}>{label}</Text> : null}
-      <View style={[styles.inputWrapper, focused ? styles.inputFocused : null, error ? styles.inputError : null]}>
+    <FormField label={label} helperText={helperText} error={error} required={required} optional={optional} style={containerStyle}>
+      <View style={[
+        styles.inputWrapper,
+        multiline ? styles.multilineWrapper : null,
+        { backgroundColor: colors.surface, borderColor: error ? colors.danger : focused ? colors.focusRing : colors.border },
+        disabled ? styles.disabled : null,
+      ]}>
         <TextInput
+          {...inputProps}
           value={value}
           onChangeText={onChangeText}
-          placeholder={placeholder}
-          placeholderTextColor={theme.colors.muted}
+          placeholderTextColor={colors.textMuted}
           secureTextEntry={secureTextEntry && !visible}
-          keyboardType={keyboardType}
-          autoCapitalize={autoCapitalize}
-          autoComplete={autoComplete}
-          autoCorrect={autoCorrect}
-          style={styles.input}
-          accessibilityLabel={accessibilityLabel}
-          onFocus={() => setFocused(true)}
-          onBlur={() => setFocused(false)}
+          multiline={multiline}
+          textAlignVertical={multiline ? 'top' : inputProps.textAlignVertical}
+          selectionColor={colors.accent}
+          style={[styles.input, multiline ? styles.multilineInput : null, { color: colors.text }, Platform.OS === 'web' ? ({ outlineStyle: 'none' } as object) : null, inputStyle]}
+          accessibilityLabel={accessibilityLabel ?? label}
+          onFocus={event => { setFocused(true); onFocus?.(event); }}
+          onBlur={event => { setFocused(false); onBlur?.(event); }}
         />
         {secureTextEntry ? (
           <Button
             variant="icon"
             size="sm"
             onPress={() => setVisible(v => !v)}
+            disabled={disabled}
             accessibilityLabel={visible ? 'Hide password' : 'Show password'}
             style={styles.eyeButton}
-            icon={visible ? <Eye color={theme.colors.muted} size={18} /> : <EyeOff color={theme.colors.muted} size={18} />}
+            icon={visible ? <Eye color={colors.textMuted} size={18} /> : <EyeOff color={colors.textMuted} size={18} />}
           />
         ) : null}
       </View>
-      {error ? <Text style={styles.error}>{error}</Text> : null}
-    </View>
+    </FormField>
   );
 };
 
 const styles = StyleSheet.create({
-  root: {
-    marginBottom: theme.spacing.md,
-  },
-  label: {
-    marginBottom: theme.spacing.xs,
-    color: theme.colors.ink,
-    fontSize: theme.typography.small.fontSize,
-    fontWeight: '600',
-  },
   inputWrapper: {
-    backgroundColor: theme.colors.white,
-    borderRadius: theme.radii.md,
+    borderRadius: theme.radii.control,
     borderWidth: 1,
-    borderColor: theme.colors.border,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: theme.spacing.md,
+    paddingLeft: theme.spacing.smd,
+    paddingRight: theme.spacing.xs,
     minHeight: 50,
   },
+  multilineWrapper: { minHeight: 112, alignItems: 'flex-start', paddingRight: theme.spacing.smd },
   input: {
     flex: 1,
     minWidth: 0,
-    paddingVertical: 12,
-    color: theme.colors.ink,
+    minHeight: 48,
+    paddingHorizontal: 0,
+    paddingVertical: theme.spacing.smd,
+    fontFamily: 'Inter_400Regular',
     fontSize: theme.typography.body.fontSize,
+    lineHeight: theme.typography.body.lineHeight,
   },
+  multilineInput: { minHeight: 110, paddingTop: theme.spacing.smd, paddingBottom: theme.spacing.smd },
+  disabled: { opacity: 0.55 },
   eyeButton: {
     flexShrink: 0,
-  },
-  inputFocused: {
-    borderColor: theme.colors.primary.DEFAULT,
-    borderWidth: 2,
-  },
-  inputError: {
-    borderColor: theme.colors.error,
-  },
-  error: {
-    marginTop: theme.spacing.xs,
-    color: theme.colors.error,
-    fontSize: theme.typography.small.fontSize,
+    minWidth: 44,
+    minHeight: 44,
   },
 });

@@ -70,7 +70,7 @@ export const OrderDetails: React.FC = () => {
     {order.status === 'pending' && order.paymentStatus !== 'paid' ? <View style={styles.balanceBlock}>
       <Text style={styles.infoTitle}>Complete payment</Text>
       <Text style={styles.infoText}>{formatCurrency(order.paymentOption === 'pay_on_delivery' ? order.shippingCost : order.amountDue, order.currency)} will be requested through M-Pesa.</Text>
-      <Input label="M-Pesa phone number" value={phoneNumber} onChangeText={setPhoneNumber} keyboardType="phone-pad" placeholder="254712345678" error={phoneNumber && !isOrderPaymentPhone(phoneNumber) ? 'Use 2547XXXXXXXX or 2541XXXXXXXX format.' : undefined} />
+      <Input label="M-Pesa phone number" required value={phoneNumber} onChangeText={setPhoneNumber} keyboardType="phone-pad" placeholder="254712345678" error={phoneNumber && !isOrderPaymentPhone(phoneNumber) ? 'Use 2547XXXXXXXX or 2541XXXXXXXX format.' : undefined} />
       {!requestedPayment ? <Button loading={requestOrderPayment.isPending} disabled={!isOrderPaymentPhone(phoneNumber)} onPress={() => requestOrderPayment.mutate('initial')}>Send M-Pesa Prompt</Button> :
         <Button variant="secondary" loading={refreshPayment.isPending} onPress={() => refreshPayment.mutate()}>{requestedPayment.status === 'succeeded' ? 'Payment Confirmed' : 'Check Payment Status'}</Button>}
       {requestOrderPayment.isError ? <Text style={styles.error}>{getApiErrorMessage(requestOrderPayment.error, 'Unable to request payment for this order.')}</Text> : null}
@@ -80,7 +80,7 @@ export const OrderDetails: React.FC = () => {
     {order.status === 'shipped' && order.paymentOption === 'pay_on_delivery' && order.paymentStatus !== 'paid' ? <View style={styles.balanceBlock}>
       <Text style={styles.infoTitle}>Pay delivery balance</Text>
       <Text style={styles.infoText}>{formatCurrency(order.amountDue, order.currency)} is due before delivery can be confirmed.</Text>
-      <Input label="M-Pesa phone number" value={phoneNumber} onChangeText={setPhoneNumber} keyboardType="phone-pad" placeholder="254712345678" error={phoneNumber && !isOrderPaymentPhone(phoneNumber) ? 'Use 2547XXXXXXXX or 2541XXXXXXXX format.' : undefined} />
+      <Input label="M-Pesa phone number" required value={phoneNumber} onChangeText={setPhoneNumber} keyboardType="phone-pad" placeholder="254712345678" error={phoneNumber && !isOrderPaymentPhone(phoneNumber) ? 'Use 2547XXXXXXXX or 2541XXXXXXXX format.' : undefined} />
       {!requestedPayment ? <Button loading={requestOrderPayment.isPending} disabled={!isOrderPaymentPhone(phoneNumber)} onPress={() => requestOrderPayment.mutate('delivery_balance')}>Send M-Pesa Prompt</Button> :
         <Button variant="secondary" loading={refreshPayment.isPending} onPress={() => refreshPayment.mutate()}>{requestedPayment.status === 'succeeded' ? 'Payment Confirmed' : 'Check Payment Status'}</Button>}
       {requestOrderPayment.isError ? <Text style={styles.error}>{getApiErrorMessage(requestOrderPayment.error, 'Unable to request the balance payment.')}</Text> : null}

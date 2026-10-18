@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { RouteProp, useRoute } from '@react-navigation/native';
 import { useQuery } from '@tanstack/react-query';
@@ -60,9 +60,8 @@ export const ServiceDetails: React.FC = () => {
       <Text style={styles.description}>{service.description}</Text>
       <View style={styles.bookingCard}>
         <Text style={styles.sectionTitle}>Book this service</Text>
-        <View style={styles.dateRow}><View style={styles.dateField}><Input label="Date" value={date} onChangeText={setDate} placeholder="YYYY-MM-DD" accessibilityLabel="Booking date" /></View><View style={styles.dateField}><Input label="Time" value={time} onChangeText={setTime} placeholder="HH:MM" accessibilityLabel="Booking time" /></View></View>
-        <Text style={styles.notesLabel}>Notes (optional)</Text>
-        <TextInput value={notes} onChangeText={setNotes} multiline placeholder="Tell the provider anything they should know" placeholderTextColor={theme.colors.muted} style={styles.notes} accessibilityLabel="Booking notes" />
+        <View style={styles.dateRow}><View style={styles.dateField}><Input label="Date" required value={date} onChangeText={setDate} placeholder="YYYY-MM-DD" accessibilityLabel="Booking date" /></View><View style={styles.dateField}><Input label="Time" required value={time} onChangeText={setTime} placeholder="HH:MM" accessibilityLabel="Booking time" /></View></View>
+        <Input label="Notes" optional value={notes} onChangeText={setNotes} multiline placeholder="Tell the provider anything they should know" accessibilityLabel="Booking notes" />
         {formError && <Text style={styles.error} accessibilityRole="alert">{formError}</Text>}
         {success && <Text style={styles.success} accessibilityRole="alert">Booking requested. You can track it from My Bookings.</Text>}
         <Button onPress={() => void book()} loading={booking.isPending}>Request booking</Button>
@@ -89,8 +88,6 @@ const styles = StyleSheet.create({
   bookingCard: { marginTop: theme.spacing.xl, padding: theme.spacing.md, borderRadius: theme.radii.lg, backgroundColor: theme.colors.white, borderWidth: 1, borderColor: theme.colors.border },
   dateRow: { flexDirection: 'row', gap: theme.spacing.sm },
   dateField: { flex: 1, minWidth: 0 },
-  notesLabel: { color: theme.colors.ink, fontSize: theme.typography.small.fontSize, fontWeight: '600', marginBottom: theme.spacing.xs },
-  notes: { minHeight: 90, textAlignVertical: 'top', color: theme.colors.ink, borderWidth: 1, borderColor: theme.colors.border, borderRadius: theme.radii.md, padding: theme.spacing.md, marginBottom: theme.spacing.md },
   error: { color: theme.colors.error, marginBottom: theme.spacing.md },
   success: { color: theme.colors.success, fontWeight: '700', marginBottom: theme.spacing.md },
   loading: { color: theme.colors.muted, padding: theme.spacing.lg },
