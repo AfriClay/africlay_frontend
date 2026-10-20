@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, BackHandler, FlatList, Keyboard, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, BackHandler, FlatList, Keyboard, Platform, Pressable, StyleSheet, Text, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Image } from 'expo-image';
 import { CompositeNavigationProp, NavigationProp, useNavigation } from '@react-navigation/native';
 import { useQuery } from '@tanstack/react-query';
 import { Bell, Plus, Search as SearchIcon, ShoppingCart } from 'lucide-react-native';
@@ -24,6 +23,7 @@ import { categoryBranchIds, rootCategories } from '../../utils/categoryTree';
 import { useCart } from '../../hooks/useCart';
 import { notificationKeys, notificationService } from '../../services/notificationService';
 import { Button } from '../../components/ui/Button';
+import { MarketplaceBrand } from '../../components/ui/MarketplaceBrand';
 import { Search } from '../search/Search';
 
 type HomeNavigation = CompositeNavigationProp<
@@ -36,7 +36,7 @@ const CountBadge = ({ count }: { count: number }) => count > 0 ? (
 ) : null;
 
 export const Home: React.FC = () => {
-  const { isCompact, isExpanded, isWeb, productColumns } = useResponsiveLayout();
+  const { width, isCompact, isExpanded, isWeb, productColumns } = useResponsiveLayout();
   const navigation = useNavigation<HomeNavigation>();
   const { user } = useAuth();
   const cart = useCart();
@@ -44,7 +44,10 @@ export const Home: React.FC = () => {
   const showCart = !user || canAccessBuyerTools(user.role);
   const reduceMotion = useReducedMotionSafe();
   const searchProgress = useRef(new Animated.Value(0)).current;
+  const wordmarkProgress = useRef(new Animated.Value(width >= 360 ? 1 : 0)).current;
+  const lastScrollY = useRef(0);
   const [searchExpanded, setSearchExpanded] = useState(false);
+  const [brandCondensed, setBrandCondensed] = useState(false);
   const [focusRequest, setFocusRequest] = useState(0);
   const categoriesQuery = useQuery({ queryKey: catalogKeys.categories, queryFn: productService.fetchCategories });
   const { data: categories = [], isLoading: categoriesLoading } = categoriesQuery;
@@ -132,11 +135,34 @@ export const Home: React.FC = () => {
     return () => window.removeEventListener('keydown', onKeyDown, true);
   }, [closeSearch, searchExpanded]);
 
+  const canRevealBrandName = width >= 360;
+  useEffect(() => {
+    const animation = Animated.timing(wordmarkProgress, {
+      toValue: canRevealBrandName && !brandCondensed ? 1 : 0,
+      duration: reduceMotion ? 0 : 160,
+      useNativeDriver: false,
+    });
+    animation.start();
+    return () => animation.stop();
+  }, [brandCondensed, canRevealBrandName, reduceMotion, wordmarkProgress]);
+
+  const handleContentScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const y = Math.max(0, event.nativeEvent.contentOffset.y);
+    const previousY = lastScrollY.current;
+    if (y <= 12) setBrandCondensed(false);
+    else if (y > 44 && y > previousY + 3) setBrandCondensed(true);
+    else if (previousY > y + 5) setBrandCondensed(false);
+    lastScrollY.current = y;
+  }, []);
+
   const searchFieldOffset = searchProgress.interpolate({ inputRange: [0, 1], outputRange: [8, 0] });
-  const brandWidth = searchProgress.interpolate({ inputRange: [0, 1], outputRange: [44, 0] });
+  const restingBrandWidth = Animated.add(44, Animated.multiply(84, wordmarkProgress));
+  const brandWidth = Animated.multiply(restingBrandWidth, Animated.subtract(1, searchProgress));
   const brandSpacing = searchProgress.interpolate({ inputRange: [0, 1], outputRange: [theme.spacing.xs, 0] });
   const brandOffset = searchProgress.interpolate({ inputRange: [0, 1], outputRange: [0, -8] });
   const brandOpacity = searchProgress.interpolate({ inputRange: [0, 0.7, 1], outputRange: [1, 0, 0] });
+  const brandNameOpacity = Animated.multiply(wordmarkProgress, Animated.subtract(1, searchProgress));
+  const brandNameOffset = wordmarkProgress.interpolate({ inputRange: [0, 1], outputRange: [-6, 0] });
 
   if (productsQuery.isError || categoriesQuery.isError) return <ErrorState message="Unable to load the catalog." onRetry={() => { void productsQuery.refetch(); void categoriesQuery.refetch(); }} />;
 
@@ -145,7 +171,11 @@ export const Home: React.FC = () => {
       {isCompact && <Animated.View style={styles.topArea}>
         <View style={styles.topRow}>
           <Animated.View style={[styles.mobileBrand, { width: brandWidth, marginRight: brandSpacing, opacity: brandOpacity, transform: [{ translateX: brandOffset }] }]}>
-            <View style={styles.mobileLogoViewport}><Image source={require('../../../assets/africlay-brand-v1.svg')} style={styles.mobileLogo} contentFit="contain" accessibilityLabel="AfriClay" /></View>
+            <MarketplaceBrand
+              compact
+              showName={canRevealBrandName}
+              animatedNameStyle={{ opacity: brandNameOpacity, transform: [{ translateX: brandNameOffset }] }}
+            />
           </Animated.View>
           <View style={styles.searchHost}>
             <Animated.View
@@ -182,6 +212,8 @@ export const Home: React.FC = () => {
         contentContainerStyle={[styles.content, isExpanded && { maxWidth: 1440 }]}
         showsVerticalScrollIndicator={false}
         scrollEnabled={!searchExpanded}
+        onScroll={handleContentScroll}
+        scrollEventThrottle={16}
       >
         <PromotionalCarousel products={featured} loading={productsLoading} onProductPress={productId => {
           const product = products.find(item => item.id === productId);
@@ -270,8 +302,6 @@ const styles = StyleSheet.create({
   topArea: { position: 'relative', zIndex: 30, elevation: 6, flexShrink: 0, overflow: 'visible', backgroundColor: theme.colors.white, borderBottomWidth: 1, borderBottomColor: theme.colors.border },
   topRow: { minHeight: 56, paddingHorizontal: theme.spacing.md, flexDirection: 'row', alignItems: 'center' },
   mobileBrand: { minWidth: 0, height: 48, flexDirection: 'row', alignItems: 'center', overflow: 'hidden' },
-  mobileLogoViewport: { width: 44, height: 48, overflow: 'hidden', justifyContent: 'center' },
-  mobileLogo: { width: 104, height: 69, marginLeft: -4, marginTop: -10, flexShrink: 0 },
   headerActions: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs },
   searchHost: { flex: 1, minWidth: 0, height: 52, marginRight: theme.spacing.xs, position: 'relative', zIndex: 40 },
   searchTriggerSlot: { position: 'absolute', top: 2, right: 0, width: 48, height: 48 },
