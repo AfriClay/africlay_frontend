@@ -78,3 +78,36 @@ test('wallet top-up sends the idempotency header and normalized phone', async ()
     phone_number: '254740155901',
   });
 });
+
+test('withdrawal requests the full selected balance source without an amount', async () => {
+  const payout = {
+    id: '22222222-2222-4222-8222-222222222222',
+    provider: 'mpesa',
+    amount: '275.00',
+    currency: 'KES',
+    status: 'processing',
+    balance_source: 'shopping',
+    destination_phone: '25471***678',
+    destination_name: 'Buyer',
+    transaction_receipt: '',
+    failure_message: '',
+    created_at: '2026-10-23T17:00:00Z',
+    updated_at: '2026-10-23T17:00:00Z',
+    processed_at: null,
+  };
+  const { service, requests } = harness(() => json(payout, 202));
+
+  const result = await service.requestPayout('shopping', 'withdraw-all-key');
+
+  assert.equal(result.amount, 275);
+  assert.equal(result.balanceSource, 'shopping');
+  assert.equal(requests[0].init.headers.get('Idempotency-Key'), 'withdraw-all-key');
+  assert.deepEqual(JSON.parse(requests[0].init.body), { balance_source: 'shopping' });
+});
+
+test('wallet UI has no manual payout amount field', () => {
+  const source = readFileSync(path.resolve(__dirname, '../src/screens/profile/Wallet.tsx'), 'utf8');
+  assert.doesNotMatch(source, /Payout amount/);
+  assert.match(source, /Withdraw all shopping funds/);
+  assert.match(source, /Withdraw all seller earnings/);
+});

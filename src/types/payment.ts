@@ -20,9 +20,18 @@ export interface Wallet {
   balance: number;
   heldBalance: number;
   availableBalance: number;
+  shoppingBalance: number;
+  shoppingHeldBalance: number;
+  shoppingAvailableBalance: number;
+  earningsBalance: number;
+  earningsHeldBalance: number;
+  earningsAvailableBalance: number;
   pendingPayoutBalance: number;
+  shoppingPendingPayoutBalance: number;
+  earningsPendingPayoutBalance: number;
   orderHeldBalance: number;
-  minimumPayout: number;
+  withdrawalMinimum: number;
+  withdrawalMaximum: number;
   isFrozen: boolean;
   createdAt: string;
 }
@@ -37,12 +46,17 @@ export type WalletTransactionType =
   | 'seller_earning'
   | 'withdrawal';
 
+export type WalletBalanceSource = 'shopping' | 'earnings';
+
 export interface WalletTransaction {
   id: string;
   type: WalletTransactionType;
+  balanceSource: WalletBalanceSource;
   amount: number;
   balanceAfter: number;
   heldBalanceAfter: number;
+  sourceBalanceAfter: number;
+  sourceHeldBalanceAfter: number;
   reference: string;
   createdAt: string;
 }
@@ -77,6 +91,7 @@ export interface Payout {
   amount: number;
   currency: string;
   status: PayoutStatus;
+  balanceSource: WalletBalanceSource;
   destinationPhone: string;
   destinationName: string;
   transactionReceipt: string;

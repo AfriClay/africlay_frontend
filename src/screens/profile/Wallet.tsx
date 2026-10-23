@@ -13,7 +13,7 @@ import {
   isWalletTopUpPhone, normalizeKenyanPaymentPhone, paymentKeys, paymentService,
 } from '../../services/paymentService';
 import { theme } from '../../theme';
-import { PaymentAttempt, Payout, PayoutStatus } from '../../types/payment';
+import { PaymentAttempt, Payout, PayoutStatus, WalletBalanceSource } from '../../types/payment';
 import { formatCurrency } from '../../utils/formatCurrency';
 import { formatDate } from '../../utils/formatDate';
 import { canAccessSellerTools } from '../../utils/roles';
@@ -42,6 +42,7 @@ const PayoutRow = ({ payout }: { payout: Payout }) => {
         <Text style={styles.transactionAmount}>{formatCurrency(payout.amount, payout.currency)}</Text>
       </View>
       <Text style={styles.meta}>{payout.destinationPhone} - {formatDate(payout.createdAt)}</Text>
+      <Text style={styles.meta}>{payout.balanceSource === 'earnings' ? 'Seller earnings' : 'Shopping funds'}</Text>
       <Text style={styles.meta}>{payout.transactionReceipt ? `Receipt ${payout.transactionReceipt}` : status.description}</Text>
       {payout.failureMessage && payout.status === 'failed' ? <Text style={styles.error}>{payout.failureMessage}</Text> : null}
     </View>
@@ -59,7 +60,6 @@ export const Wallet: React.FC = () => {
   const [attempt, setAttempt] = useState<PaymentAttempt>();
   const [payoutPhone, setPayoutPhone] = useState('');
   const [accountPassword, setAccountPassword] = useState('');
-  const [payoutAmount, setPayoutAmount] = useState('');
   const [payoutError, setPayoutError] = useState<string>();
   const idempotency = useRef<{ signature: string; key: string } | undefined>(undefined);
   const payoutIdempotency = useRef<{ signature: string; key: string } | undefined>(undefined);
@@ -78,13 +78,13 @@ export const Wallet: React.FC = () => {
   const payoutAccount = useQuery({
     queryKey: paymentKeys.payoutAccount(userId),
     queryFn: paymentService.getPayoutAccount,
-    enabled: Boolean(userId && isSeller),
+    enabled: Boolean(userId),
     refetchOnMount: 'always',
   });
   const payouts = useQuery({
     queryKey: paymentKeys.payouts(userId),
     queryFn: () => paymentService.listPayouts(),
-    enabled: Boolean(userId && isSeller),
+    enabled: Boolean(userId),
     refetchOnMount: 'always',
   });
 
@@ -113,10 +113,9 @@ export const Wallet: React.FC = () => {
     onError: error => setPayoutError(getApiErrorMessage(error, 'Unable to save this payout number.')),
   });
   const requestPayout = useMutation({
-    mutationFn: ({ value, key }: { value: number; key: string }) => paymentService.requestPayout(value, key),
+    mutationFn: ({ source, key }: { source: WalletBalanceSource; key: string }) => paymentService.requestPayout(source, key),
     onSuccess: result => {
       setPayoutError(result.status === 'failed' ? result.failureMessage || 'This payout could not be started.' : undefined);
-      setPayoutAmount('');
       payoutIdempotency.current = undefined;
       void client.invalidateQueries({ queryKey: paymentKeys.wallets(userId) });
       void client.invalidateQueries({ queryKey: paymentKeys.payouts(userId) });
@@ -129,8 +128,8 @@ export const Wallet: React.FC = () => {
     await Promise.allSettled([
       wallets.refetch(),
       wallet?.id ? transactions.refetch() : Promise.resolve(),
-      isSeller ? payoutAccount.refetch() : Promise.resolve(),
-      isSeller ? payouts.refetch() : Promise.resolve(),
+      payoutAccount.refetch(),
+      payouts.refetch(),
     ]);
   };
 
@@ -166,23 +165,30 @@ export const Wallet: React.FC = () => {
     savePayoutAccount.mutate({ phone: normalizedPhone, password: accountPassword });
   };
 
-  const submitPayout = () => {
-    const value = Number(payoutAmount);
-    const minimum = wallet?.minimumPayout ?? 500;
-    if (!Number.isInteger(value) || value < minimum) {
-      setPayoutError(`Enter a whole KES amount of at least ${formatCurrency(minimum, wallet?.currency ?? 'KES')}.`);
+  const submitPayout = (source: WalletBalanceSource) => {
+    const value = source === 'shopping'
+      ? wallet?.shoppingAvailableBalance ?? 0
+      : wallet?.earningsAvailableBalance ?? 0;
+    const minimum = wallet?.withdrawalMinimum ?? 10;
+    const maximum = wallet?.withdrawalMaximum ?? 250_000;
+    if (!wallet || value < minimum) {
+      setPayoutError(`M-Pesa withdrawals require at least ${formatCurrency(minimum, wallet?.currency ?? 'KES')} in available ${source === 'earnings' ? 'seller earnings' : 'shopping funds'}.`);
       return;
     }
-    if (!wallet || value > wallet.availableBalance) {
-      setPayoutError('The requested amount exceeds your available balance.');
+    if (value > maximum) {
+      setPayoutError(`This balance exceeds the ${formatCurrency(maximum, wallet.currency)} M-Pesa transfer limit. Contact support to arrange the withdrawal safely.`);
       return;
     }
-    const signature = String(value);
+    if (!Number.isInteger(value)) {
+      setPayoutError('M-Pesa withdrawals require a whole KES balance. Contact support for help with this balance.');
+      return;
+    }
+    const signature = `${source}:${value}`;
     if (payoutIdempotency.current?.signature !== signature) {
       payoutIdempotency.current = { signature, key: randomUUID() };
     }
     setPayoutError(undefined);
-    requestPayout.mutate({ value, key: payoutIdempotency.current.key });
+    requestPayout.mutate({ source, key: payoutIdempotency.current.key });
   };
 
   if (!user) return <EmptyState title="Sign in to view your wallet" description="Wallet balances and transactions are private." />;
@@ -198,23 +204,30 @@ export const Wallet: React.FC = () => {
   return <ScrollView style={styles.container} contentContainerStyle={styles.content}>
     <View style={styles.balanceSection}>
       <View style={styles.balanceIcon}><WalletCards size={24} color={theme.colors.primary.dark} /></View>
-      <Text style={styles.label}>Available balance</Text>
+      <Text style={styles.label}>Total available</Text>
       <Text style={styles.balance}>{wallets.isLoading ? 'Loading...' : formatCurrency(wallet?.availableBalance ?? 0, wallet?.currency ?? 'KES')}</Text>
       {wallet?.isFrozen ? <Text style={styles.error}>Wallet activity is temporarily unavailable.</Text> : null}
-      {isSeller && wallet ? <View style={styles.balanceBreakdown}>
-        <View style={styles.balanceItem}><Text style={styles.balanceItemValue}>{formatCurrency(wallet.orderHeldBalance, wallet.currency)}</Text><Text style={styles.meta}>Held for orders</Text></View>
-        <View style={styles.balanceItem}><Text style={styles.balanceItemValue}>{formatCurrency(wallet.pendingPayoutBalance, wallet.currency)}</Text><Text style={styles.meta}>Payouts in progress</Text></View>
-      </View> : wallet ? <Text style={styles.meta}>{formatCurrency(wallet.heldBalance, wallet.currency)} currently held</Text> : null}
+      {wallet ? <View style={styles.balanceBreakdown}>
+        <View style={styles.balanceItem}>
+          <Text style={styles.balanceItemValue}>{formatCurrency(wallet.shoppingAvailableBalance, wallet.currency)}</Text>
+          <Text style={styles.meta}>Shopping funds</Text>
+        </View>
+        {isSeller ? <View style={styles.balanceItem}>
+          <Text style={styles.balanceItemValue}>{formatCurrency(wallet.earningsAvailableBalance, wallet.currency)}</Text>
+          <Text style={styles.meta}>Seller earnings</Text>
+        </View> : null}
+      </View> : null}
+      {wallet?.heldBalance ? <Text style={styles.meta}>{formatCurrency(wallet.heldBalance, wallet.currency)} reserved for orders or withdrawals</Text> : null}
     </View>
 
-    {isSeller ? <View style={styles.section}>
+    <View style={styles.section}>
       <View style={styles.sectionHeading}>
         <View style={styles.sectionHeadingIcon}><ShieldCheck size={20} color={theme.colors.primary.dark} /></View>
-        <View style={styles.transactionCopy}><Text style={styles.title}>Seller payouts</Text><Text style={styles.meta}>Available earnings are sent to your saved M-Pesa number.</Text></View>
+        <View style={styles.transactionCopy}><Text style={styles.title}>Withdraw to M-Pesa</Text><Text style={styles.meta}>A withdrawal sends the full available balance directly to your saved number.</Text></View>
       </View>
-      {payoutAccount.isError ? <View><Text style={styles.error}>{getApiErrorMessage(payoutAccount.error, 'Unable to load your payout details.')}</Text><Button variant="secondary" onPress={() => void payoutAccount.refetch()}>Retry</Button></View> : payoutAccount.data ? <>
+      {payoutAccount.isError ? <View><Text style={styles.error}>{getApiErrorMessage(payoutAccount.error, 'Unable to load your withdrawal details.')}</Text><Button variant="secondary" onPress={() => void payoutAccount.refetch()}>Retry</Button></View> : payoutAccount.isLoading ? <Text style={styles.meta}>Loading withdrawal details...</Text> : payoutAccount.data ? <>
         <View style={styles.destinationRow}>
-          <View style={styles.transactionCopy}><Text style={styles.fieldLabel}>M-Pesa destination</Text><Text style={styles.destination}>{payoutAccount.data.phoneNumber}</Text><Text style={styles.meta}>{payoutAccount.data.accountName || 'Seller account'}</Text></View>
+          <View style={styles.transactionCopy}><Text style={styles.fieldLabel}>M-Pesa destination</Text><Text style={styles.destination}>{payoutAccount.data.phoneNumber}</Text><Text style={styles.meta}>{payoutAccount.data.accountName || 'Wallet account'}</Text></View>
           <Button size="sm" variant="secondary" onPress={() => setPayoutPhone(user.phoneNumber ?? '')}>Change</Button>
         </View>
         {payoutPhone ? <View style={styles.formBand}>
@@ -222,22 +235,32 @@ export const Wallet: React.FC = () => {
           <Input label="Account password" required value={accountPassword} onChangeText={setAccountPassword} placeholder="Confirm your identity" secureTextEntry autoComplete="current-password" />
           <View style={styles.actions}><Button variant="secondary" onPress={() => { setPayoutPhone(''); setAccountPassword(''); setPayoutError(undefined); }}>Cancel</Button><Button loading={savePayoutAccount.isPending} loadingLabel="Saving" onPress={submitPayoutAccount}>Save number</Button></View>
         </View> : <>
-          <Input label="Payout amount (KSh)" required value={payoutAmount} onChangeText={value => { setPayoutAmount(value); setPayoutError(undefined); requestPayout.reset(); }} placeholder={String(wallet?.minimumPayout ?? 500)} keyboardType="number-pad" />
-          <Text style={styles.meta}>Minimum {formatCurrency(wallet?.minimumPayout ?? 500, wallet?.currency ?? 'KES')}. Funds remain reserved until M-Pesa confirms the result.</Text>
-          <Button loading={requestPayout.isPending} loadingLabel="Requesting payout" disabled={wallet?.isFrozen || !wallet || wallet.availableBalance < (wallet.minimumPayout || 500)} onPress={submitPayout}>Withdraw to M-Pesa</Button>
+          <View style={styles.withdrawalOption}>
+            <View style={styles.transactionCopy}><Text style={styles.subtitle}>Shopping funds</Text><Text style={styles.meta}>Top-ups and refunds available to withdraw</Text></View>
+            <Text style={styles.withdrawalAmount}>{formatCurrency(wallet?.shoppingAvailableBalance ?? 0, wallet?.currency ?? 'KES')}</Text>
+          </View>
+          <Button loading={requestPayout.isPending && requestPayout.variables?.source === 'shopping'} loadingLabel="Sending withdrawal" disabled={wallet?.isFrozen || !wallet || wallet.shoppingAvailableBalance < wallet.withdrawalMinimum || wallet.shoppingAvailableBalance > wallet.withdrawalMaximum || requestPayout.isPending} onPress={() => submitPayout('shopping')}>Withdraw all shopping funds</Button>
+          {isSeller ? <>
+            <View style={styles.withdrawalOption}>
+              <View style={styles.transactionCopy}><Text style={styles.subtitle}>Seller earnings</Text><Text style={styles.meta}>Released proceeds from completed sales</Text></View>
+              <Text style={styles.withdrawalAmount}>{formatCurrency(wallet?.earningsAvailableBalance ?? 0, wallet?.currency ?? 'KES')}</Text>
+            </View>
+            <Button variant="secondary" loading={requestPayout.isPending && requestPayout.variables?.source === 'earnings'} loadingLabel="Sending withdrawal" disabled={wallet?.isFrozen || !wallet || wallet.earningsAvailableBalance < wallet.withdrawalMinimum || wallet.earningsAvailableBalance > wallet.withdrawalMaximum || requestPayout.isPending} onPress={() => submitPayout('earnings')}>Withdraw all seller earnings</Button>
+          </> : null}
+          <Text style={styles.meta}>M-Pesa supports full-balance withdrawals from {formatCurrency(wallet?.withdrawalMinimum ?? 10, wallet?.currency ?? 'KES')} to {formatCurrency(wallet?.withdrawalMaximum ?? 250000, wallet?.currency ?? 'KES')}. Failed transfers are restored automatically.</Text>
         </>}
       </> : <View style={styles.formBand}>
-        <Text style={styles.subtitle}>Add your payout number</Text>
-        <Text style={styles.meta}>Use an M-Pesa number you control. Your password is required whenever the number changes.</Text>
+        <Text style={styles.subtitle}>Add your withdrawal number</Text>
+        <Text style={styles.meta}>Use an M-Pesa number you control. Your password is required when the number is added or changed.</Text>
         <Input label="M-Pesa number" required value={payoutPhone} onChangeText={setPayoutPhone} placeholder={user.phoneNumber || '254712345678'} keyboardType="phone-pad" autoComplete="tel" />
         <Input label="Account password" required value={accountPassword} onChangeText={setAccountPassword} placeholder="Confirm your identity" secureTextEntry autoComplete="current-password" />
-        <Button loading={savePayoutAccount.isPending} loadingLabel="Saving" onPress={submitPayoutAccount}>Save payout number</Button>
+        <Button loading={savePayoutAccount.isPending} loadingLabel="Saving" onPress={submitPayoutAccount}>Save withdrawal number</Button>
       </View>}
       {payoutError ? <Text style={styles.error} accessibilityRole="alert">{payoutError}</Text> : null}
 
-      <View style={styles.historyHeading}><Text style={styles.subtitle}>Payout history</Text><Button size="sm" variant="tertiary" onPress={() => void payouts.refetch()}>Refresh</Button></View>
-      {payouts.isError ? <Text style={styles.error}>Unable to load payout history.</Text> : payouts.isLoading ? <Text style={styles.meta}>Loading payouts...</Text> : (payouts.data?.results.length ?? 0) === 0 ? <Text style={styles.meta}>No payouts requested yet.</Text> : payouts.data?.results.map(item => <PayoutRow key={item.id} payout={item} />)}
-    </View> : null}
+      <View style={styles.historyHeading}><Text style={styles.subtitle}>Withdrawal history</Text><Button size="sm" variant="tertiary" onPress={() => void payouts.refetch()}>Refresh</Button></View>
+      {payouts.isError ? <Text style={styles.error}>Unable to load withdrawal history.</Text> : payouts.isLoading ? <Text style={styles.meta}>Loading withdrawals...</Text> : (payouts.data?.results.length ?? 0) === 0 ? <Text style={styles.meta}>No withdrawals requested yet.</Text> : payouts.data?.results.map(item => <PayoutRow key={item.id} payout={item} />)}
+    </View>
 
     <View style={styles.section}>
       <Text style={styles.title}>Add money with M-Pesa</Text>
@@ -285,6 +308,8 @@ const styles = StyleSheet.create({
   fieldLabel: { color: theme.colors.muted, fontSize: theme.typography.small.fontSize, fontWeight: '600' },
   destination: { color: theme.colors.ink, fontSize: 19, fontWeight: '800', marginVertical: 2 },
   destinationRow: { minHeight: 68, flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md, paddingVertical: theme.spacing.sm, borderTopWidth: 1, borderBottomWidth: 1, borderColor: theme.colors.border },
+  withdrawalOption: { minHeight: 58, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.md, paddingTop: theme.spacing.sm },
+  withdrawalAmount: { color: theme.colors.ink, fontWeight: '800', textAlign: 'right' },
   formBand: { paddingVertical: theme.spacing.sm },
   actions: { flexDirection: 'row', justifyContent: 'flex-end', flexWrap: 'wrap', gap: theme.spacing.sm },
   historyHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm, marginTop: theme.spacing.md },

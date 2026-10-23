@@ -15,6 +15,7 @@ export type AdminKyc = {
 export type AdminPayoutStatus = 'requested' | 'processing' | 'succeeded' | 'failed' | 'unknown';
 export type AdminPayout = {
   id: string; provider: 'mpesa'; amount: number; currency: string; status: AdminPayoutStatus;
+  balanceSource: 'shopping' | 'earnings'; accountId: string; accountEmail: string; accountName: string;
   destinationPhone: string; destinationName: string; transactionReceipt: string; failureMessage: string;
   createdAt: string; updatedAt: string; processedAt?: string; sellerId: string; sellerEmail: string;
   sellerName: string; storeName: string; resolutionNote: string;
@@ -119,6 +120,8 @@ const mapKyc = (raw: any): AdminKyc => ({
 });
 const mapPayout = (raw: any): AdminPayout => ({
   id: raw.id, provider: raw.provider, amount: parseAmount(raw.amount), currency: raw.currency, status: raw.status,
+  balanceSource: raw.balance_source, accountId: raw.account_id ?? raw.seller_id,
+  accountEmail: raw.account_email ?? raw.seller_email, accountName: raw.account_name ?? raw.seller_name,
   destinationPhone: raw.destination_phone, destinationName: raw.destination_name,
   transactionReceipt: raw.transaction_receipt, failureMessage: raw.failure_message,
   createdAt: raw.created_at, updatedAt: raw.updated_at, processedAt: raw.processed_at ?? undefined,
