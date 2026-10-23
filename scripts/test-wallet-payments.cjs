@@ -111,3 +111,11 @@ test('wallet UI has no manual payout amount field', () => {
   assert.match(source, /Withdraw all shopping funds/);
   assert.match(source, /Withdraw all seller earnings/);
 });
+
+test('payout destination editing never falls back to profile contact data', () => {
+  const source = readFileSync(path.resolve(__dirname, '../src/screens/profile/Wallet.tsx'), 'utf8');
+  assert.match(source, /normalizeKenyanPaymentPhone\(payoutPhone\)/);
+  assert.doesNotMatch(source, /normalizeKenyanPaymentPhone\(payoutPhone\s*\|\|\s*user\?\.phoneNumber/);
+  assert.doesNotMatch(source, /setPayoutPhone\(user\?\.phoneNumber/);
+  assert.match(source, /setPayoutPhone\(''\); setIsEditingPayoutAccount\(true\)/);
+});

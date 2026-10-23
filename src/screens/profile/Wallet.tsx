@@ -59,6 +59,7 @@ export const Wallet: React.FC = () => {
   const [formError, setFormError] = useState<string>();
   const [attempt, setAttempt] = useState<PaymentAttempt>();
   const [payoutPhone, setPayoutPhone] = useState('');
+  const [isEditingPayoutAccount, setIsEditingPayoutAccount] = useState(false);
   const [accountPassword, setAccountPassword] = useState('');
   const [payoutError, setPayoutError] = useState<string>();
   const idempotency = useRef<{ signature: string; key: string } | undefined>(undefined);
@@ -107,6 +108,7 @@ export const Wallet: React.FC = () => {
     onSuccess: result => {
       client.setQueryData(paymentKeys.payoutAccount(userId), result);
       setPayoutPhone('');
+      setIsEditingPayoutAccount(false);
       setAccountPassword('');
       setPayoutError(undefined);
     },
@@ -152,7 +154,7 @@ export const Wallet: React.FC = () => {
   };
 
   const submitPayoutAccount = () => {
-    const normalizedPhone = normalizeKenyanPaymentPhone(payoutPhone || user?.phoneNumber || '');
+    const normalizedPhone = normalizeKenyanPaymentPhone(payoutPhone);
     if (!isWalletTopUpPhone(normalizedPhone)) {
       setPayoutError('Use a Kenyan number in 2547XXXXXXXX or 2541XXXXXXXX format.');
       return;
@@ -228,12 +230,12 @@ export const Wallet: React.FC = () => {
       {payoutAccount.isError ? <View><Text style={styles.error}>{getApiErrorMessage(payoutAccount.error, 'Unable to load your withdrawal details.')}</Text><Button variant="secondary" onPress={() => void payoutAccount.refetch()}>Retry</Button></View> : payoutAccount.isLoading ? <Text style={styles.meta}>Loading withdrawal details...</Text> : payoutAccount.data ? <>
         <View style={styles.destinationRow}>
           <View style={styles.transactionCopy}><Text style={styles.fieldLabel}>M-Pesa destination</Text><Text style={styles.destination}>{payoutAccount.data.phoneNumber}</Text><Text style={styles.meta}>{payoutAccount.data.accountName || 'Wallet account'}</Text></View>
-          <Button size="sm" variant="secondary" onPress={() => setPayoutPhone(user.phoneNumber ?? '')}>Change</Button>
+          <Button size="sm" variant="secondary" onPress={() => { setPayoutPhone(''); setIsEditingPayoutAccount(true); setPayoutError(undefined); }}>Change</Button>
         </View>
-        {payoutPhone ? <View style={styles.formBand}>
+        {isEditingPayoutAccount ? <View style={styles.formBand}>
           <Input label="New M-Pesa number" required value={payoutPhone} onChangeText={setPayoutPhone} placeholder="254712345678" keyboardType="phone-pad" autoComplete="tel" />
           <Input label="Account password" required value={accountPassword} onChangeText={setAccountPassword} placeholder="Confirm your identity" secureTextEntry autoComplete="current-password" />
-          <View style={styles.actions}><Button variant="secondary" onPress={() => { setPayoutPhone(''); setAccountPassword(''); setPayoutError(undefined); }}>Cancel</Button><Button loading={savePayoutAccount.isPending} loadingLabel="Saving" onPress={submitPayoutAccount}>Save number</Button></View>
+          <View style={styles.actions}><Button variant="secondary" onPress={() => { setPayoutPhone(''); setAccountPassword(''); setIsEditingPayoutAccount(false); setPayoutError(undefined); }}>Cancel</Button><Button loading={savePayoutAccount.isPending} loadingLabel="Saving" onPress={submitPayoutAccount}>Save number</Button></View>
         </View> : <>
           <View style={styles.withdrawalOption}>
             <View style={styles.transactionCopy}><Text style={styles.subtitle}>Shopping funds</Text><Text style={styles.meta}>Top-ups and refunds available to withdraw</Text></View>
@@ -252,7 +254,7 @@ export const Wallet: React.FC = () => {
       </> : <View style={styles.formBand}>
         <Text style={styles.subtitle}>Add your withdrawal number</Text>
         <Text style={styles.meta}>Use an M-Pesa number you control. Your password is required when the number is added or changed.</Text>
-        <Input label="M-Pesa number" required value={payoutPhone} onChangeText={setPayoutPhone} placeholder={user.phoneNumber || '254712345678'} keyboardType="phone-pad" autoComplete="tel" />
+        <Input label="M-Pesa number" required value={payoutPhone} onChangeText={setPayoutPhone} placeholder="254712345678" keyboardType="phone-pad" autoComplete="tel" />
         <Input label="Account password" required value={accountPassword} onChangeText={setAccountPassword} placeholder="Confirm your identity" secureTextEntry autoComplete="current-password" />
         <Button loading={savePayoutAccount.isPending} loadingLabel="Saving" onPress={submitPayoutAccount}>Save withdrawal number</Button>
       </View>}
