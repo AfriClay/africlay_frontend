@@ -213,9 +213,9 @@ export const paymentService = {
       throw error;
     }
   },
-  getPayoutAccount: async (): Promise<PayoutAccount | undefined> => {
+  getPayoutAccount: async (): Promise<PayoutAccount | null> => {
     const raw = await apiClient('/payments/payout-account/');
-    if (raw == null) return undefined;
+    if (raw == null) return null;
     return toPayoutAccount(parseCommerce(payoutAccountSchema, raw));
   },
   savePayoutAccount: async (phoneNumber: string, currentPassword: string): Promise<PayoutAccount> =>
