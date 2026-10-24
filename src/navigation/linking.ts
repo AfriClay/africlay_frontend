@@ -55,6 +55,7 @@ export const linking = {
               AddEditProduct: 'products/edit/:productId?',
               SellerOrders: 'orders',
               SellerBookings: 'bookings',
+              SellerEarningsWallet: 'earnings',
               StoreSettings: 'store-settings',
               OrderDetails: 'orders/:orderId',
               StartSelling: 'start',

@@ -93,6 +93,20 @@ test('private destinations and sensitive actions retain explicit authentication 
   assert.doesNotMatch(checkout, /onAuthenticated=\{submit\}/);
 });
 
+test('buy now checks out only the selected product without mutating the normal cart', () => {
+  const product = source('src/screens/home/ProductDetails.tsx');
+  const checkout = source('src/screens/cart/Checkout.tsx');
+  const orders = source('src/services/orderService.ts');
+
+  assert.match(product, /navigate\('Checkout', \{ buyNowProductId: product\.id, buyNowQuantity: 1 \}\)/);
+  assert.doesNotMatch(product, /const buyNow[\s\S]*?cart\.addItem[\s\S]*?navigate\('Checkout'/);
+  assert.match(checkout, /buy_now_product_id: buyNowProductId/);
+  assert.match(checkout, /data=\{checkoutItems\}/);
+  assert.match(checkout, /: cart\.items/);
+  assert.match(orders, /buy_now_product_id\?: string/);
+  assert.match(orders, /buy_now_quantity\?: number/);
+});
+
 test('authentication modal returns to the preserved in-app destination', () => {
   const router = StackRouter({ initialRouteName: 'AppTabs' });
   const options = { routeNames: ['AppTabs', 'Cart', 'Checkout', 'AuthStack'], routeParamList: {}, routeGetIdList: {} };

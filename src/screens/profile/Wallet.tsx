@@ -51,10 +51,14 @@ const PayoutRow = ({ payout }: { payout: Payout }) => {
   </View>;
 };
 
-export const Wallet: React.FC = () => {
+type WalletViewProps = {
+  balanceSource: WalletBalanceSource;
+};
+
+const WalletView: React.FC<WalletViewProps> = ({ balanceSource }) => {
   const { user } = useAuth();
   const userId = user?.id ?? '';
-  const isSeller = canAccessSellerTools(user?.role);
+  const isEarnings = balanceSource === 'earnings';
   const client = useQueryClient();
   const [amount, setAmount] = useState('');
   const [phoneNumber, setPhoneNumber] = useState(user?.phoneNumber ?? '');
@@ -239,11 +243,22 @@ export const Wallet: React.FC = () => {
   };
 
   if (!user) return <EmptyState title="Sign in to view your wallet" description="Wallet balances and transactions are private." />;
+  if (isEarnings && !canAccessSellerTools(user.role)) return <EmptyState title="Seller access required" description="Seller earnings are available to approved seller accounts." />;
   if (wallets.isError) return <ErrorState message={getApiErrorMessage(wallets.error, 'Unable to load your wallet.')} onRetry={() => void wallets.refetch()} />;
   if (!wallets.isLoading && !wallet) return <ErrorState message="Your wallet balance is unavailable." onRetry={() => void wallets.refetch()} />;
 
-  const shoppingWithdrawal = availabilityInput('shopping');
-  const earningsWithdrawal = availabilityInput('earnings');
+  const withdrawal = availabilityInput(balanceSource);
+  const availableBalance = wallet
+    ? isEarnings ? wallet.earningsAvailableBalance : wallet.shoppingAvailableBalance
+    : undefined;
+  const heldBalance = wallet
+    ? isEarnings ? wallet.earningsHeldBalance : wallet.shoppingHeldBalance
+    : 0;
+  const pendingPayoutBalance = wallet
+    ? isEarnings ? wallet.earningsPendingPayoutBalance : wallet.shoppingPendingPayoutBalance
+    : 0;
+  const sourcePayouts = payouts.data?.results.filter(item => item.balanceSource === balanceSource) ?? [];
+  const sourceTransactions = transactions.data?.results.filter(item => item.balanceSource === balanceSource) ?? [];
 
   const attemptMessage = attempt?.status === 'succeeded'
     ? 'Top-up confirmed.'
@@ -255,26 +270,17 @@ export const Wallet: React.FC = () => {
   return <ScrollView style={styles.container} contentContainerStyle={styles.content}>
     <View style={styles.balanceSection}>
       <View style={styles.balanceIcon}><WalletCards size={24} color={theme.colors.primary.dark} /></View>
-      <Text style={styles.label}>Total available</Text>
-      <Text style={styles.balance}>{wallets.isLoading || !wallet ? 'Loading...' : formatCurrency(wallet.availableBalance, wallet.currency)}</Text>
+      <Text style={styles.label}>{isEarnings ? 'Available seller earnings' : 'Available shopping funds'}</Text>
+      <Text style={styles.balance}>{wallets.isLoading || !wallet || availableBalance === undefined ? 'Loading...' : formatCurrency(availableBalance, wallet.currency)}</Text>
       {wallet?.isFrozen ? <Text style={styles.error}>Wallet activity is temporarily unavailable.</Text> : null}
-      {wallet ? <View style={styles.balanceBreakdown}>
-        <View style={styles.balanceItem}>
-          <Text style={styles.balanceItemValue}>{formatCurrency(wallet.shoppingAvailableBalance, wallet.currency)}</Text>
-          <Text style={styles.meta}>Shopping funds</Text>
-        </View>
-        {isSeller ? <View style={styles.balanceItem}>
-          <Text style={styles.balanceItemValue}>{formatCurrency(wallet.earningsAvailableBalance, wallet.currency)}</Text>
-          <Text style={styles.meta}>Seller earnings</Text>
-        </View> : null}
-      </View> : null}
-      {wallet?.heldBalance ? <Text style={styles.meta}>{formatCurrency(wallet.heldBalance, wallet.currency)} reserved for orders or withdrawals</Text> : null}
+      {wallet && heldBalance > 0 ? <Text style={styles.meta}>{formatCurrency(heldBalance, wallet.currency)} held or reserved</Text> : null}
+      {wallet && pendingPayoutBalance > 0 ? <Text style={styles.meta}>{formatCurrency(pendingPayoutBalance, wallet.currency)} in payout processing</Text> : null}
     </View>
 
     <View style={styles.section}>
       <View style={styles.sectionHeading}>
         <View style={styles.sectionHeadingIcon}><ShieldCheck size={20} color={theme.colors.primary.dark} /></View>
-        <View style={styles.transactionCopy}><Text style={styles.title}>Withdraw to M-Pesa</Text><Text style={styles.meta}>A withdrawal sends the full available balance directly to your saved number.</Text></View>
+        <View style={styles.transactionCopy}><Text style={styles.title}>{isEarnings ? 'Seller payout' : 'Withdraw to M-Pesa'}</Text><Text style={styles.meta}>A withdrawal sends the full available {isEarnings ? 'earnings' : 'shopping balance'} directly to your saved number.</Text></View>
       </View>
       {payoutAccount.isError ? <View><Text style={styles.error}>{getApiErrorMessage(payoutAccount.error, 'Unable to load your withdrawal details.')}</Text><Button variant="secondary" onPress={() => void payoutAccount.refetch()}>Retry</Button></View> : payoutAccount.isLoading ? <Text style={styles.meta}>Loading withdrawal details...</Text> : payoutAccount.data ? <>
         <View style={styles.destinationRow}>
@@ -287,19 +293,11 @@ export const Wallet: React.FC = () => {
           <View style={styles.actions}><Button variant="secondary" onPress={() => { setPayoutPhone(''); setAccountPassword(''); setIsEditingPayoutAccount(false); setPayoutError(undefined); }}>Cancel</Button><Button loading={savePayoutAccount.isPending} loadingLabel="Saving" onPress={submitPayoutAccount}>Save number</Button></View>
         </View> : <>
           <View style={styles.withdrawalOption}>
-            <View style={styles.transactionCopy}><Text style={styles.subtitle}>Shopping funds</Text><Text style={styles.meta}>Top-ups and refunds available to withdraw</Text></View>
-            <Text style={styles.withdrawalAmount}>{wallet ? formatCurrency(wallet.shoppingAvailableBalance, wallet.currency) : 'Loading...'}</Text>
+            <View style={styles.transactionCopy}><Text style={styles.subtitle}>{isEarnings ? 'Seller earnings' : 'Shopping funds'}</Text><Text style={styles.meta}>{isEarnings ? 'Released proceeds from completed sales' : 'Top-ups and eligible refunds available to withdraw'}</Text></View>
+            <Text style={styles.withdrawalAmount}>{wallet && availableBalance !== undefined ? formatCurrency(availableBalance, wallet.currency) : 'Loading...'}</Text>
           </View>
-          <Button loading={requestPayout.isPending && requestPayout.variables?.source === 'shopping'} loadingLabel="Sending withdrawal" disabled={!shoppingWithdrawal.allowed} onPress={() => submitPayout('shopping')}>Withdraw all shopping funds</Button>
-          {!shoppingWithdrawal.allowed ? <Text style={styles.availabilityNote} accessibilityLiveRegion="polite">{availabilityMessage(shoppingWithdrawal, 'shopping')}</Text> : null}
-          {isSeller ? <>
-            <View style={styles.withdrawalOption}>
-              <View style={styles.transactionCopy}><Text style={styles.subtitle}>Seller earnings</Text><Text style={styles.meta}>Released proceeds from completed sales</Text></View>
-              <Text style={styles.withdrawalAmount}>{wallet ? formatCurrency(wallet.earningsAvailableBalance, wallet.currency) : 'Loading...'}</Text>
-            </View>
-            <Button variant="secondary" loading={requestPayout.isPending && requestPayout.variables?.source === 'earnings'} loadingLabel="Sending withdrawal" disabled={!earningsWithdrawal.allowed} onPress={() => submitPayout('earnings')}>Withdraw all seller earnings</Button>
-            {!earningsWithdrawal.allowed ? <Text style={styles.availabilityNote} accessibilityLiveRegion="polite">{availabilityMessage(earningsWithdrawal, 'earnings')}</Text> : null}
-          </> : null}
+          <Button loading={requestPayout.isPending && requestPayout.variables?.source === balanceSource} loadingLabel="Sending withdrawal" disabled={!withdrawal.allowed} onPress={() => submitPayout(balanceSource)}>Withdraw all {isEarnings ? 'seller earnings' : 'shopping funds'}</Button>
+          {!withdrawal.allowed ? <Text style={styles.availabilityNote} accessibilityLiveRegion="polite">{availabilityMessage(withdrawal, balanceSource)}</Text> : null}
           <Text style={styles.meta}>M-Pesa supports full-balance withdrawals from {formatCurrency(wallet?.withdrawalMinimum ?? 10, wallet?.currency ?? 'KES')} to {formatCurrency(wallet?.withdrawalMaximum ?? 250000, wallet?.currency ?? 'KES')}. Failed transfers are restored automatically.</Text>
         </>}
       </> : <View style={styles.formBand}>
@@ -312,10 +310,10 @@ export const Wallet: React.FC = () => {
       {payoutError ? <Text style={styles.error} accessibilityRole="alert">{payoutError}</Text> : null}
 
       <View style={styles.historyHeading}><Text style={styles.subtitle}>Withdrawal history</Text><Button size="sm" variant="tertiary" onPress={() => void payouts.refetch()}>Refresh</Button></View>
-      {payouts.isError ? <Text style={styles.error}>Unable to load withdrawal history.</Text> : payouts.isLoading ? <Text style={styles.meta}>Loading withdrawals...</Text> : (payouts.data?.results.length ?? 0) === 0 ? <Text style={styles.meta}>No withdrawals requested yet.</Text> : payouts.data?.results.map(item => <PayoutRow key={item.id} payout={item} />)}
+      {payouts.isError ? <Text style={styles.error}>Unable to load withdrawal history.</Text> : payouts.isLoading ? <Text style={styles.meta}>Loading withdrawals...</Text> : sourcePayouts.length === 0 ? <Text style={styles.meta}>No {isEarnings ? 'seller' : 'shopping'} withdrawals requested yet.</Text> : sourcePayouts.map(item => <PayoutRow key={item.id} payout={item} />)}
     </View>
 
-    <View style={styles.section}>
+    {!isEarnings ? <View style={styles.section}>
       <Text style={styles.title}>Add money with M-Pesa</Text>
       <Text style={styles.meta}>Top-ups can be used for marketplace purchases.</Text>
       <Input label="Amount (KSh)" required value={amount} onChangeText={value => { setAmount(value); setAttempt(undefined); setFormError(undefined); topUp.reset(); }} placeholder="1000" keyboardType="number-pad" />
@@ -331,17 +329,21 @@ export const Wallet: React.FC = () => {
           ? null
           : <Button loading={topUp.isPending} loadingLabel="Requesting top-up" disabled={wallet?.isFrozen} onPress={() => submitTopUp()}>{topUp.isError ? 'Retry Same Top-up' : 'Send M-Pesa Prompt'}</Button>}
       {attempt && attempt.status !== 'succeeded' ? <Button variant="secondary" onPress={() => void refresh()}>Refresh Wallet Activity</Button> : null}
-    </View>
+    </View> : null}
 
     <View style={styles.section}>
-      <Text style={styles.title}>Recent wallet activity</Text>
+      <Text style={styles.title}>{isEarnings ? 'Recent earnings activity' : 'Recent shopping activity'}</Text>
       {transactions.isError ? <View><Text style={styles.error}>Unable to load wallet activity.</Text><Button variant="secondary" onPress={() => void transactions.refetch()}>Retry</Button></View> :
         transactions.isLoading ? <Text style={styles.meta}>Loading activity...</Text> :
-          (transactions.data?.results.length ?? 0) === 0 ? <Text style={styles.meta}>No wallet transactions yet.</Text> :
-            transactions.data?.results.map(item => <View key={item.id} style={styles.transaction}><View style={styles.transactionCopy}><Text style={styles.transactionType}>{item.type.replace(/_/g, ' ')}</Text><Text style={styles.meta}>{formatDate(item.createdAt)}</Text></View><Text style={styles.transactionAmount}>{formatCurrency(item.amount, wallet?.currency ?? 'KES')}</Text></View>)}
+          sourceTransactions.length === 0 ? <Text style={styles.meta}>No {isEarnings ? 'earnings' : 'shopping'} transactions yet.</Text> :
+            sourceTransactions.map(item => <View key={item.id} style={styles.transaction}><View style={styles.transactionCopy}><Text style={styles.transactionType}>{item.type.replace(/_/g, ' ')}</Text><Text style={styles.meta}>{formatDate(item.createdAt)}</Text></View><Text style={styles.transactionAmount}>{formatCurrency(item.amount, wallet?.currency ?? 'KES')}</Text></View>)}
     </View>
   </ScrollView>;
 };
+
+export const Wallet: React.FC = () => <WalletView balanceSource="shopping" />;
+
+export const SellerEarningsWallet: React.FC = () => <WalletView balanceSource="earnings" />;
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.cream },
@@ -350,9 +352,6 @@ const styles = StyleSheet.create({
   balanceIcon: { width: 48, height: 48, borderRadius: theme.radii.pill, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.primary.tint, marginBottom: theme.spacing.sm },
   label: { color: theme.colors.muted },
   balance: { color: theme.colors.ink, fontSize: 30, lineHeight: 38, fontWeight: '800', marginTop: theme.spacing.xs },
-  balanceBreakdown: { width: '100%', flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: theme.spacing.lg, marginTop: theme.spacing.md },
-  balanceItem: { minWidth: 135, alignItems: 'center' },
-  balanceItemValue: { color: theme.colors.ink, fontWeight: '800' },
   section: { paddingVertical: theme.spacing.lg, borderBottomWidth: 1, borderBottomColor: theme.colors.border, gap: theme.spacing.sm },
   sectionHeading: { flexDirection: 'row', alignItems: 'flex-start', gap: theme.spacing.sm, marginBottom: theme.spacing.sm },
   sectionHeadingIcon: { width: 38, height: 38, borderRadius: theme.radii.sm, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.primary.tint },

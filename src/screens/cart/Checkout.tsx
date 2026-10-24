@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, AppState, FlatList, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { AlertTriangle, CircleCheckBig, Clock3, X } from 'lucide-react-native';
@@ -21,8 +21,11 @@ import { Payment } from '../../types/payment';
 import { OrderPaymentOption } from '../../types/order';
 import { formatCurrency } from '../../utils/formatCurrency';
 import { checkoutAddressSchema } from '../../validation/checkoutSchemas';
+import { catalogKeys } from '../../services/catalogQueries';
+import { productService } from '../../services/productService';
 
 type CheckoutNavigation = NativeStackNavigationProp<RootStackParamList, 'Checkout'>;
+type CheckoutRoute = RouteProp<RootStackParamList, 'Checkout'>;
 type CheckoutStage = 'idle' | 'creating-order' | 'requesting-payment' | 'payment-pending' | 'payment-succeeded' | 'payment-failed' | 'payment-unknown';
 
 const PAYMENT_POLL_LIMIT = 12;
@@ -30,10 +33,39 @@ const PAYMENT_POLL_INTERVAL = 5_000;
 
 export const Checkout: React.FC = () => {
   const navigation = useNavigation<CheckoutNavigation>();
+  const route = useRoute<CheckoutRoute>();
   const compactPaymentOptions = useWindowDimensions().width < 360;
   const cart = useCart();
   const auth = useAuth();
   const userId = auth.user?.id ?? '';
+  const buyNowProductId = route.params?.buyNowProductId;
+  const buyNowQuantity = route.params?.buyNowQuantity ?? 1;
+  const buyNowQuery = useQuery({
+    queryKey: catalogKeys.product(buyNowProductId ?? ''),
+    queryFn: () => productService.fetchProductById(buyNowProductId!),
+    enabled: Boolean(buyNowProductId),
+  });
+  const checkoutItems = buyNowProductId
+    ? buyNowQuery.data ? [{
+      id: `buy-now:${buyNowQuery.data.id}`,
+      productId: buyNowQuery.data.id,
+      productSlug: buyNowQuery.data.slug,
+      name: buyNowQuery.data.name,
+      price: buyNowQuery.data.price,
+      quantity: buyNowQuantity,
+    }] : []
+    : cart.items;
+  const checkoutItemCount = checkoutItems.reduce((sum, item) => sum + item.quantity, 0);
+  const checkoutLoading = buyNowProductId ? buyNowQuery.isLoading : cart.loading;
+  const checkoutError = buyNowProductId
+    ? buyNowQuery.isError
+      ? getApiErrorMessage(buyNowQuery.error, 'Unable to load this product for checkout.')
+      : !buyNowQuery.isLoading && !buyNowQuery.data ? 'This product is no longer available.' : undefined
+    : cart.error;
+  const checkoutScope = buyNowProductId ? {
+    buy_now_product_id: buyNowProductId,
+    buy_now_quantity: buyNowQuantity,
+  } : {};
   const queryClient = useQueryClient();
   const addressKey = ['addresses', userId] as const;
   const addressesQuery = useQuery({ queryKey: addressKey, queryFn: addressService.list, enabled: Boolean(userId && cart.available) });
@@ -62,11 +94,11 @@ export const Checkout: React.FC = () => {
   } : undefined;
   const parsedAddress = addressPayload ? checkoutAddressSchema.safeParse(addressPayload) : undefined;
   const validAddressPayload = parsedAddress?.success ? parsedAddress.data : undefined;
-  const cartSignature = cart.items.map(item => `${item.id}:${item.quantity}`).join('|');
+  const cartSignature = checkoutItems.map(item => `${item.id}:${item.quantity}`).join('|');
   const quoteQuery = useQuery({
     queryKey: orderKeys.shippingQuote(userId, selected?.city ?? '', cartSignature),
-    queryFn: () => orderService.shippingQuote(validAddressPayload!),
-    enabled: Boolean(userId && cart.available && cart.itemCount && validAddressPayload),
+    queryFn: () => orderService.shippingQuote({ ...validAddressPayload!, ...checkoutScope }),
+    enabled: Boolean(userId && cart.available && checkoutItemCount && validAddressPayload && !checkoutError),
   });
 
   useEffect(() => {
@@ -173,7 +205,7 @@ export const Checkout: React.FC = () => {
   }, [applyPayment, phoneNumber]);
 
   const submit = async () => {
-    if (inFlight.current || !cart.itemCount || !selected || !auth.user || !cart.available) return;
+    if (inFlight.current || !checkoutItemCount || !selected || !auth.user || !cart.available) return;
     if (!isOrderPaymentPhone(phoneNumber)) {
       setPhoneTouched(true);
       setError('Enter a Kenyan M-Pesa number in 2547XXXXXXXX or 2541XXXXXXXX format.');
@@ -191,6 +223,7 @@ export const Checkout: React.FC = () => {
         ...parsed.data,
         payment_method: 'mpesa',
         payment_option: paymentOption,
+        ...checkoutScope,
       });
       setOrderId(order.id);
       setOrderTotal(order.total);
@@ -214,7 +247,7 @@ export const Checkout: React.FC = () => {
   };
 
   if (!auth.user) return <SafeAreaView style={styles.container}>
-    <GuestAuthSheet visible={authSheet} onClose={() => setAuthSheet(false)} description="Your cart is saved. Log in or create an account to choose delivery and place the order." />
+    <GuestAuthSheet visible={authSheet} onClose={() => setAuthSheet(false)} description={buyNowProductId ? 'Log in or create an account to buy this item. Your normal cart will remain unchanged.' : 'Your cart is saved. Log in or create an account to choose delivery and place the order.'} />
     <ScrollView testID="checkout-scroll" style={styles.scroll} contentContainerStyle={styles.gateContent} keyboardShouldPersistTaps="handled"><Text style={styles.title}>Checkout</Text><Text style={styles.note}>An account is required for delivery details, order history, and payment confirmation. No order or payment will be started automatically after sign-in.</Text><Button onPress={() => setAuthSheet(true)}>Continue to Login</Button></ScrollView>
   </SafeAreaView>;
 
@@ -315,15 +348,15 @@ export const Checkout: React.FC = () => {
       <View style={styles.totalRow}><Text style={styles.note}>{paymentOption === 'pay_on_delivery' ? 'Pay now' : 'Total due'}</Text><Text style={styles.total}>{formatCurrency(dueNow, quote.currency)}</Text></View>
       {paymentOption === 'pay_on_delivery' ? <View style={styles.totalRow}><Text style={styles.note}>Due at delivery</Text><Text style={styles.summaryAmount}>{formatCurrency(quote.itemSubtotal, quote.currency)}</Text></View> : null}
     </> : null}
-    {cart.error && <Text style={styles.error} accessibilityRole="alert">{cart.error}</Text>}
+    {checkoutError && <Text style={styles.error} accessibilityRole="alert">{checkoutError}</Text>}
     {error && <Text style={styles.error} accessibilityRole="alert">{error}</Text>}
     {orderCreationUncertain ? <Button variant="secondary" onPress={() => navigation.navigate('AppTabs', { screen: 'Profile', params: { screen: 'MyOrders' } })}>View My Orders</Button> : null}
-    <Button onPress={() => void submit()} loading={busy} loadingLabel={stage === 'creating-order' ? 'Creating order' : 'Requesting payment'} disabled={busy || orderCreationUncertain || cart.loading || cart.mutating || !cart.itemCount || !selected || !isOrderPaymentPhone(phoneNumber) || addressesQuery.isError || quoteQuery.isLoading || quoteQuery.isError || !quote || creating || Boolean(cart.error)}>{paymentOption === 'pay_on_delivery' ? 'Pay Delivery Fee & Place Order' : 'Place Order & Pay'}</Button>
+    <Button onPress={() => void submit()} loading={busy} loadingLabel={stage === 'creating-order' ? 'Creating order' : 'Requesting payment'} disabled={busy || orderCreationUncertain || checkoutLoading || (!buyNowProductId && cart.mutating) || !checkoutItemCount || !selected || !isOrderPaymentPhone(phoneNumber) || addressesQuery.isError || quoteQuery.isLoading || quoteQuery.isError || !quote || creating || Boolean(checkoutError)}>{paymentOption === 'pay_on_delivery' ? 'Pay Delivery Fee & Place Order' : 'Place Order & Pay'}</Button>
   </View>;
-  return <SafeAreaView style={styles.container}><FlatList testID="checkout-scroll" style={styles.scroll} data={cart.items} keyExtractor={item => item.id}
+  return <SafeAreaView style={styles.container}><FlatList testID="checkout-scroll" style={styles.scroll} data={checkoutItems} keyExtractor={item => item.id}
     renderItem={({ item }) => <View style={styles.itemRow}><Text style={styles.itemName}>{item.name} x {item.quantity}</Text><Text style={styles.itemPrice}>{formatCurrency(item.price * item.quantity)}</Text></View>}
     ListHeaderComponent={header} ListFooterComponent={footer}
-    ListEmptyComponent={<Text style={styles.note}>{cart.error ? 'Cart unavailable. Return to the cart and retry.' : 'Your cart is empty.'}</Text>} contentContainerStyle={styles.content} /></SafeAreaView>;
+    ListEmptyComponent={<Text style={styles.note}>{checkoutError ? 'Checkout selection unavailable. Go back and retry.' : checkoutLoading ? 'Loading your selection...' : 'Your cart is empty.'}</Text>} contentContainerStyle={styles.content} /></SafeAreaView>;
 };
 
 const styles = StyleSheet.create({

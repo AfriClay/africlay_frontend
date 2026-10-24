@@ -52,7 +52,7 @@ export const ProductDetails: React.FC = () => {
   const auth = useAuth();
   const [authSheetVisible, setAuthSheetVisible] = useState(false);
   const [cartError, setCartError] = useState<string>();
-  const [pendingAction, setPendingAction] = useState<'cart' | 'buy'>();
+  const [pendingAction, setPendingAction] = useState<'cart'>();
   const canBuy = !auth.user || canAccessBuyerTools(auth.user.role);
 
   const handleAddToCart = async () => {
@@ -72,20 +72,10 @@ export const ProductDetails: React.FC = () => {
     }
   };
 
-  const buyNow = async () => {
+  const buyNow = () => {
     if (auth.user && !canAccessBuyerTools(auth.user.role)) { setCartError('Shopping is not available for this account.'); return; }
-    if (product && !cart.mutating) {
-      setPendingAction('buy');
-      setCartError(undefined);
-      try {
-        await cart.addItem(product.id, 1, { productId: product.id, productSlug: product.slug, name: product.name, price: product.price });
-      } catch (error) {
-        setCartError(getApiErrorMessage(error, 'Unable to add this item.'));
-        setPendingAction(undefined);
-        return;
-      }
-      setPendingAction(undefined);
-      (navigation as any).navigate('Checkout');
+    if (product) {
+      (navigation as any).navigate('Checkout', { buyNowProductId: product.id, buyNowQuantity: 1 });
     }
   };
 
@@ -96,7 +86,7 @@ export const ProductDetails: React.FC = () => {
   const actions = <View onLayout={event => setActionHeight(event.nativeEvent.layout.height)} style={[styles.actions, isExpanded && styles.desktopActions]}>
     {canBuy ? <View style={styles.buttonRow}>
       <Button style={styles.actionButton} variant="secondary" icon={<ShoppingCart color={theme.colors.primary.DEFAULT} size={20} />} onPress={() => void handleAddToCart()} disabled={cart.mutating} loading={pendingAction === 'cart'} loadingLabel="Adding">Add to cart</Button>
-      <Button style={styles.actionButton} onPress={() => void buyNow()} disabled={cart.mutating} loading={pendingAction === 'buy'} loadingLabel="Preparing">Buy now</Button>
+      <Button style={styles.actionButton} onPress={buyNow}>Buy now</Button>
     </View> : <Text style={styles.buyerOnly}>Switch to a buyer-enabled account to purchase products.</Text>}
   </View>;
 

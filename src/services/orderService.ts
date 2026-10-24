@@ -78,6 +78,8 @@ export type CheckoutPayload = {
   shipping_country: string;
   payment_method?: 'mpesa' | 'wallet';
   payment_option?: OrderPaymentOption;
+  buy_now_product_id?: string;
+  buy_now_quantity?: number;
 };
 
 const shippingQuoteSchema = z.object({

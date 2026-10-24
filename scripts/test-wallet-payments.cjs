@@ -108,10 +108,36 @@ test('withdrawal requests the full selected balance source without an amount', a
 test('wallet UI has no manual payout amount field', () => {
   const source = readFileSync(path.resolve(__dirname, '../src/screens/profile/Wallet.tsx'), 'utf8');
   assert.doesNotMatch(source, /Payout amount/);
-  assert.match(source, /Withdraw all shopping funds/);
-  assert.match(source, /Withdraw all seller earnings/);
+  assert.match(source, /submitPayout\(balanceSource\)/);
+  assert.match(source, /Withdraw all \{isEarnings \? 'seller earnings' : 'shopping funds'\}/);
   assert.match(source, /Confirm withdrawal/);
   assert.match(source, /globalThis\.confirm/);
+});
+
+test('shopping and seller wallet views are scoped to their authoritative balance source', () => {
+  const wallet = readFileSync(path.resolve(__dirname, '../src/screens/profile/Wallet.tsx'), 'utf8');
+  const profile = readFileSync(path.resolve(__dirname, '../src/screens/profile/Profile.tsx'), 'utf8');
+  const sellerStack = readFileSync(path.resolve(__dirname, '../src/navigation/SellerDashboardStack.tsx'), 'utf8');
+  const sellerDashboard = readFileSync(path.resolve(__dirname, '../src/screens/seller/DashboardHome.tsx'), 'utf8');
+  const linking = readFileSync(path.resolve(__dirname, '../src/navigation/linking.ts'), 'utf8');
+
+  assert.match(wallet, /export const Wallet: React\.FC = \(\) => <WalletView balanceSource="shopping" \/>/);
+  assert.match(wallet, /export const SellerEarningsWallet: React\.FC = \(\) => <WalletView balanceSource="earnings" \/>/);
+  assert.match(wallet, /filter\(item => item\.balanceSource === balanceSource\)/);
+  assert.match(profile, /label: 'Shopping wallet'/);
+  assert.match(sellerStack, /name="SellerEarningsWallet"/);
+  assert.match(sellerDashboard, /label: 'Seller Earnings', route: 'SellerEarningsWallet'/);
+  assert.match(linking, /SellerEarningsWallet: 'earnings'/);
+});
+
+test('seller earnings are visible from compact and desktop marketplace navigation', () => {
+  const tabs = readFileSync(path.resolve(__dirname, '../src/navigation/AppTabs.tsx'), 'utf8');
+  const shell = readFileSync(path.resolve(__dirname, '../src/components/layout/MarketplaceShell.tsx'), 'utf8');
+
+  assert.match(tabs, /earningsAvailableBalance/);
+  assert.match(tabs, /available earnings \$\{earningsLabel\}/);
+  assert.match(shell, /Seller earnings \$\{earningsLabel\}/);
+  assert.match(shell, /screen: 'SellerEarningsWallet'/);
 });
 
 test('payout destination editing never falls back to profile contact data', () => {

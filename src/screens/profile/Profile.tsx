@@ -24,7 +24,7 @@ const menuItems: ReadonlyArray<{ label: string; route: ProfileRouteName; icon: t
   { label: 'My Bookings', route: 'MyBookings', icon: CalendarClock },
   { label: 'My Wishlist', route: 'Wishlist', icon: Heart },
   { label: 'Notifications', route: 'Notifications', icon: Bell },
-  { label: 'Wallet', route: 'Wallet', icon: WalletCards },
+  { label: 'Shopping wallet', route: 'Wallet', icon: WalletCards },
   { label: 'Operations access', route: 'DashboardAccessRequests', icon: ShieldCheck },
   { label: 'My Addresses', route: 'MyAddresses', icon: MapPin },
   { label: 'Settings', route: 'Settings', icon: Settings },

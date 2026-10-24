@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useRef, useState, type PropsWithChildren } from 'react';
 import { Animated, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Bell, CircleHelp, Heart, Home, PanelLeftClose, PanelLeftOpen, Plus, Search, Settings, ShoppingCart, User, type LucideIcon } from 'lucide-react-native';
+import { Bell, CircleHelp, Heart, Home, PanelLeftClose, PanelLeftOpen, Plus, Search, Settings, ShoppingCart, User, WalletCards, type LucideIcon } from 'lucide-react-native';
 import { useResponsiveLayout, contentLimit, authRoutes } from '../../contexts/ResponsiveLayoutContext';
 import { useAuth } from '../../hooks/useAuth';
 import { useCart } from '../../hooks/useCart';
@@ -15,6 +15,8 @@ import { notificationKeys, notificationService } from '../../services/notificati
 import { CategoryMegaMenu } from './CategoryMegaMenu';
 import { SearchField } from '../ui/SearchField';
 import { MarketplaceBrand } from '../ui/MarketplaceBrand';
+import { paymentKeys, paymentService } from '../../services/paymentService';
+import { formatCurrency } from '../../utils/formatCurrency';
 
 type Destination = { tab?: 'Home' | 'Search' | 'Sell' | 'Profile'; screen?: string; params?: object; root?: 'Cart' };
 type Props = PropsWithChildren<{ route: string; category?: string; navigate: (destination: Destination) => void }>;
@@ -38,6 +40,10 @@ export const MarketplaceShell = ({ children, route, category, navigate }: Props)
   const { isExpanded, sidebarWidth } = useResponsiveLayout();
   const { user } = useAuth();
   const canSell = canAccessSellerTools(user?.role);
+  const userId = user?.id ?? '';
+  const wallets = useQuery({ queryKey: paymentKeys.wallets(userId), queryFn: paymentService.listWallets, enabled: canSell && Boolean(userId), staleTime: 60_000 });
+  const wallet = wallets.data?.find(item => item.currency === 'KES') ?? wallets.data?.[0];
+  const earningsLabel = wallet ? formatCurrency(wallet.earningsAvailableBalance, wallet.currency) : wallets.isError ? 'Unavailable' : '...';
   const showCart = !user || canAccessBuyerTools(user.role);
   const unreadQuery = useQuery({ queryKey: notificationKeys.unread(user?.id ?? ''), queryFn: () => notificationService.list(false), enabled: Boolean(user?.id), staleTime: 15_000, refetchInterval: 30_000 });
   const unreadCount = unreadQuery.data?.length ?? 0;
@@ -69,7 +75,8 @@ export const MarketplaceShell = ({ children, route, category, navigate }: Props)
       {isExpanded && !focused && <CollapsedSidebar.Provider value={collapsed}><Animated.View style={[styles.sidebar, { width: railWidth, overflow: 'hidden' }]}><ScrollView contentContainerStyle={styles.sidebarContent}>
         <Action label="Home" icon={Home} active={route === 'HomeFeed'} onPress={() => navigate({ tab: 'Home', screen: 'HomeFeed' })} />
         <Action label="Discover" icon={Search} active={route === 'SearchLanding'} onPress={() => navigate({ tab: 'Search', screen: 'SearchLanding' })} />
-        {canSell && <Action label="Sell" icon={Plus} active={['StartSelling', 'DashboardHome', 'ProductManagement', 'ServiceManagement', 'AddEditProduct', 'SellerOrders', 'SellerBookings'].includes(route)} onPress={() => navigate({ tab: 'Sell' })} />}
+        {canSell && <Action label="Sell" icon={Plus} active={['StartSelling', 'DashboardHome', 'ProductManagement', 'ServiceManagement', 'AddEditProduct', 'SellerOrders', 'SellerBookings', 'SellerEarningsWallet'].includes(route)} onPress={() => navigate({ tab: 'Sell' })} />}
+        {canSell && <Action label={`Seller earnings ${earningsLabel}`} icon={WalletCards} active={route === 'SellerEarningsWallet'} onPress={() => navigate({ tab: 'Sell', screen: 'SellerEarningsWallet' })} />}
         {collapsed ? <View style={styles.divider} /> : <Text style={styles.section}>Your account</Text>}
         <Action label="Settings" icon={Settings} active={route === 'Settings'} onPress={() => navigate({ tab: 'Profile', screen: 'Settings' })} />
         {user && <Action label="Wishlist" icon={Heart} active={route === 'Wishlist'} onPress={() => navigate({ tab: 'Profile', screen: 'Wishlist' })} />}

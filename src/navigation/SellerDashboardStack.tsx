@@ -8,6 +8,7 @@ import { SellerOrders } from '../screens/seller/SellerOrders';
 import { OrderDetails } from '../screens/profile/OrderDetails';
 import { SellerBookings } from '../screens/seller/SellerBookings';
 import { StoreSettings } from '../screens/seller/StoreSettings';
+import { SellerEarningsWallet } from '../screens/profile/Wallet';
 import { createAppStackNavigator, useAppStackScreenOptions } from './appStack';
 
 export type SellerDashboardStackParamList = {
@@ -18,6 +19,7 @@ export type SellerDashboardStackParamList = {
   SellerOrders: undefined;
   SellerBookings: undefined;
   StoreSettings: undefined;
+  SellerEarningsWallet: undefined;
   OrderDetails: { orderId: string };
 };
 
@@ -37,6 +39,7 @@ export const SellerDashboardStack = () => {
     <Stack.Screen name="SellerOrders" component={SellerOrders} options={{ title: 'Seller Orders' }} />
     <Stack.Screen name="SellerBookings" component={SellerBookings} options={{ title: 'Service Bookings' }} />
     <Stack.Screen name="StoreSettings" component={StoreSettings} options={{ title: 'Store Settings' }} />
+    <Stack.Screen name="SellerEarningsWallet" component={SellerEarningsWallet} options={{ title: 'Seller Earnings' }} />
     <Stack.Screen name="OrderDetails" component={OrderDetails as any} options={{ title: 'Order Details' }} />
   </Stack.Navigator>;
 };

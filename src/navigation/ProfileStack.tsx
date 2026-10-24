@@ -61,7 +61,7 @@ export const ProfileStack = () => {
     <Stack.Screen name="Wishlist" component={ProtectedWishlist} options={{ title: 'My Wishlist' }} />
     <Stack.Screen name="Notifications" component={ProtectedNotifications} />
     <Stack.Screen name="MyBookings" component={ProtectedBookings} options={{ title: 'My Bookings' }} />
-    <Stack.Screen name="Wallet" component={ProtectedWallet} options={{ title: 'Wallet' }} />
+    <Stack.Screen name="Wallet" component={ProtectedWallet} options={{ title: 'Shopping Wallet' }} />
     <Stack.Screen name="DashboardAccessRequests" component={ProtectedDashboardAccess} options={{ title: 'Operations Access' }} />
     <Stack.Screen name="Settings" component={ProtectedSettings} />
     <Stack.Screen name="SupportHelp" component={SupportHelp} options={{ title: 'Help & Support' }} />

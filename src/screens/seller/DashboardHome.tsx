@@ -3,7 +3,7 @@ import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { BriefcaseBusiness, CalendarDays, MapPin, PackagePlus, Pencil, ShoppingBag } from 'lucide-react-native';
+import { BriefcaseBusiness, CalendarDays, MapPin, PackagePlus, Pencil, ShoppingBag, WalletCards } from 'lucide-react-native';
 import { useQuery } from '@tanstack/react-query';
 import { StatCard } from '../../components/domain/StatCard';
 import { useAuth } from '../../hooks/useAuth';
@@ -21,6 +21,7 @@ const actions = [
   { label: 'Add New Product', route: 'AddEditProduct' as const, icon: PackagePlus },
   { label: 'Manage Services', route: 'ServiceManagement' as const, icon: BriefcaseBusiness },
   { label: 'Seller Orders', route: 'SellerOrders' as const, icon: ShoppingBag },
+  { label: 'Seller Earnings', route: 'SellerEarningsWallet' as const, icon: WalletCards },
   { label: 'Service Bookings', route: 'SellerBookings' as const, icon: CalendarDays },
   { label: 'Store Settings', route: 'StoreSettings' as const, icon: MapPin },
 ];

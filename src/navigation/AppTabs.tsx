@@ -12,6 +12,9 @@ import { useResponsiveLayout } from '../contexts/ResponsiveLayoutContext';
 import { useAuth } from '../hooks/useAuth';
 import { canAccessSellerTools } from '../utils/roles';
 import type { RootStackParamList } from './RootNavigator';
+import { useQuery } from '@tanstack/react-query';
+import { paymentKeys, paymentService } from '../services/paymentService';
+import { formatCurrency } from '../utils/formatCurrency';
 
 export type AppTabParamList = {
   Home: undefined;
@@ -54,6 +57,15 @@ const AppTabsNavigator = ({ onOpenHome, onOpenCategories, onOpenOrders, onOpenPr
   const { isCompact } = useResponsiveLayout();
   const { user } = useAuth();
   const canSell = canAccessSellerTools(user?.role);
+  const userId = user?.id ?? '';
+  const wallets = useQuery({
+    queryKey: paymentKeys.wallets(userId),
+    queryFn: paymentService.listWallets,
+    enabled: canSell && Boolean(userId),
+    staleTime: 60_000,
+  });
+  const wallet = wallets.data?.find(item => item.currency === 'KES') ?? wallets.data?.[0];
+  const earningsLabel = wallet ? formatCurrency(wallet.earningsAvailableBalance, wallet.currency) : wallets.isError ? 'Unavailable' : '...';
 
   const TabBar = useCallback(({ state, navigation }: BottomTabBarProps) => (
     <View style={[styles.tabBar, { height: 72 + insets.bottom, paddingBottom: insets.bottom }]}>
@@ -77,9 +89,10 @@ const AppTabsNavigator = ({ onOpenHome, onOpenCategories, onOpenOrders, onOpenPr
 
         if (item.name === 'Sell') {
           return (
-            <Pressable key={item.name} onPress={onPress} style={({ pressed }) => [styles.sellButton, pressed && styles.pressed]} accessibilityRole="button" accessibilityLabel="Sell" accessibilityState={{ selected: isFocused }}>
+            <Pressable key={item.name} onPress={onPress} style={({ pressed }) => [styles.sellButton, pressed && styles.pressed]} accessibilityRole="button" accessibilityLabel={`Sell, available earnings ${earningsLabel}`} accessibilityState={{ selected: isFocused }}>
               <View style={[styles.sellCircle, isFocused ? styles.sellCircleFocused : null]}><Icon color={theme.colors.white} size={26} strokeWidth={2} /></View>
               <Text style={styles.sellLabel}>Sell</Text>
+              <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={styles.earningsLabel}>{earningsLabel}</Text>
             </Pressable>
           );
         }
@@ -92,7 +105,7 @@ const AppTabsNavigator = ({ onOpenHome, onOpenCategories, onOpenOrders, onOpenPr
         );
       })}
     </View>
-  ), [canSell, insets.bottom, onOpenCategories, onOpenHome, onOpenOrders, onOpenProfile]);
+  ), [canSell, earningsLabel, insets.bottom, onOpenCategories, onOpenHome, onOpenOrders, onOpenProfile]);
 
   return (
     <Tab.Navigator backBehavior="history" screenOptions={{ headerShown: false }} tabBar={isCompact ? TabBar : () => null}>
@@ -130,6 +143,7 @@ const styles = StyleSheet.create({
   sellCircle: { width: 56, height: 56, borderRadius: 28, backgroundColor: theme.colors.primary.DEFAULT, borderWidth: 4, borderColor: theme.colors.white, alignItems: 'center', justifyContent: 'center', ...theme.shadows.md },
   sellCircleFocused: { backgroundColor: theme.colors.primary.dark, borderColor: theme.colors.primary.tint },
   sellLabel: { marginTop: 2, color: theme.colors.primary.DEFAULT, ...theme.typography.marketplace.navigation },
+  earningsLabel: { width: '100%', paddingHorizontal: 2, color: theme.colors.muted, fontSize: 9, lineHeight: 11, fontWeight: '700', textAlign: 'center' },
   iconPill: { width: 48, height: 30, borderRadius: theme.radii.pill, alignItems: 'center', justifyContent: 'center' },
   iconPillActive: { backgroundColor: theme.colors.primary.tint },
   pressed: { opacity: 0.68 },
