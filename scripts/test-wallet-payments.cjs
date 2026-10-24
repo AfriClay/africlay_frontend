@@ -44,7 +44,7 @@ function harness(responder) {
     return exports;
   }
 
-  return { service: load('services/paymentService.ts').paymentService, requests };
+  return { service: load('services/paymentService.ts').paymentService, requests, load };
 }
 
 test('missing payout account is represented by null query data', async () => {
@@ -110,6 +110,8 @@ test('wallet UI has no manual payout amount field', () => {
   assert.doesNotMatch(source, /Payout amount/);
   assert.match(source, /Withdraw all shopping funds/);
   assert.match(source, /Withdraw all seller earnings/);
+  assert.match(source, /Confirm withdrawal/);
+  assert.match(source, /globalThis\.confirm/);
 });
 
 test('payout destination editing never falls back to profile contact data', () => {
@@ -118,4 +120,59 @@ test('payout destination editing never falls back to profile contact data', () =
   assert.doesNotMatch(source, /normalizeKenyanPaymentPhone\(payoutPhone\s*\|\|\s*user\?\.phoneNumber/);
   assert.doesNotMatch(source, /setPayoutPhone\(user\?\.phoneNumber/);
   assert.match(source, /setPayoutPhone\(''\); setIsEditingPayoutAccount\(true\)/);
+});
+
+test('withdrawal availability explains every blocking wallet state', () => {
+  const { load } = harness(() => json({}));
+  const { getWithdrawalAvailability } = load('utils/walletWithdrawal.ts');
+  const wallet = {
+    id: '33333333-3333-4333-8333-333333333333',
+    currency: 'KES',
+    balance: 270,
+    heldBalance: 0,
+    availableBalance: 270,
+    shoppingBalance: 0,
+    shoppingHeldBalance: 0,
+    shoppingAvailableBalance: 0,
+    earningsBalance: 270,
+    earningsHeldBalance: 0,
+    earningsAvailableBalance: 270,
+    pendingPayoutBalance: 0,
+    shoppingPendingPayoutBalance: 0,
+    earningsPendingPayoutBalance: 0,
+    orderHeldBalance: 0,
+    withdrawalMinimum: 10,
+    withdrawalMaximum: 250000,
+    isFrozen: false,
+    createdAt: '2026-10-23T17:00:00Z',
+  };
+  const base = { wallet, source: 'earnings', hasPayoutAccount: true };
+
+  assert.equal(getWithdrawalAvailability({ ...base, walletLoading: true }).reason, 'wallet_loading');
+  assert.equal(getWithdrawalAvailability({ source: 'earnings', walletError: true }).reason, 'wallet_unavailable');
+  assert.equal(getWithdrawalAvailability({ ...base, hasPayoutAccount: false }).reason, 'destination_missing');
+  assert.equal(getWithdrawalAvailability({ ...base, wallet: { ...wallet, isFrozen: true } }).reason, 'wallet_frozen');
+  assert.equal(getWithdrawalAvailability({
+    ...base,
+    wallet: { ...wallet, earningsAvailableBalance: 0, earningsHeldBalance: 270, earningsPendingPayoutBalance: 270 },
+    payouts: [{ balanceSource: 'earnings', status: 'unknown' }],
+  }).reason, 'payout_unknown');
+  assert.equal(getWithdrawalAvailability({
+    ...base,
+    wallet: { ...wallet, earningsAvailableBalance: 0, earningsHeldBalance: 270 },
+  }).reason, 'funds_reserved');
+  assert.equal(getWithdrawalAvailability({
+    ...base,
+    wallet: { ...wallet, earningsBalance: 0, earningsAvailableBalance: 0 },
+  }).reason, 'zero_balance');
+  assert.equal(getWithdrawalAvailability({
+    ...base,
+    wallet: { ...wallet, earningsBalance: 5, earningsAvailableBalance: 5 },
+  }).reason, 'below_minimum');
+  assert.equal(getWithdrawalAvailability({
+    ...base,
+    wallet: { ...wallet, earningsBalance: 300000, earningsAvailableBalance: 300000 },
+  }).reason, 'above_maximum');
+  assert.equal(getWithdrawalAvailability(base).allowed, true);
+  assert.equal(getWithdrawalAvailability(base).amount, 270);
 });

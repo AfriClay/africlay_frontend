@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { randomUUID } from 'expo-crypto';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AlertTriangle, CircleCheckBig, CircleX, Clock3, ShieldCheck, WalletCards } from 'lucide-react-native';
@@ -17,6 +17,8 @@ import { PaymentAttempt, Payout, PayoutStatus, WalletBalanceSource } from '../..
 import { formatCurrency } from '../../utils/formatCurrency';
 import { formatDate } from '../../utils/formatDate';
 import { canAccessSellerTools } from '../../utils/roles';
+import { getWithdrawalAvailability } from '../../utils/walletWithdrawal';
+import type { WithdrawalAvailability } from '../../utils/walletWithdrawal';
 
 const payoutStatusCopy: Record<PayoutStatus, { label: string; description: string }> = {
   requested: { label: 'Requested', description: 'Your funds have been reserved.' },
@@ -117,7 +119,13 @@ export const Wallet: React.FC = () => {
   const requestPayout = useMutation({
     mutationFn: ({ source, key }: { source: WalletBalanceSource; key: string }) => paymentService.requestPayout(source, key),
     onSuccess: result => {
-      setPayoutError(result.status === 'failed' ? result.failureMessage || 'This payout could not be started.' : undefined);
+      setPayoutError(
+        result.status === 'failed'
+          ? result.failureMessage || 'This payout could not be started.'
+          : result.status === 'unknown'
+            ? 'M-Pesa has not confirmed the result. Your funds remain reserved while AfriClay reconciles the payout.'
+            : undefined,
+      );
       payoutIdempotency.current = undefined;
       void client.invalidateQueries({ queryKey: paymentKeys.wallets(userId) });
       void client.invalidateQueries({ queryKey: paymentKeys.payouts(userId) });
@@ -167,34 +175,75 @@ export const Wallet: React.FC = () => {
     savePayoutAccount.mutate({ phone: normalizedPhone, password: accountPassword });
   };
 
+  const availabilityInput = (source: WalletBalanceSource) => getWithdrawalAvailability({
+    wallet,
+    source,
+    payouts: payouts.data?.results,
+    walletLoading: wallets.isLoading,
+    walletError: wallets.isError,
+    payoutAccountLoading: payoutAccount.isLoading,
+    payoutAccountError: payoutAccount.isError,
+    hasPayoutAccount: Boolean(payoutAccount.data),
+    requestPending: requestPayout.isPending,
+  });
+
+  const availabilityMessage = (availability: WithdrawalAvailability, source: WalletBalanceSource) => {
+    const sourceLabel = source === 'earnings' ? 'seller earnings' : 'shopping funds';
+    switch (availability.reason) {
+      case 'wallet_loading': return 'Loading the authoritative wallet balance.';
+      case 'wallet_unavailable': return 'Wallet balance is unavailable. Refresh before trying to withdraw.';
+      case 'destination_loading': return 'Loading your M-Pesa withdrawal destination.';
+      case 'destination_unavailable': return 'Your M-Pesa withdrawal destination could not be loaded. Retry before withdrawing.';
+      case 'destination_missing': return 'Add an M-Pesa withdrawal number before withdrawing.';
+      case 'request_pending': return 'Wait for the current withdrawal request to finish submitting.';
+      case 'wallet_frozen': return 'This wallet is frozen. Contact support before attempting a withdrawal.';
+      case 'payout_unknown': return `A ${sourceLabel} payout is being reconciled. Its funds remain reserved until the provider result is confirmed.`;
+      case 'payout_pending': return `A ${sourceLabel} payout is already being processed. Its funds remain reserved.`;
+      case 'funds_reserved': return source === 'earnings'
+        ? 'These earnings are held for orders or an active payout and are not yet withdrawable.'
+        : 'These shopping funds are reserved for orders or an active payout and are not withdrawable.';
+      case 'zero_balance': return `There are no available ${sourceLabel} to withdraw.`;
+      case 'below_minimum': return `Available ${sourceLabel} must reach ${formatCurrency(wallet?.withdrawalMinimum ?? 0, wallet?.currency ?? 'KES')} before withdrawal.`;
+      case 'above_maximum': return `This balance exceeds the ${formatCurrency(wallet?.withdrawalMaximum ?? 0, wallet?.currency ?? 'KES')} M-Pesa transfer limit. Contact support.`;
+      case 'fractional_balance': return 'M-Pesa withdrawals require a whole KES balance. Contact support for this balance.';
+      default: return undefined;
+    }
+  };
+
   const submitPayout = (source: WalletBalanceSource) => {
-    const value = source === 'shopping'
-      ? wallet?.shoppingAvailableBalance ?? 0
-      : wallet?.earningsAvailableBalance ?? 0;
-    const minimum = wallet?.withdrawalMinimum ?? 10;
-    const maximum = wallet?.withdrawalMaximum ?? 250_000;
-    if (!wallet || value < minimum) {
-      setPayoutError(`M-Pesa withdrawals require at least ${formatCurrency(minimum, wallet?.currency ?? 'KES')} in available ${source === 'earnings' ? 'seller earnings' : 'shopping funds'}.`);
+    const availability = availabilityInput(source);
+    const unavailableMessage = availabilityMessage(availability, source);
+    if (!availability.allowed || !wallet) {
+      setPayoutError(unavailableMessage || 'This balance is not currently available for withdrawal.');
       return;
     }
-    if (value > maximum) {
-      setPayoutError(`This balance exceeds the ${formatCurrency(maximum, wallet.currency)} M-Pesa transfer limit. Contact support to arrange the withdrawal safely.`);
-      return;
-    }
-    if (!Number.isInteger(value)) {
-      setPayoutError('M-Pesa withdrawals require a whole KES balance. Contact support for help with this balance.');
-      return;
-    }
+    const value = availability.amount;
     const signature = `${source}:${value}`;
     if (payoutIdempotency.current?.signature !== signature) {
       payoutIdempotency.current = { signature, key: randomUUID() };
     }
-    setPayoutError(undefined);
-    requestPayout.mutate({ source, key: payoutIdempotency.current.key });
+    const run = () => {
+      setPayoutError(undefined);
+      requestPayout.mutate({ source, key: payoutIdempotency.current!.key });
+    };
+    const sourceLabel = source === 'earnings' ? 'seller earnings' : 'shopping funds';
+    const message = `Withdraw the full ${formatCurrency(value, wallet.currency)} of available ${sourceLabel} to ${payoutAccount.data?.phoneNumber}? The funds will remain reserved until M-Pesa confirms the result.`;
+    if (Platform.OS === 'web') {
+      if (globalThis.confirm(message)) run();
+      return;
+    }
+    Alert.alert('Confirm withdrawal', message, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Withdraw', onPress: run },
+    ]);
   };
 
   if (!user) return <EmptyState title="Sign in to view your wallet" description="Wallet balances and transactions are private." />;
   if (wallets.isError) return <ErrorState message={getApiErrorMessage(wallets.error, 'Unable to load your wallet.')} onRetry={() => void wallets.refetch()} />;
+  if (!wallets.isLoading && !wallet) return <ErrorState message="Your wallet balance is unavailable." onRetry={() => void wallets.refetch()} />;
+
+  const shoppingWithdrawal = availabilityInput('shopping');
+  const earningsWithdrawal = availabilityInput('earnings');
 
   const attemptMessage = attempt?.status === 'succeeded'
     ? 'Top-up confirmed.'
@@ -207,7 +256,7 @@ export const Wallet: React.FC = () => {
     <View style={styles.balanceSection}>
       <View style={styles.balanceIcon}><WalletCards size={24} color={theme.colors.primary.dark} /></View>
       <Text style={styles.label}>Total available</Text>
-      <Text style={styles.balance}>{wallets.isLoading ? 'Loading...' : formatCurrency(wallet?.availableBalance ?? 0, wallet?.currency ?? 'KES')}</Text>
+      <Text style={styles.balance}>{wallets.isLoading || !wallet ? 'Loading...' : formatCurrency(wallet.availableBalance, wallet.currency)}</Text>
       {wallet?.isFrozen ? <Text style={styles.error}>Wallet activity is temporarily unavailable.</Text> : null}
       {wallet ? <View style={styles.balanceBreakdown}>
         <View style={styles.balanceItem}>
@@ -239,21 +288,23 @@ export const Wallet: React.FC = () => {
         </View> : <>
           <View style={styles.withdrawalOption}>
             <View style={styles.transactionCopy}><Text style={styles.subtitle}>Shopping funds</Text><Text style={styles.meta}>Top-ups and refunds available to withdraw</Text></View>
-            <Text style={styles.withdrawalAmount}>{formatCurrency(wallet?.shoppingAvailableBalance ?? 0, wallet?.currency ?? 'KES')}</Text>
+            <Text style={styles.withdrawalAmount}>{wallet ? formatCurrency(wallet.shoppingAvailableBalance, wallet.currency) : 'Loading...'}</Text>
           </View>
-          <Button loading={requestPayout.isPending && requestPayout.variables?.source === 'shopping'} loadingLabel="Sending withdrawal" disabled={wallet?.isFrozen || !wallet || wallet.shoppingAvailableBalance < wallet.withdrawalMinimum || wallet.shoppingAvailableBalance > wallet.withdrawalMaximum || requestPayout.isPending} onPress={() => submitPayout('shopping')}>Withdraw all shopping funds</Button>
+          <Button loading={requestPayout.isPending && requestPayout.variables?.source === 'shopping'} loadingLabel="Sending withdrawal" disabled={!shoppingWithdrawal.allowed} onPress={() => submitPayout('shopping')}>Withdraw all shopping funds</Button>
+          {!shoppingWithdrawal.allowed ? <Text style={styles.availabilityNote} accessibilityLiveRegion="polite">{availabilityMessage(shoppingWithdrawal, 'shopping')}</Text> : null}
           {isSeller ? <>
             <View style={styles.withdrawalOption}>
               <View style={styles.transactionCopy}><Text style={styles.subtitle}>Seller earnings</Text><Text style={styles.meta}>Released proceeds from completed sales</Text></View>
-              <Text style={styles.withdrawalAmount}>{formatCurrency(wallet?.earningsAvailableBalance ?? 0, wallet?.currency ?? 'KES')}</Text>
+              <Text style={styles.withdrawalAmount}>{wallet ? formatCurrency(wallet.earningsAvailableBalance, wallet.currency) : 'Loading...'}</Text>
             </View>
-            <Button variant="secondary" loading={requestPayout.isPending && requestPayout.variables?.source === 'earnings'} loadingLabel="Sending withdrawal" disabled={wallet?.isFrozen || !wallet || wallet.earningsAvailableBalance < wallet.withdrawalMinimum || wallet.earningsAvailableBalance > wallet.withdrawalMaximum || requestPayout.isPending} onPress={() => submitPayout('earnings')}>Withdraw all seller earnings</Button>
+            <Button variant="secondary" loading={requestPayout.isPending && requestPayout.variables?.source === 'earnings'} loadingLabel="Sending withdrawal" disabled={!earningsWithdrawal.allowed} onPress={() => submitPayout('earnings')}>Withdraw all seller earnings</Button>
+            {!earningsWithdrawal.allowed ? <Text style={styles.availabilityNote} accessibilityLiveRegion="polite">{availabilityMessage(earningsWithdrawal, 'earnings')}</Text> : null}
           </> : null}
           <Text style={styles.meta}>M-Pesa supports full-balance withdrawals from {formatCurrency(wallet?.withdrawalMinimum ?? 10, wallet?.currency ?? 'KES')} to {formatCurrency(wallet?.withdrawalMaximum ?? 250000, wallet?.currency ?? 'KES')}. Failed transfers are restored automatically.</Text>
         </>}
       </> : <View style={styles.formBand}>
         <Text style={styles.subtitle}>Add your withdrawal number</Text>
-        <Text style={styles.meta}>Use an M-Pesa number you control. Your password is required when the number is added or changed.</Text>
+        <Text style={styles.meta}>Withdrawals are unavailable until you add an M-Pesa number you control. Your password is required when the number is added or changed.</Text>
         <Input label="M-Pesa number" required value={payoutPhone} onChangeText={setPayoutPhone} placeholder="254712345678" keyboardType="phone-pad" autoComplete="tel" />
         <Input label="Account password" required value={accountPassword} onChangeText={setAccountPassword} placeholder="Confirm your identity" secureTextEntry autoComplete="current-password" />
         <Button loading={savePayoutAccount.isPending} loadingLabel="Saving" onPress={submitPayoutAccount}>Save withdrawal number</Button>
@@ -312,6 +363,7 @@ const styles = StyleSheet.create({
   destinationRow: { minHeight: 68, flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md, paddingVertical: theme.spacing.sm, borderTopWidth: 1, borderBottomWidth: 1, borderColor: theme.colors.border },
   withdrawalOption: { minHeight: 58, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.md, paddingTop: theme.spacing.sm },
   withdrawalAmount: { color: theme.colors.ink, fontWeight: '800', textAlign: 'right' },
+  availabilityNote: { color: theme.colors.muted, fontSize: theme.typography.small.fontSize, lineHeight: 18 },
   formBand: { paddingVertical: theme.spacing.sm },
   actions: { flexDirection: 'row', justifyContent: 'flex-end', flexWrap: 'wrap', gap: theme.spacing.sm },
   historyHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.sm, marginTop: theme.spacing.md },
