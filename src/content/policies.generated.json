@@ -1,0 +1,1438 @@
+[
+  {
+    "id": "partner-terms",
+    "source": "partner-general-terms-v1.docx",
+    "downloadPath": "/policies/partner-general-terms-v1.docx",
+    "title": "Partner General Terms",
+    "subtitle": "General Terms and Conditions of Marketplace Service",
+    "audience": "Sellers and marketplace partners",
+    "version": "Version 1.0",
+    "summary": "The agreement framework for listings, orders, fulfilment, fees, settlement, data sharing, and category-specific seller obligations.",
+    "highlights": [
+      "The sales agreement is between the buyer and the seller.",
+      "Africlay acts as marketplace agent and may receive payment on the seller's behalf.",
+      "Sellers must keep listings, stock, packaging, and product information accurate.",
+      "Fees, settlement, complaints, and deductions follow the agreement and applicable special terms."
+    ],
+    "hasPlaceholders": true,
+    "sections": [
+      {
+        "title": "About these terms",
+        "blocks": [
+          {
+            "kind": "paragraph",
+            "text": "These General Terms are an integral part of the Agreement and shall apply to any relationship between Africlay and the Partner related to the use of the Africlay Platform. By signing the Special Terms, the Partner confirms that it has read and agrees to these General Terms."
+          }
+        ]
+      },
+      {
+        "title": "1. Definitions",
+        "blocks": [
+          {
+            "kind": "table",
+            "rows": [
+              [
+                "Africlay",
+                "means Africlay Market Limited, a company incorporated in Kenya, registration number PVT-EY1BMBDA, KRA PIN P052565098X, of [registered address], Nairobi, Kenya."
+              ],
+              [
+                "Africlay Platform",
+                "means the online marketplace operated by Africlay (including its website, mobile applications, WhatsApp ordering channels and Partner Portal) that (i) enables the Partner to list and market its Goods to Buyers and enter into Sales Agreements for the sale of Goods to Buyers, (ii) enables Users to place Orders of Goods with the Partner and enter into Sales Agreements as Buyers, and (iii) enables Africlay to arrange the collection and delivery of Orders to Buyers."
+              ],
+              [
+                "Agreed Percentage",
+                "means the Commission percentage applicable to the Partner's Merchant Category, as set out in the Special Terms."
+              ],
+              [
+                "Agreement",
+                "means the agreement between Africlay and the Partner, which consists of the Special Terms (including any Partner Specific Conditions), these General Terms and the Schedules."
+              ],
+              [
+                "Buyer",
+                "means any User of the Africlay Platform who has placed an Order and entered into a Sales Agreement with the Partner."
+              ],
+              [
+                "Commission",
+                "means the Commission / Marketplace Sales Fee payable by the Partner to Africlay for every sale of the Partner's Goods through the Africlay Platform, for the provision of marketplace and agency services to the Partner."
+              ],
+              [
+                "Confidential Information",
+                "means the know-how, trade secrets and other information of a confidential nature disclosed by one party to the other party (including, without limitation, all proprietary technical, industrial and commercial information, customers' and suppliers' data and techniques in whatever form held), as well as any information regarding (i) the business of either party and (ii) the contents of the Agreement."
+              ],
+              [
+                "Delivery Services",
+                "means the collection of Orders from the Partner and their delivery to Buyers, arranged by Africlay directly or through Logistics Partners."
+              ],
+              [
+                "General Terms",
+                "means these general terms and conditions of marketplace service, applicable to the Agreement and generally to the legal relationship between Africlay and the Partner in the course of using the Africlay Platform."
+              ],
+              [
+                "Goods",
+                "means any goods that the Partner lists or sells through the Africlay Platform, including African artifacts, crafts and d\u00e9cor, fresh produce and other farm products, and general merchandise."
+              ],
+              [
+                "Goods Price",
+                "means the price (VAT included, where applicable) that the Buyer has to pay to the Partner for the ordered Goods."
+              ],
+              [
+                "Listing & Subscription Fees",
+                "means any listing, onboarding or subscription fees payable by the Partner for access to the Africlay Platform, as set out in the Special Terms."
+              ],
+              [
+                "Logistics Partner",
+                "means any rider, courier, transport or logistics service provider engaged by Africlay to perform Delivery Services."
+              ],
+              [
+                "Marketplace Fees",
+                "means any delivery fees, service fees or similar charges that Africlay may charge Buyers for its own account under Section 6.5."
+              ],
+              [
+                "Merchant Category",
+                "means the category selected by the Partner in the Special Terms, being (i) African Artifacts Merchant, (ii) Farm-to-Plate Farmer / Producer, or (iii) Local Merchant or any other category that may be added from time to time by Africlay."
+              ],
+              [
+                "Opening Hours",
+                "means the operational days and hours during which the Partner accepts Orders and prepares Goods for collection, as set out in the Special Terms (the Opening Hours displayed on the Africlay Platform may differ from the opening hours of the Partner's establishment)."
+              ],
+              [
+                "Order",
+                "means an order of Goods that a Buyer has placed with the Partner through the Africlay Platform."
+              ],
+              [
+                "Order Price",
+                "means the total price that the Buyer has to pay for an Order, being the Goods Price plus any applicable Marketplace Fees."
+              ],
+              [
+                "Pack Time",
+                "means the Order Preparation / Pack Time set out in the Special Terms, being the maximum time within which the Partner must have an accepted Order packed and ready for collection."
+              ],
+              [
+                "Partner",
+                "means the merchant, farmer, producer or business that has concluded the Agreement with Africlay and, where relevant, each establishment, farm or outlet through which it conducts its business."
+              ],
+              [
+                "Partner Portal",
+                "means the merchant dashboard, app or tablet interface through which the Partner manages its listings, prices, stock availability and Orders."
+              ],
+              [
+                "Partner Specific Conditions",
+                "means the variations from these General Terms and Schedules agreed with the Partner, as set out in the Special Terms."
+              ],
+              [
+                "Sales Agreement",
+                "means the agreement between the Buyer and the Partner for the sale of Goods in accordance with the Order."
+              ],
+              [
+                "Service Fees",
+                "means the fees payable by the Partner for the tablet or hardware (if applicable), software / marketplace access and SIM card / connectivity, as set out in the Special Terms."
+              ],
+              [
+                "Special Terms",
+                "means the Africlay Marketplace Partner Special Terms (One-Pager Agreement & Onboarding Form) under which the Agreement is concluded."
+              ],
+              [
+                "User",
+                "means any person who has registered a user account on the Africlay Platform or places an Order through any of its channels."
+              ]
+            ]
+          }
+        ]
+      },
+      {
+        "title": "2. Legal Framework",
+        "blocks": [
+          {
+            "kind": "paragraph",
+            "text": "2.1 The Africlay Platform enables the Partner to solicit Orders of Goods from Buyers, which are collected from the Partner and delivered to Buyers through Delivery Services arranged by Africlay."
+          },
+          {
+            "kind": "paragraph",
+            "text": "2.2 For the sale of Goods through the Africlay Platform, a Sales Agreement is concluded directly between the Buyer and the Partner. The Sales Agreement is deemed to be concluded from the moment the Order is accepted by the Partner and an Order confirmation is sent to the Buyer. The Partner is the seller of the Goods and is liable for the Goods (and their production, where applicable) under the Sales Agreement."
+          },
+          {
+            "kind": "paragraph",
+            "text": "2.3 In operating the Africlay Platform, Africlay is not a party to the Sales Agreement and is not the seller of the Goods. Africlay is not liable for the performance of the Sales Agreement, save for its own obligations in relation to Delivery Services under Section 4A."
+          },
+          {
+            "kind": "paragraph",
+            "text": "2.4 Africlay acts as the limited commercial agent of the Partner for the purpose of mediating Sales Agreements between the Partner and Buyers. As agent, Africlay is authorised by the Partner to receive payments from Buyers on the Partner's behalf (including through M-Pesa, card, bank and cash-on-delivery channels) and to remit such payments to the Partner in accordance with Section 7."
+          },
+          {
+            "kind": "paragraph",
+            "text": "2.5 Africlay arranges and covers the cost of Delivery Services to Buyers, as stated in the Special Terms. The Partner shall not offer its own delivery services to Buyers for Orders placed through the Africlay Platform unless agreed otherwise in the Partner Specific Conditions."
+          }
+        ]
+      },
+      {
+        "title": "3. Placement Of Orders",
+        "blocks": [
+          {
+            "kind": "paragraph",
+            "text": "3.1 When a Buyer has placed an Order, the Partner shall accept or decline the Order within the time period provided in Schedule 1 (Service Level Requirements). Upon the Buyer receiving the confirmation of the Order, the Sales Agreement enters into force between the Partner and the Buyer."
+          },
+          {
+            "kind": "paragraph",
+            "text": "3.2 If the Partner cannot provide the Goods as requested in the Order, the Partner shall not confirm the Order on the Africlay Platform, unless an auto-acceptance function is enabled, in which case the requirements in Schedule 1 (Service Level Requirements) shall be followed."
+          },
+          {
+            "kind": "paragraph",
+            "text": "3.3 The Partner shall ensure that Orders are monitored constantly during its Opening Hours, in accordance with Schedule 1."
+          }
+        ]
+      },
+      {
+        "title": "4. Fulfilment Of Orders",
+        "blocks": [
+          {
+            "kind": "paragraph",
+            "text": "4.1 The Partner will be ready to start providing services through the Africlay Platform from the moment of signing the Agreement, unless otherwise agreed in the Partner Specific Conditions. The detailed requirements for handling Orders are set out in Schedule 1 (Service Level Requirements) and Schedule 3 (Category-Specific Requirements)."
+          },
+          {
+            "kind": "paragraph",
+            "text": "4.2 The Partner shall use its best endeavours to ensure the availability of all Goods displayed on the Africlay Platform and shall keep stock levels on the Partner Portal accurate. If the Partner is, or is likely to become, unable to fulfil Orders, it shall stop accepting further Orders and mark itself as offline on the Africlay Platform until it is able to fulfil Orders again."
+          },
+          {
+            "kind": "paragraph",
+            "text": "4.3 The Partner shall ensure that the Goods prepared for collection comply with the Buyer's Order and shall use its best endeavours to comply with any specific instructions or requests of the Buyer."
+          },
+          {
+            "kind": "paragraph",
+            "text": "4.4 Each accepted Order shall be packed and ready for collection by Africlay or its Logistics Partner within the Packing Time."
+          },
+          {
+            "kind": "paragraph",
+            "text": "4.5 The Partner shall ensure that the Goods are properly packaged for dispatch, taking into account that Africlay or its Logistics Partner will only collect a packaged Order. Packaging shall be suitable for the nature of the Goods (including protective packaging for fragile artifacts/items"
+          },
+          {
+            "kind": "paragraph",
+            "text": "and food-safe, ventilated or chilled packaging for fresh produce, as applicable) and shall withstand normal handling and transport. The packaging may not include the logos or advertising material of competitors of Africlay or of other third parties, unless agreed otherwise in the Partner Specific Conditions."
+          },
+          {
+            "kind": "paragraph",
+            "text": "4.6 The Partner ensures that the Goods prepared for collection:"
+          },
+          {
+            "kind": "paragraph",
+            "text": "4.6.1 correspond to the description of the Goods on the Africlay Platform, including materials, dimensions, origin, variety, weight or quantity, and any claims made (for example handmade, organic, gluten-free or suitable for vegetarians);"
+          },
+          {
+            "kind": "paragraph",
+            "text": "4.6.2 are not harmful to health or the environment;"
+          },
+          {
+            "kind": "paragraph",
+            "text": "4.6.3 where the Goods contain food or fresh produce, are fresh, safe, of good quality, fit for transportation and consumption, and handled at an appropriate temperature;"
+          },
+          {
+            "kind": "paragraph",
+            "text": "4.6.4 comply with all applicable requirements for their production, preparation, labelling and packaging at all times (including as reasonably required to withstand the delivery process); and"
+          },
+          {
+            "kind": "paragraph",
+            "text": "4.6.5 correspond as closely as possible to the photographs uploaded on the Africlay Platform."
+          },
+          {
+            "kind": "paragraph",
+            "text": "4.7 Africlay shall have the right to inspect the Partner's premises, farm or production facilities and the process of preparing Orders, on reasonable notice and during Opening Hours."
+          },
+          {
+            "kind": "paragraph",
+            "text": "4.8 The Goods Prices on the Africlay Platform may not be higher than the prices at which the same Goods are offered at the Partner's own establishment, except (i) for promotions applicable only at the Partner's establishment; or (ii) where agreed otherwise in the Partner Specific Conditions."
+          },
+          {
+            "kind": "paragraph",
+            "text": "4.9 The Partner may not charge Buyers any additional fees for packaging of the Goods, unless agreed otherwise in the Partner Specific Conditions."
+          }
+        ]
+      },
+      {
+        "title": "4A. Delivery, Risk And Title",
+        "blocks": [
+          {
+            "kind": "paragraph",
+            "text": "4A.1 Africlay shall arrange the collection of accepted Orders from the Partner and their delivery to Buyers, directly or through Logistics Partners, and shall bear the cost of Delivery Services."
+          },
+          {
+            "kind": "paragraph",
+            "text": "4A.2 Risk of loss of or damage to the Goods remains with the Partner until the Order is handed over to Africlay or its Logistics Partner. From handover until delivery to the Buyer, Africlay bears the risk of loss of or damage to the Goods as between Africlay and the Partner, except where the loss or damage results from inadequate packaging, misdescription or a defect in the Goods attributable to the Partner."
+          },
+          {
+            "kind": "paragraph",
+            "text": "4A.3 Title to the Goods passes from the Partner to the Buyer on delivery, in accordance with the Sales Agreement."
+          },
+          {
+            "kind": "paragraph",
+            "text": "4A.4 Africlay may set reasonable size, weight, value and delivery-area limits for Delivery Services. Oversized, high-value or specially handled Goods (including large carvings, furniture or fragile pieces) may be listed only on terms agreed in the Partner Specific Conditions."
+          },
+          {
+            "kind": "paragraph",
+            "text": "4A.5 The Partner shall ensure that the person handing over each Order to Africlay or its Logistics Partner confirms the handover on the Partner Portal and records any visible issue with the Order at that time."
+          }
+        ]
+      },
+      {
+        "title": "5. Use Of The Africlay Platform By The Partner",
+        "blocks": [
+          {
+            "kind": "paragraph",
+            "text": "5.1 The Partner will access the Africlay Platform through its user account on the Partner Portal. Each Partner is entitled to one account. If the Partner operates through several establishments, farms or outlets, each may be provided with a separate sub-account. The account details will be communicated to the Partner separately."
+          },
+          {
+            "kind": "paragraph",
+            "text": "5.2 The Partner shall comply with all applicable laws in performing its obligations, including laws on business registration and licensing, taxation, employment, occupational health and safety, consumer protection and product safety."
+          },
+          {
+            "kind": "paragraph",
+            "text": "5.3 All information regarding the Partner, its establishments and its Goods is uploaded to the Africlay Platform by the Partner in accordance with Section 5.10, unless otherwise agreed with Africlay. The Partner is solely responsible for that information (including Goods Prices, stock availability and any indication of a price reduction), whether uploaded by the Partner itself or by Africlay on its behalf. If the information is incorrect, the Partner shall correct it itself through the Partner Portal or promptly inform Africlay so that Africlay can correct it. The Partner shall provide Africlay with all product information that is mandatory under applicable law (including ingredients, allergens, origin and expiry or harvest dates, where relevant), and shall provide additional information about the Goods if a Buyer so requests. Partners are displayed to Buyers in a ranked sequence based on the parameters described in Section 14, with the purpose of providing a relevant and efficient experience for Buyers."
+          },
+          {
+            "kind": "paragraph",
+            "text": "5.4 For accepting and processing Orders, the Partner shall either use its own device or buy or rent a tablet from Africlay, as selected in the Special Terms. The Partner shall keep all rented tablets and related equipment in good order. Where necessary, Africlay and the Partner shall agree on the maintenance or replacement of rented tablets."
+          },
+          {
+            "kind": "paragraph",
+            "text": "5.5 Africlay does not commit to provide continuous technical support for the functioning of the Africlay Platform on any particular device or operating system. The Partner shall install and use all updates, upgrades or modules provided by Africlay. Africlay is not liable for any damage or loss of profit resulting from the Partner's failure to do so."
+          },
+          {
+            "kind": "paragraph",
+            "text": "5.6 The Partner shall at all times use good industry practice to prevent the introduction of viruses or other malicious code into the Africlay Platform. If a virus is introduced to the Africlay Platform as a result of the Partner's breach of these General Terms, the Partner shall, at its own cost, provide reasonable assistance to mitigate its effects and reimburse Africlay for all damage arising from its removal and remediation."
+          },
+          {
+            "kind": "paragraph",
+            "text": "5.7 Buyers may leave feedback and make complaints through the Africlay Platform. Complaints relating to perishable Goods must be made within [24 hours] of delivery, and complaints relating to all other Goods within [7 days] of delivery, without prejudice to the Buyer's statutory rights. Africlay shall handle complaints and decide, acting reasonably, how to resolve them. Where a complaint is attributable to the Partner (including wrong, missing, defective, misdescribed or poor-quality Goods, or inadequate packaging), Africlay may refund the Goods Price (or part of it) to the Buyer and recover the amount from the Partner. Where a complaint is attributable to the Delivery Services, Africlay shall bear the cost of the refund. If the Partner continues to receive complaints, Africlay may temporarily or permanently suspend the Partner from the Africlay Platform. Africlay may establish a customer complaints, returns and refunds policy, which shall form part of these General Terms and with which the Partner shall comply."
+          },
+          {
+            "kind": "paragraph",
+            "text": "5.8 The Partner shall at all times use high-quality, high-resolution photographs that accurately represent the Goods. If photographs do not meet these requirements, Africlay may refuse to upload them, ask for replacements, or upload equivalent or similar images at its discretion."
+          },
+          {
+            "kind": "paragraph",
+            "text": "5.9 Africlay may change, modify or discontinue, temporarily or permanently, all or part of the Africlay Platform, including by introducing or discontinuing functionality, at any time. Africlay will communicate decisions to discontinue functionality to Partners accordingly."
+          },
+          {
+            "kind": "paragraph",
+            "text": "5.10 Africlay may, at its sole discretion, grant and revoke the Partner's direct access to the Partner Portal, which enables the Partner to populate, amend and otherwise change content on the Partner-dedicated section of the Africlay Platform."
+          },
+          {
+            "kind": "paragraph",
+            "text": "5.10.1 The Partner is solely responsible for granting, changing, controlling and removing access rights for its representatives to the Partner Portal."
+          },
+          {
+            "kind": "paragraph",
+            "text": "5.10.2 By enabling a representative to access the Partner Portal, the Partner grants that representative the right to edit the Partner's listings and preferences (including Goods Prices and stock), configure campaigns and special offers, view Orders (including Order history), grant access to other users and take any other action available in the Partner Portal."
+          },
+          {
+            "kind": "paragraph",
+            "text": "5.10.3 The Partner is fully responsible for and bound by any changes (including pricing) made by any representative to whom it has granted access."
+          }
+        ]
+      },
+      {
+        "title": "6. Fees",
+        "blocks": [
+          {
+            "kind": "paragraph",
+            "text": "6.1 In consideration for Africlay's marketplace and agency services, the Partner shall pay Africlay the Commission on every Order placed through the Africlay Platform. The Commission is calculated as the Agreed Percentage for the Partner's Merchant Category applied to the aggregate gross Goods Price of completed Orders during the relevant reference period."
+          },
+          {
+            "kind": "paragraph",
+            "text": "6.2 The Partner shall pay the Listing & Subscription Fees (if applicable) and the Service Fees in accordance with the Special Terms. Africlay may also charge the Partner a fee for marketing campaigns, featured placement or advertising, which shall be agreed between the parties in advance."
+          },
+          {
+            "kind": "paragraph",
+            "text": "6.3 All fees are exclusive of VAT, which shall be charged where applicable."
+          },
+          {
+            "kind": "paragraph",
+            "text": "6.4 Africlay may vary the Commission, Listing & Subscription Fees or Service Fees on at least 30 days' prior written notice to the Partner. If the Partner does not accept the revised fees, it may terminate the Agreement by giving written notice to Africlay before the revised fees take effect, in which case the revised fees shall not apply to the Partner during the notice period. In the absence of such notice, the Partner shall be deemed to have accepted the revised fees."
+          },
+          {
+            "kind": "paragraph",
+            "text": "6.5 Africlay may charge Buyers Marketplace Fees, including delivery fees and service fees, in accordance with its pricing policies. Marketplace Fees are charged by Africlay for its own account, are not part of the Goods Price and shall not reduce the amounts payable to the Partner."
+          }
+        ]
+      },
+      {
+        "title": "7. Invoicing And Payments",
+        "blocks": [
+          {
+            "kind": "paragraph",
+            "text": "7.1 The Partner shall issue valid tax invoices or receipts for the Goods Price in compliance with Kenya Revenue Authority requirements (including the electronic Tax Invoice Management System (eTIMS), where applicable). Africlay may issue an informational receipt to the Buyer for the Order Price on behalf of the Partner. Africlay, acting as the Partner's agent, shall accept the Buyer's payment of the Goods Price on behalf of the Partner. The Buyer's payment obligation under the Sales Agreement is deemed fulfilled when payment is received by Africlay, or by Africlay's Logistics Partner on Africlay's behalf in the case of cash-on-delivery."
+          },
+          {
+            "kind": "paragraph",
+            "text": "7.2 Africlay shall remit to the Partner the Goods Price received for all completed and delivered Orders in a given reference period, less the Commission, Service Fees, Listing & Subscription Fees and any other amounts due to Africlay under the Agreement (including refunds recoverable under Section 5.7). Before making any deduction relating to a complaint, Africlay will make reasonable efforts to reach an amicable solution with the Partner."
+          },
+          {
+            "kind": "paragraph",
+            "text": "7.3 Unless agreed otherwise in the Partner Specific Conditions, the reference period shall be one calendar week, and Africlay shall pay the net amount due to the Partner within [5] business days after the end of each reference period. Any reconciliation required for a reference period will be communicated between the parties and settled together with the payment for the next reference period."
+          },
+          {
+            "kind": "paragraph",
+            "text": "7.4 Within three business days after the end of each reference period, Africlay will issue an invoice to the Partner for the Commission, Service Fees and any other applicable fees for that period, together with a statement of Orders, refunds and deductions."
+          },
+          {
+            "kind": "paragraph",
+            "text": "7.5 All payments between Africlay and the Partner will be settled by way of set-off to the maximum extent possible. Any payments that cannot be set off will be made by bank transfer or M-Pesa to the account details set out in the Special Terms."
+          },
+          {
+            "kind": "paragraph",
+            "text": "7.6 Africlay may withhold payment of amounts relating to specific Orders that are subject to an open Buyer complaint, chargeback or reasonable suspicion of fraud, for up to [30] days or until the matter is resolved, whichever is earlier."
+          },
+          {
+            "kind": "paragraph",
+            "text": "7.7 Where amounts due to Africlay exceed the amounts payable to the Partner, the Partner shall pay the balance within 7 days of invoice. Any outstanding amount due to Africlay shall be paid by the Partner no later than 7 days after becoming inactive on the Africlay Platform."
+          },
+          {
+            "kind": "paragraph",
+            "text": "7.8 If the Partner fails to pay any amount when due, it shall pay interest on the overdue amount at the rate of [2%] per month from the due date until payment. The Partner shall also compensate Africlay for all reasonable costs (including those charged by any debt collection agency) and all administrative, legal and other costs incurred in collecting any overdue payment."
+          },
+          {
+            "kind": "paragraph",
+            "text": "7.9 To the extent permitted by law, Africlay may share the Partner's details and information about any debt owed under the Agreement with debt collection agencies and licensed credit reference bureaus for the purposes of debt recovery and credit assessment."
+          }
+        ]
+      },
+      {
+        "title": "8. Term, Termination And Suspension Of Use",
+        "blocks": [
+          {
+            "kind": "paragraph",
+            "text": "8.1 The Agreement is entered into for an indefinite period, unless agreed otherwise in the Partner Specific Conditions."
+          },
+          {
+            "kind": "paragraph",
+            "text": "8.2 If the Partner breaches any of its obligations under the Agreement or any applicable law, disparages Africlay, causes harm to Africlay's brand, reputation or business, or if Africlay reasonably believes that the Partner has engaged in fraudulent activity or has listed prohibited Goods, Africlay may temporarily suspend the Partner from using the Africlay Platform or terminate the Agreement, without any obligation to compensate for loss of profit."
+          },
+          {
+            "kind": "paragraph",
+            "text": "8.3 The Partner may terminate the Agreement without cause at any time by giving at least 30 days' written notice. Africlay may terminate the Agreement at any time by giving at least 30 days' reasoned written notice. Africlay need not give advance notice of termination if Africlay:"
+          },
+          {
+            "kind": "paragraph",
+            "text": "8.3.1 is subject to a legal or regulatory obligation that requires it to stop providing its services to the Partner in a manner that does not allow it to respect the notice period;"
+          },
+          {
+            "kind": "paragraph",
+            "text": "8.3.2 exercises a right of termination for an imperative reason under applicable law; or"
+          },
+          {
+            "kind": "paragraph",
+            "text": "8.3.3 can demonstrate that the Partner has repeatedly breached these General Terms."
+          },
+          {
+            "kind": "paragraph",
+            "text": "8.4 The Partner may terminate the Agreement with immediate effect if Africlay repeatedly fails to comply with, or breaches, any of its obligations under these General Terms."
+          },
+          {
+            "kind": "paragraph",
+            "text": "8.5 Termination of the Agreement will not affect:"
+          },
+          {
+            "kind": "paragraph",
+            "text": "8.5.1 any accrued rights of either party, including any right to receive payments due but unpaid before termination; or"
+          },
+          {
+            "kind": "paragraph",
+            "text": "8.5.2 any obligations which are expressed to, or by their nature, survive termination."
+          },
+          {
+            "kind": "paragraph",
+            "text": "8.6 Upon termination, the Partner shall fulfil all Orders accepted before the termination date, and all rented tablets, devices and other equipment provided by Africlay shall be returned to Africlay in good order, subject to normal wear and tear, unless otherwise agreed."
+          },
+          {
+            "kind": "paragraph",
+            "text": "8.7 If, after termination, there is an ongoing offline marketing campaign featuring the Partner or its establishments, Africlay is entitled to refrain from changing the campaign materials already in circulation."
+          }
+        ]
+      },
+      {
+        "title": "9. Licensing, Data Processing And Intellectual Property Rights",
+        "blocks": [
+          {
+            "kind": "paragraph",
+            "text": "9.1 Africlay grants the Partner a revocable, non-exclusive, non-transferable, non-sublicensable licence to use the Africlay Platform for the purpose of selling Goods."
+          },
+          {
+            "kind": "paragraph",
+            "text": "9.2 The Partner grants Africlay a royalty-free licence, for the duration of the Agreement, to display on the Africlay Platform and to use in its marketing and advertising the Partner's name, trademarks, and all materials provided by the Partner (including photographs and descriptions of Goods, and the stories of artisans or farms where provided). The Partner represents and warrants that it holds, or is authorised to license, the relevant intellectual property rights and that such materials do not infringe any third-party rights. Where photographs of Goods are taken at the expense of, or by a person appointed by Africlay, all rights in them belong to Africlay; if the Partner purchases a licence to such photographs, it may use them for any purpose except on platforms competing with Africlay."
+          },
+          {
+            "kind": "paragraph",
+            "text": "9.3 Where the Partner sells artisan-made or traditional designs, the Partner warrants that it has the right to sell them and that the Goods do not infringe the intellectual property, traditional knowledge or cultural expression rights of any person or community."
+          },
+          {
+            "kind": "paragraph",
+            "text": "9.4 All intellectual property rights in the software, documentation and information used or developed by or on behalf of Africlay in providing its services (including the Africlay Platform, Confidential Information and, where relevant, photographs of Goods), as well as all data and statistics about sales made through the Africlay Platform, belong to Africlay. The Partner shall not copy, modify, adapt, reverse-engineer, decompile or otherwise attempt to discover the source code of the Africlay Platform. Africlay shall retain sales data and statistics for each reference period for at least one year after the end of that reference period."
+          },
+          {
+            "kind": "paragraph",
+            "text": "9.5 The terms for processing the personal data of Buyers and of Logistics Partners' personnel are set out in Schedule 2 (Data Sharing Agreement)."
+          }
+        ]
+      },
+      {
+        "title": "10. Confidentiality",
+        "blocks": [
+          {
+            "kind": "paragraph",
+            "text": "10.1 During the term of the Agreement and for five years after its expiry or termination, Africlay and the Partner shall keep confidential and shall not disclose the Confidential Information of the other party."
+          },
+          {
+            "kind": "paragraph",
+            "text": "10.2 Confidential Information of the other party may be disclosed to third parties only with that party's prior written consent. Notwithstanding this, Confidential Information may be disclosed to a party's lawyers, auditors, accountants, consultants and subcontractors, provided they need it in connection with the Agreement and are bound by confidentiality obligations, or where disclosure is required by law or by a competent authority."
+          }
+        ]
+      },
+      {
+        "title": "11. Anti-Money Laundering And Anti-Bribery",
+        "blocks": [
+          {
+            "kind": "paragraph",
+            "text": "11.1 The Partner warrants that it complies with all applicable anti-money laundering and counter-terrorism financing laws, including the Proceeds of Crime and Anti-Money Laundering Act, and that neither it nor any of its affiliates or ultimate beneficial owners is subject to any international sanctions, trade controls, anti-terrorism or similar restrictions."
+          },
+          {
+            "kind": "paragraph",
+            "text": "11.2 The Partner shall comply with the Bribery Act, 2016 and shall not offer, give or accept any bribe or improper payment in connection with the Agreement."
+          },
+          {
+            "kind": "paragraph",
+            "text": "11.3 Africlay may review the Partner's compliance with this Section 11 and may suspend the Partner from using the Africlay Platform without prior notice for the purpose of detecting or preventing fraud or any other violation."
+          },
+          {
+            "kind": "paragraph",
+            "text": "11.4 The Partner shall notify Africlay immediately of any circumstances that may indicate a violation of this Section 11."
+          }
+        ]
+      },
+      {
+        "title": "12. Liability And Insurance",
+        "blocks": [
+          {
+            "kind": "paragraph",
+            "text": "12.1 Africlay is not liable for the performance of the Sales Agreement or for any claims made under it, including claims relating to the quality, safety, authenticity or legality of the Goods, or to the sale of any age-restricted or controlled Goods."
+          },
+          {
+            "kind": "paragraph",
+            "text": "12.2 Africlay is not liable for any indirect damage or loss of profit that the Partner may suffer due to interruptions in the availability or functioning of the Africlay Platform on any device."
+          },
+          {
+            "kind": "paragraph",
+            "text": "12.3 Africlay is not liable for any indirect damage or loss of profit, unless caused intentionally or through gross negligence. Africlay's total liability to the Partner for loss of or damage to Goods during Delivery Services shall not exceed the Goods Price of the affected Order."
+          },
+          {
+            "kind": "paragraph",
+            "text": "12.4 The Partner shall indemnify, defend and hold Africlay harmless from and against all claims, suits, actions, administrative proceedings, demands, losses, damages, costs and expenses of whatever nature (including reasonable legal fees) arising from or relating to the Goods or the performance of the Partner's obligations under the Agreement."
+          },
+          {
+            "kind": "paragraph",
+            "text": "12.5 The Partner shall reimburse Africlay for any additional costs incurred because of the Partner's breach of the Agreement (including, without limitation, the cost of a Logistics Partner returning to the Partner to collect Goods the Partner failed to include in an Order, or failed collection attempts caused by the Partner)."
+          },
+          {
+            "kind": "paragraph",
+            "text": "12.6 The Partner is liable for the loss or theft of, or any damage to, any tablet or equipment rented from Africlay."
+          },
+          {
+            "kind": "paragraph",
+            "text": "12.7 If a Buyer brings a claim for breach of the Sales Agreement, the Partner shall release Africlay from all liability in respect of that claim."
+          },
+          {
+            "kind": "paragraph",
+            "text": "12.8 Where required in the Partner Specific Conditions, the Partner shall maintain product liability insurance (and, where relevant, insurance for Goods held in storage) for the duration of the Agreement."
+          },
+          {
+            "kind": "paragraph",
+            "text": "12.9 The Partner shall indemnify and hold Africlay harmless from and against all claims, liabilities, costs and expenses (including reasonable professional fees) arising from (i) the use of the Partner's name, trademarks or other materials (including photographs of Goods) by Africlay in accordance with Section 9; or (ii) any breach by the Partner of any representation, warranty, covenant or obligation in the Agreement."
+          }
+        ]
+      },
+      {
+        "title": "13. Miscellaneous",
+        "blocks": [
+          {
+            "kind": "paragraph",
+            "text": "13.1 If there is a conflict between the Partner Specific Conditions, the Special Terms, these General Terms, the Schedules or any other document incorporated by reference into the Agreement, precedence shall be given first to the Partner Specific Conditions, second to the Special Terms, third to these General Terms, fourth to the Schedules and fifth to any other document incorporated by reference."
+          },
+          {
+            "kind": "paragraph",
+            "text": "13.2 Where versions of the Agreement exist in any other language, the English version shall prevail."
+          },
+          {
+            "kind": "paragraph",
+            "text": "13.3 Africlay may update these General Terms at any time by publishing the revised version on its website or Partner Portal, and will notify the Partner of any changes at least 30 days in advance. If the Partner does not agree to the updated General Terms, it may terminate the Agreement and discontinue its use of the Africlay Platform before the changes take effect. If the Partner lists additional Goods on the Africlay Platform during the notice period, this shall be considered a clear affirmative action waiving the notice period."
+          },
+          {
+            "kind": "paragraph",
+            "text": "13.4 The Partner may not assign or transfer any of its rights or obligations under the Agreement, in whole or in part, without Africlay's prior written consent."
+          },
+          {
+            "kind": "paragraph",
+            "text": "13.5 Notices under the Agreement shall be in writing and sent by email to the addresses set out in the Special Terms (for the Partner) and to partners@africlay.co.ke (for Africlay)."
+          },
+          {
+            "kind": "paragraph",
+            "text": "13.6 The Agreement, and any rights or claims arising out of or in connection with it or with the Sales Agreement, shall be governed by and construed in accordance with the laws of Kenya. The parties shall first try to settle any dispute through good-faith negotiation within 14 days of written notice of the dispute. If the dispute is not settled, it shall be finally resolved by the courts of Kenya sitting in Nairobi."
+          }
+        ]
+      },
+      {
+        "title": "14. Ranking",
+        "blocks": [
+          {
+            "kind": "paragraph",
+            "text": "14.1 The main parameters of ranking on the Africlay Platform are applied in the following order (from most to least important):"
+          },
+          {
+            "kind": "paragraph",
+            "text": "14.1.1 Availability of the Partner and the Goods. If an Order cannot be placed, or Goods are out of stock, the Partner is less likely to be relevant to the Buyer."
+          },
+          {
+            "kind": "paragraph",
+            "text": "14.1.2 Relevance to the Buyer's search, location and delivery area."
+          },
+          {
+            "kind": "paragraph",
+            "text": "14.1.3 Fulfilment reliability. Africlay prioritises Partners with high Order acceptance rates, Orders ready within Pack Time, and low cancellation and complaint rates."
+          },
+          {
+            "kind": "paragraph",
+            "text": "14.1.4 Frequency of use. If a Buyer has ordered from the Partner several times, the Partner is more likely to appear higher in that Buyer's ranking."
+          },
+          {
+            "kind": "paragraph",
+            "text": "14.1.5 Ratings. The higher the Partner's rating, the more likely it is to appear higher in the ranking."
+          },
+          {
+            "kind": "paragraph",
+            "text": "14.1.6 New Partners. New Partners may temporarily receive a higher position on the Africlay Platform."
+          },
+          {
+            "kind": "paragraph",
+            "text": "14.2 Africlay may, at its discretion, create temporary or curated rankings and collections (for example by Merchant Category, region, season or campaign). The visibility of a Partner may increase if the Partner participates in paid placement, funds promotions or covers part of the Order Price."
+          }
+        ]
+      },
+      {
+        "title": "15. Differentiated Treatment",
+        "blocks": [
+          {
+            "kind": "paragraph",
+            "text": "15.1 Africlay may sell Goods on its own account or through entities it owns or controls (\"Africlay Own Listings\"). Africlay Own Listings may be treated differently on the Africlay Platform, including through promotion, targeted campaigns, insight into Buyer behaviour and features built specifically for them."
+          }
+        ]
+      },
+      {
+        "title": "16. Access To Data",
+        "blocks": [
+          {
+            "kind": "paragraph",
+            "text": "16.1 In addition to the personal data referred to in Schedule 2, the Africlay Platform has access to certain data about Buyers, such as:"
+          },
+          {
+            "kind": "paragraph",
+            "text": "16.1.1 Buyers' Orders and their contents;"
+          },
+          {
+            "kind": "paragraph",
+            "text": "16.1.2 Buyers' visits to screens and pages on the Africlay Platform;"
+          },
+          {
+            "kind": "paragraph",
+            "text": "16.1.3 Buyers' search queries; and"
+          },
+          {
+            "kind": "paragraph",
+            "text": "16.1.4 Buyers' ratings of Partners and comments."
+          },
+          {
+            "kind": "paragraph",
+            "text": "16.2 Africlay shares with Partners certain data generated through the Africlay Platform, such as aggregate sales data through weekly reports and data on ratings provided by Buyers."
+          }
+        ]
+      },
+      {
+        "title": "SCHEDULE 1: Service Level Requirements",
+        "blocks": [
+          {
+            "kind": "paragraph",
+            "text": "These Service Level Requirements are an integral part of the Agreement and apply to the Partner's activities in accepting, preparing and packing Orders and, where relevant, producing the Goods."
+          }
+        ]
+      },
+      {
+        "title": "1. Accepting Orders",
+        "blocks": [
+          {
+            "kind": "paragraph",
+            "text": "1.1 When a Buyer has placed an Order, the Partner shall accept or decline it within 10 minutes of receiving the Order notification during Opening Hours, except where the auto-acceptance function is enabled, in which case all Orders are automatically accepted by the Partner."
+          },
+          {
+            "kind": "paragraph",
+            "text": "1.2 If the Partner cannot provide the Goods as requested in the Order, it shall not confirm the Order. If an Order has already been accepted, the Partner shall notify Africlay immediately through the Partner Portal so that the Order can be amended or cancelled."
+          },
+          {
+            "kind": "paragraph",
+            "text": "1.3 If the Partner runs out of any Goods, it shall mark them as unavailable on the Africlay Platform as soon as reasonably possible, and in any event within 30 minutes of discovering the shortage."
+          }
+        ]
+      },
+      {
+        "title": "2. Preparing and Packing Orders",
+        "blocks": [
+          {
+            "kind": "paragraph",
+            "text": "2.1 The Partner ensures that the Goods are produced, handled, stored and packed in accordance with all applicable laws at all times until handover to Africlay or its Logistics Partner, including (where the Goods contain food or fresh produce) all rules on hygiene, temperature control and food safety."
+          },
+          {
+            "kind": "paragraph",
+            "text": "2.2 The Partner ensures that every accepted Order is packed, labelled with the Order reference and ready for collection within the Pack Time. If the Partner has not accepted an Order within the time set out in paragraph 1.1, Africlay may cancel the Order and refund the Buyer."
+          },
+          {
+            "kind": "paragraph",
+            "text": "2.3 The Partner marks the Order as \"Ready\" on the Partner Portal once it is packed, and confirms handover when the Order is collected."
+          },
+          {
+            "kind": "paragraph",
+            "text": "2.4 The Partner shall keep its acceptance rate at or above 95% and its rate of Orders ready within Pack Time at or above 90%, measured monthly. Persistent failure to meet these levels may result in reduced ranking or suspension under Section 8.2 of the Terms and Conditions."
+          }
+        ]
+      },
+      {
+        "title": "3. Collection of Orders",
+        "blocks": [
+          {
+            "kind": "paragraph",
+            "text": "3.1 The Partner shall make Orders available for collection at the address and during the Opening Hours set out in the Special Terms and shall give Africlay's Logistics Partner reasonable access for collection."
+          },
+          {
+            "kind": "paragraph",
+            "text": "3.2 If an Order is not ready when the Logistics Partner arrives, the Logistics Partner may wait for up to 10 minutes, after which Africlay may reschedule the collection or cancel the Order. Costs of repeated failed collections may be recovered from the Partner under Section 12.5."
+          }
+        ]
+      },
+      {
+        "title": "SCHEDULE 2: Data Sharing Agreement",
+        "blocks": [
+          {
+            "kind": "paragraph",
+            "text": "This Data Sharing Agreement is an integral part of the Agreement and applies to all relations between Africlay and the Partner in the course of using the Africlay Platform that relate to the processing of personal data."
+          }
+        ]
+      },
+      {
+        "title": "1. Definitions",
+        "blocks": [
+          {
+            "kind": "table",
+            "rows": [
+              [
+                "Agreed Purposes",
+                "has the meaning given in clause 2.4 of this Data Sharing Agreement."
+              ],
+              [
+                "Data Protection Authority",
+                "means the Office of the Data Protection Commissioner of Kenya."
+              ],
+              [
+                "Data Protection Legislation",
+                "means the Data Protection Act, 2019 of Kenya, the regulations made under it, and any other applicable law protecting Personal Data."
+              ],
+              [
+                "Personal Data",
+                "means any information relating to an identified or identifiable natural person, as defined in the Data Protection Legislation."
+              ],
+              [
+                "Shared Personal Data",
+                "means the Personal Data shared between the parties under clause 3 of this Data Sharing Agreement."
+              ]
+            ]
+          }
+        ]
+      },
+      {
+        "title": "2. Purpose",
+        "blocks": [
+          {
+            "kind": "paragraph",
+            "text": "2.1 This Data Sharing Agreement documents the parties' compliance with the Data Protection Legislation. Each party shall comply with the Data Protection Legislation at all times."
+          },
+          {
+            "kind": "paragraph",
+            "text": "2.2 The parties are separate data controllers, each able to determine the purpose and means of processing the Personal Data under its control in accordance with its privacy notice. Each party shall register with the Data Protection Authority where required by the Data Protection Legislation."
+          },
+          {
+            "kind": "paragraph",
+            "text": "2.3 The parties consider the data sharing necessary and in their mutual interest. Its aim is the performance of the Agreement."
+          },
+          {
+            "kind": "paragraph",
+            "text": "2.4 The parties shall process Shared Personal Data only for, and compatibly with, the following Agreed Purposes:"
+          },
+          {
+            "kind": "paragraph",
+            "text": "2.4.1 performance of the Agreement, including fulfilling Orders and handling Buyer complaints; and"
+          },
+          {
+            "kind": "paragraph",
+            "text": "2.4.2 any other purpose incidental to or analogous with the above."
+          },
+          {
+            "kind": "paragraph",
+            "text": "2.5 Any notice or formal communication under this Data Sharing Agreement shall be in writing. The email address for Africlay is privacy@africlay.co.ke"
+          }
+        ]
+      },
+      {
+        "title": "3. Shared Personal Data",
+        "blocks": [
+          {
+            "kind": "paragraph",
+            "text": "3.1 The following types of Personal Data may be shared between the parties:"
+          },
+          {
+            "kind": "paragraph",
+            "text": "3.1.1 the Buyer's first name and the initial of their last name;"
+          },
+          {
+            "kind": "paragraph",
+            "text": "3.1.2 the Buyer's phone number, where needed to fulfil or resolve an issue with an Order;"
+          },
+          {
+            "kind": "paragraph",
+            "text": "3.1.3 the Buyer's Order and related information (such as special requests);"
+          },
+          {
+            "kind": "paragraph",
+            "text": "3.1.4 the first name and initial of the last name of the Logistics Partner's rider or driver; and"
+          },
+          {
+            "kind": "paragraph",
+            "text": "3.1.5 that rider's or driver's phone number."
+          },
+          {
+            "kind": "paragraph",
+            "text": "3.2 Sensitive personal data may be shared only where permitted by the Data Protection Legislation."
+          },
+          {
+            "kind": "paragraph",
+            "text": "3.3 Processing of Shared Personal Data must not be irrelevant or excessive with regard to the Agreed Purposes."
+          },
+          {
+            "kind": "paragraph",
+            "text": "3.4 Wherever practicable, the parties shall carry out proportionate checks to ensure the accuracy of Shared Personal Data and its correct incorporation into their systems."
+          },
+          {
+            "kind": "paragraph",
+            "text": "3.5 Each party shall ensure that its privacy notice complies with the Data Protection Legislation and that data subjects are properly informed of its processing practices."
+          },
+          {
+            "kind": "paragraph",
+            "text": "3.6 The Partner shall not use Shared Personal Data to solicit Buyers to purchase outside the Africlay Platform."
+          }
+        ]
+      },
+      {
+        "title": "4. Direct Marketing",
+        "blocks": [
+          {
+            "kind": "paragraph",
+            "text": "4.1 If a party processes Shared Personal Data for direct marketing, it shall ensure that:"
+          },
+          {
+            "kind": "paragraph",
+            "text": "4.1.1 effective procedures are in place to allow data subjects to opt out of direct marketing; and"
+          },
+          {
+            "kind": "paragraph",
+            "text": "4.1.2 an appropriate legal basis, including consent where required, has been confirmed (and, where necessary, evidenced) for that use."
+          }
+        ]
+      },
+      {
+        "title": "5. Data Security Breaches and Reporting",
+        "blocks": [
+          {
+            "kind": "paragraph",
+            "text": "5.1 The parties shall provide reasonable assistance to each other to handle any data security breach promptly and in compliance with the Data Protection Legislation."
+          },
+          {
+            "kind": "paragraph",
+            "text": "5.2 Each party shall notify the other of any actual or potential loss of Shared Personal Data, and the remedial steps taken, without undue delay and in any event within 48 hours of becoming aware of it, so that the party required to do so can notify the Data Protection Authority within 72 hours as required by the Data Protection Legislation. Notifications to Africlay shall be sent to privacy@africlay.co.ke ."
+          }
+        ]
+      },
+      {
+        "title": "6. Security and Training",
+        "blocks": [
+          {
+            "kind": "paragraph",
+            "text": "6.1 Each party shall provide and receive Shared Personal Data only using secure methods, having regard to available systems, technology for data transfers, the risk of data loss or breach and the cost of such measures."
+          },
+          {
+            "kind": "paragraph",
+            "text": "6.2 Each party shall ensure that its staff are appropriately trained to handle Shared Personal Data securely and in line with the data protection principles set out in the Data Protection Legislation."
+          },
+          {
+            "kind": "paragraph",
+            "text": "6.3 The parties shall transfer Shared Personal Data outside Kenya only in accordance with the Data Protection Legislation."
+          },
+          {
+            "kind": "paragraph",
+            "text": "6.4 Each party is responsible for its own legal compliance and self-audit. A party may, acting reasonably, ask to inspect the other party's arrangements for processing Shared Personal Data and request a review of this Data Sharing Agreement where it believes the other party is not complying with it and the matter has not been resolved through discussion."
+          }
+        ]
+      },
+      {
+        "title": "7. Data Retention and Deletion",
+        "blocks": [
+          {
+            "kind": "paragraph",
+            "text": "7.1 No party shall retain or process Shared Personal Data for longer than necessary for the Agreed Purposes, subject to any statutory retention periods that apply to it."
+          }
+        ]
+      },
+      {
+        "title": "8. Final Provisions",
+        "blocks": [
+          {
+            "kind": "paragraph",
+            "text": "8.1 This Data Sharing Agreement is valid for the term of the Agreement."
+          },
+          {
+            "kind": "paragraph",
+            "text": "8.2 In case of conflict between the Agreement and this Data Sharing Agreement regarding the processing of Personal Data, this Data Sharing Agreement shall prevail."
+          },
+          {
+            "kind": "paragraph",
+            "text": "8.3 If a data subject or the Data Protection Authority brings a dispute or claim concerning the processing of Shared Personal Data against either or both parties, the parties will inform each other and cooperate to settle it amicably and promptly."
+          },
+          {
+            "kind": "paragraph",
+            "text": "8.4 The parties' liability under this Data Sharing Agreement is subject to the exclusions and limitations of liability in the Agreement."
+          },
+          {
+            "kind": "paragraph",
+            "text": "8.5 If any provision of this Data Sharing Agreement is declared invalid, unlawful or unenforceable, the remainder shall remain valid. This Data Sharing Agreement is governed by the law governing the Agreement, and disputes shall be resolved in the forum agreed under the Agreement."
+          }
+        ]
+      },
+      {
+        "title": "SCHEDULE 3: Category-Specific Requirements",
+        "blocks": [
+          {
+            "kind": "paragraph",
+            "text": "This Schedule sets out additional requirements that apply according to the Partner's Merchant Category, in addition to the rest of the Agreement. All capitalised terms have the meanings given in the General Terms."
+          }
+        ]
+      },
+      {
+        "title": "1. All Partners",
+        "blocks": [
+          {
+            "kind": "paragraph",
+            "text": "1.1 The Partner shall hold and maintain all business registrations, licences and permits required to produce and sell its Goods, and shall provide copies to Africlay on request."
+          },
+          {
+            "kind": "paragraph",
+            "text": "1.2 The Partner shall not list prohibited or restricted Goods, including counterfeit goods, goods made from protected wildlife or wildlife trophies, and any goods whose sale is prohibited or restricted under Kenyan law, unless (for restricted goods) the Partner holds all required permits and Africlay has agreed in writing."
+          },
+          {
+            "kind": "paragraph",
+            "text": "1.3 The Partner shall attach to each Order any documentation required by law for the Goods and, where Africlay requests, a packing slip listing the contents."
+          }
+        ]
+      },
+      {
+        "title": "2. African Artifacts Merchants",
+        "blocks": [
+          {
+            "kind": "paragraph",
+            "text": "2.1 The Partner warrants that descriptions of authenticity, origin, materials, maker and age are accurate, and that Goods described as handmade, antique or from a particular community genuinely are."
+          },
+          {
+            "kind": "paragraph",
+            "text": "2.2 The Partner shall not list objects that are protected heritage or antiquities requiring a permit for sale or export under the National Museums and Heritage Act, 2006, unless it holds and provides to Africlay all required permits."
+          },
+          {
+            "kind": "paragraph",
+            "text": "2.3 Fragile, oversized or high-value artifacts shall be packed with adequate protective material, and their weight and dimensions shall be stated accurately on the listing so that suitable Delivery Services can be arranged."
+          }
+        ]
+      },
+      {
+        "title": "3. Farm-to-Plate Farmers / Producers",
+        "blocks": [
+          {
+            "kind": "paragraph",
+            "text": "3.1 The Partner shall comply with all applicable food safety, hygiene, labelling and agricultural regulations, including the Food, Drugs and Chemical Substances Act and any registration requirements of the Agriculture and Food Authority or county government that apply to its Goods."
+          },
+          {
+            "kind": "paragraph",
+            "text": "3.2 The Partner shall observe pre-harvest intervals for any pesticides or chemicals used, and shall not supply produce containing residues above permitted limits. Claims such as \"organic\" or \"pesticide-free\" may be made only where they are true and, where applicable, certified."
+          },
+          {
+            "kind": "paragraph",
+            "text": "3.3 Fresh produce shall be harvested and packed so as to reach the Buyer in fresh condition, with appropriate grading, cleaning, ventilation and, where needed, chilled packaging. Weight-based Goods shall meet the listed weight."
+          },
+          {
+            "kind": "paragraph",
+            "text": "3.4 Processed or packaged foods shall carry labelling that complies with applicable law, including ingredients, allergens, net quantity and best-before or expiry dates."
+          }
+        ]
+      },
+      {
+        "title": "4. Local Merchants",
+        "blocks": [
+          {
+            "kind": "paragraph",
+            "text": "4.1 The Partner shall ensure that all Goods meet applicable standards and, where required, carry the relevant Kenya Bureau of Standards marks."
+          },
+          {
+            "kind": "paragraph",
+            "text": "4.2 Packaged Goods supplied to Buyers shall have a remaining shelf life sufficient for normal use and in any event not less than one-third of their total shelf life at the time of delivery."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "shipping-and-delivery",
+    "source": "shipping-and-delivery-policy.docx",
+    "downloadPath": "/policies/shipping-and-delivery-policy.docx",
+    "title": "Shipping and Delivery",
+    "subtitle": "How orders are prepared, priced, transported, and received",
+    "audience": "Buyers and sellers",
+    "summary": "Delivery coverage, timelines, shipping fees, tracking, failed deliveries, and remedies for lost or damaged shipments.",
+    "highlights": [
+      "The applicable delivery fee is shown before an order is confirmed.",
+      "Delivery estimates vary by destination and operating conditions.",
+      "Buyers must provide accurate delivery details and inspect packages on arrival.",
+      "Lost or damaged shipments are investigated with the seller and logistics provider."
+    ],
+    "hasPlaceholders": false,
+    "sections": [
+      {
+        "title": "Purpose",
+        "blocks": [
+          {
+            "kind": "paragraph",
+            "text": "This Shipping & Delivery Policy explains how Africlay Market manages the shipment and delivery of products purchased through our platform."
+          }
+        ]
+      },
+      {
+        "title": "Delivery Coverage",
+        "blocks": [
+          {
+            "kind": "paragraph",
+            "text": "Africlay Market delivers products across Kenya and may expand to other African countries and international destinations where delivery services are available."
+          }
+        ]
+      },
+      {
+        "title": "Order Processing",
+        "blocks": [
+          {
+            "kind": "bullet",
+            "text": "Sellers are responsible for preparing and dispatching orders within the agreed processing time."
+          },
+          {
+            "kind": "bullet",
+            "text": "Orders placed on weekends or public holidays may be processed on the next business day."
+          },
+          {
+            "kind": "bullet",
+            "text": "Unless otherwise stated, all products and services offered through Africlay are payable upon delivery. Buyers are required to pay the applicable logistics (delivery) fee in advance to enable order processing and shipment. Once the logistics fee has been been received and confirmed, the order will be released for delivery. The remaining amount for the product or service is payable at the time of delivery."
+          }
+        ]
+      },
+      {
+        "title": "Delivery Methods",
+        "blocks": [
+          {
+            "kind": "paragraph",
+            "text": "Deliveries may be carried out by:"
+          },
+          {
+            "kind": "bullet",
+            "text": "Africlay Market logistics partners."
+          },
+          {
+            "kind": "bullet",
+            "text": "Approved third-party courier services."
+          },
+          {
+            "kind": "bullet",
+            "text": "Seller-arranged delivery where authorized by Africlay Market."
+          },
+          {
+            "kind": "paragraph",
+            "text": "The delivery method will depend on the product, destination, and availability of logistics services."
+          }
+        ]
+      },
+      {
+        "title": "Delivery Time",
+        "blocks": [
+          {
+            "kind": "paragraph",
+            "text": "Estimated delivery times are:"
+          },
+          {
+            "kind": "bullet",
+            "text": "Within the same town or city: 1-2 business days"
+          },
+          {
+            "kind": "bullet",
+            "text": "Within Kenya: 5-7 business days"
+          },
+          {
+            "kind": "bullet",
+            "text": "International deliveries (where available): 30 business days"
+          },
+          {
+            "kind": "paragraph",
+            "text": "These are estimates and may vary due to weather, customs clearance, traffic, remote locations, public holidays, or other unforeseen circumstances."
+          }
+        ]
+      },
+      {
+        "title": "Shipping Fees",
+        "blocks": [
+          {
+            "kind": "paragraph",
+            "text": "Shipping charges are calculated based on factors such as:"
+          },
+          {
+            "kind": "bullet",
+            "text": "Delivery location."
+          },
+          {
+            "kind": "bullet",
+            "text": "Product size and weight."
+          },
+          {
+            "kind": "bullet",
+            "text": "Seller location."
+          },
+          {
+            "kind": "bullet",
+            "text": "Selected delivery method."
+          },
+          {
+            "kind": "paragraph",
+            "text": "The applicable shipping fee will be displayed before the buyer confirms the order."
+          }
+        ]
+      },
+      {
+        "title": "Order Tracking",
+        "blocks": [
+          {
+            "kind": "paragraph",
+            "text": "Where available, buyers will receive tracking information to monitor the progress of their shipment through the Africlay Market platform or the designated courier service."
+          }
+        ]
+      },
+      {
+        "title": "Delivery Responsibility",
+        "blocks": [
+          {
+            "kind": "paragraph",
+            "text": "Buyers must:"
+          },
+          {
+            "kind": "bullet",
+            "text": "Provide accurate delivery information."
+          },
+          {
+            "kind": "bullet",
+            "text": "Ensure someone is available to receive the order."
+          },
+          {
+            "kind": "bullet",
+            "text": "Inspect the package upon delivery and report any visible damage or missing items as soon as possible."
+          }
+        ]
+      },
+      {
+        "title": "Failed Deliveries",
+        "blocks": [
+          {
+            "kind": "paragraph",
+            "text": "A delivery may fail if:"
+          },
+          {
+            "kind": "bullet",
+            "text": "The delivery address is incorrect or incomplete."
+          },
+          {
+            "kind": "bullet",
+            "text": "The recipient is unavailable after reasonable delivery attempts."
+          },
+          {
+            "kind": "bullet",
+            "text": "The buyer refuses to accept the order without a valid reason. Additional delivery charges may apply for redelivery where appropriate."
+          }
+        ]
+      },
+      {
+        "title": "Delayed Deliveries",
+        "blocks": [
+          {
+            "kind": "paragraph",
+            "text": "While Africlay Market strives to deliver orders on time, we are not responsible for delays caused by circumstances beyond our reasonable control, including natural disasters, transport disruptions, customs delays, or government actions."
+          }
+        ]
+      },
+      {
+        "title": "Lost or Damaged Shipments",
+        "blocks": [
+          {
+            "kind": "paragraph",
+            "text": "If an order is lost or arrives damaged during delivery:"
+          },
+          {
+            "kind": "bullet",
+            "text": "Buyers should notify Africlay Market as soon as possible."
+          },
+          {
+            "kind": "bullet",
+            "text": "Africlay Market will investigate the matter with the seller and logistics provider."
+          },
+          {
+            "kind": "bullet",
+            "text": "Appropriate remedies, including replacement or refund, will be provided where applicable under our Refund & Return Policy."
+          }
+        ]
+      },
+      {
+        "title": "International Orders",
+        "blocks": [
+          {
+            "kind": "paragraph",
+            "text": "For international deliveries:"
+          },
+          {
+            "kind": "bullet",
+            "text": "Buyers are responsible for complying with the import laws of the destination country."
+          },
+          {
+            "kind": "bullet",
+            "text": "Customs duties, taxes, and import fees imposed by the destination country are the responsibility of the buyer unless otherwise stated."
+          }
+        ]
+      },
+      {
+        "title": "Changes to this Policy",
+        "blocks": [
+          {
+            "kind": "paragraph",
+            "text": "Africlay Market may revise this Shipping & Delivery Policy from time to time. The latest version will always be available on our website and mobile application."
+          },
+          {
+            "kind": "paragraph",
+            "text": "By placing an order on Africlay Market, you acknowledge that you have read, understood, and agree to this Shipping & Delivery Policy."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "seller-commission",
+    "source": "seller-commission-policy.docx",
+    "downloadPath": "/policies/seller-commission-policy.docx",
+    "title": "Seller Commission",
+    "subtitle": "10% commission on successful sales",
+    "audience": "Sellers",
+    "summary": "How the 10% marketplace commission is calculated, when it applies, and how cancellations, refunds, and seller settlements are handled.",
+    "highlights": [
+      "Africlay retains 10% of the agreed product sale price after a successful sale.",
+      "The seller receives 90% before any separately disclosed and agreed charges.",
+      "Commission is not finally earned on an order cancelled before completion.",
+      "Order records should show commission, adjustments, and the net seller amount."
+    ],
+    "hasPlaceholders": false,
+    "sections": [
+      {
+        "title": "1. Purpose",
+        "blocks": [
+          {
+            "kind": "paragraph",
+            "text": "This policy explains the commission charged by Africlay Market for facilitating sales through its marketplace. It is intended to provide clear, consistent expectations for Africlay Market and participating sellers."
+          }
+        ]
+      },
+      {
+        "title": "2. Commission Rate",
+        "blocks": [
+          {
+            "kind": "paragraph",
+            "text": "Africlay Market will retain a commission of 10% of the agreed product sale price for each completed and successful sale made through the platform. The seller is entitled to the remaining 90% of that sale price, before any other charges that have been separately disclosed and agreed in writing."
+          }
+        ]
+      },
+      {
+        "title": "3. Example of Commission Calculation",
+        "blocks": [
+          {
+            "kind": "table",
+            "rows": [
+              [
+                "Sale Price",
+                "Africlay Market (10%)",
+                "Seller Share (90%)"
+              ],
+              [
+                "KSh 100",
+                "KSh 10",
+                "KSh 90"
+              ],
+              [
+                "KSh 500",
+                "KSh 50",
+                "KSh 450"
+              ],
+              [
+                "KSh 1,000",
+                "KSh 100",
+                "KSh 900"
+              ],
+              [
+                "KSh 5,000",
+                "KSh 500",
+                "KSh 4,500"
+              ],
+              [
+                "KSh 10,000",
+                "KSh 1,000",
+                "KSh 9,000"
+              ]
+            ]
+          }
+        ]
+      },
+      {
+        "title": "4. When the Commission Applies",
+        "blocks": [
+          {
+            "kind": "bullet",
+            "text": "The order was placed through Africlay Market."
+          },
+          {
+            "kind": "bullet",
+            "text": "The product was supplied or delivered to the customer, or otherwise confirmed as successfully completed under the applicable order terms."
+          },
+          {
+            "kind": "bullet",
+            "text": "The customer's payment has been received or confirmed in accordance with the payment method used."
+          }
+        ]
+      },
+      {
+        "title": "5. Seller Payments",
+        "blocks": [
+          {
+            "kind": "paragraph",
+            "text": "Africlay Market will calculate the seller's amount due after deducting its 10% commission. Seller payments will be processed according to the payment and settlement schedule communicated by Africlay Market. Any payment-processing fees, delivery fees, withholding taxes, or other deductions must be disclosed separately where applicable; they are not included in the 10% commission unless the parties expressly agree otherwise in writing."
+          }
+        ]
+      },
+      {
+        "title": "6. Cancellations, Returns and Refunds",
+        "blocks": [
+          {
+            "kind": "paragraph",
+            "text": "A commission should not be treated as finally earned on an order that is cancelled before completion. If an order is refunded, returned, disputed, or only partly fulfilled, Africlay Market will review the transaction and adjust or reverse the commission where appropriate under its returns and refund rules and applicable law."
+          }
+        ]
+      },
+      {
+        "title": "7. Seller Responsibilities",
+        "blocks": [
+          {
+            "kind": "bullet",
+            "text": "Provide accurate product descriptions, prices, availability and seller contact details."
+          },
+          {
+            "kind": "bullet",
+            "text": "Fulfil accepted orders honestly and within the agreed timeframe."
+          },
+          {
+            "kind": "bullet",
+            "text": "Follow Africlay Market's marketplace rules, customer-service standards and applicable Kenyan laws."
+          },
+          {
+            "kind": "bullet",
+            "text": "Raise any commission or settlement dispute promptly and provide the relevant order details."
+          }
+        ]
+      },
+      {
+        "title": "8. Records and Transparency",
+        "blocks": [
+          {
+            "kind": "paragraph",
+            "text": "Africlay Market should maintain an order record showing the sale price, commission deducted, other agreed deductions (if any), refunds or adjustments, and the net amount payable to the seller. Sellers may request clarification of a transaction through Africlay Market's official support channel."
+          }
+        ]
+      },
+      {
+        "title": "9. Changes to this Policy",
+        "blocks": [
+          {
+            "kind": "paragraph",
+            "text": "Any change to the commission rate or the method of calculation should be communicated to sellers in advance and applied prospectively, subject to the seller agreement and applicable law. The commission rate under this policy is 10% unless a different rate is expressly agreed in writing."
+          }
+        ]
+      },
+      {
+        "title": "10. Acceptance",
+        "blocks": [
+          {
+            "kind": "paragraph",
+            "text": "By registering as a seller and accepting this policy, the seller acknowledges the 10% commission arrangement described above. Africlay Market should provide the seller with a copy of the accepted policy and any applicable seller agreement."
+          },
+          {
+            "kind": "paragraph",
+            "text": "AFRICLAY MARKET"
+          },
+          {
+            "kind": "paragraph",
+            "text": "Official email: africlaymarket@gmail.com"
+          },
+          {
+            "kind": "paragraph",
+            "text": "Telephone: 0798958113"
+          },
+          {
+            "kind": "paragraph",
+            "text": "Website: www.africlaymarket.com"
+          },
+          {
+            "kind": "paragraph",
+            "text": "Seller Acknowledgement"
+          },
+          {
+            "kind": "table",
+            "rows": [
+              [
+                "Seller / Business Name:",
+                "________________________________"
+              ],
+              [
+                "Seller Signature:",
+                "________________________________"
+              ],
+              [
+                "Date:",
+                "________________________________"
+              ]
+            ]
+          }
+        ]
+      }
+    ]
+  }
+]

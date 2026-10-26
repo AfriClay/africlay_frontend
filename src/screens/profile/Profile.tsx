@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { CommonActions, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Bell, CalendarClock, ChevronRight, CircleHelp, Heart, LogOut, MapPin, Package, Settings, BadgeCheck, WalletCards, ShieldCheck } from 'lucide-react-native';
+import { Bell, BookOpenCheck, CalendarClock, ChevronRight, CircleHelp, Heart, LogOut, MapPin, Package, Settings, BadgeCheck, WalletCards, ShieldCheck } from 'lucide-react-native';
 import { Avatar } from '../../components/ui/Avatar';
 import { GuestAuthSheet } from '../../components/ui/GuestAuthSheet';
 import { useAuth } from '../../hooks/useAuth';
@@ -18,8 +18,9 @@ import { Button } from '../../components/ui/Button';
 
 type ProfileNavigation = NativeStackNavigationProp<ProfileStackParamList, 'ProfileOverview'>;
 type ProfileRouteName = 'MyOrders' | 'MyAddresses' | 'Wishlist' | 'Notifications' | 'MyBookings' | 'Wallet' | 'DashboardAccessRequests' | 'Settings' | 'SupportHelp';
+type ProfileMenuRoute = ProfileRouteName | 'Policies';
 
-const menuItems: ReadonlyArray<{ label: string; route: ProfileRouteName; icon: typeof Package }> = [
+const menuItems: ReadonlyArray<{ label: string; route: ProfileMenuRoute; icon: typeof Package }> = [
   { label: 'My Orders', route: 'MyOrders', icon: Package },
   { label: 'My Bookings', route: 'MyBookings', icon: CalendarClock },
   { label: 'My Wishlist', route: 'Wishlist', icon: Heart },
@@ -29,6 +30,7 @@ const menuItems: ReadonlyArray<{ label: string; route: ProfileRouteName; icon: t
   { label: 'My Addresses', route: 'MyAddresses', icon: MapPin },
   { label: 'Settings', route: 'Settings', icon: Settings },
   { label: 'Help & Support', route: 'SupportHelp', icon: CircleHelp },
+  { label: 'Terms & Policies', route: 'Policies', icon: BookOpenCheck },
 ];
 
 export const Profile: React.FC = () => {
@@ -40,7 +42,11 @@ export const Profile: React.FC = () => {
   const userId = auth.user?.id ?? '';
   const ordersQuery = useQuery({ queryKey: ['buyer-orders', userId], queryFn: orderService.fetchOrders, enabled: Boolean(userId) });
 
-  const openRoute = (route: ProfileRouteName) => {
+  const openRoute = (route: ProfileMenuRoute) => {
+    if (route === 'Policies') {
+      navigation.dispatch(CommonActions.navigate('Policies'));
+      return;
+    }
     navigation.navigate(route);
   };
 

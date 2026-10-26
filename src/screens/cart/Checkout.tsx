@@ -351,6 +351,12 @@ export const Checkout: React.FC = () => {
     {checkoutError && <Text style={styles.error} accessibilityRole="alert">{checkoutError}</Text>}
     {error && <Text style={styles.error} accessibilityRole="alert">{error}</Text>}
     {orderCreationUncertain ? <Button variant="secondary" onPress={() => navigation.navigate('AppTabs', { screen: 'Profile', params: { screen: 'MyOrders' } })}>View My Orders</Button> : null}
+    <View style={styles.policyNotice}>
+      <Text style={styles.policyNoticeText}>Placing an order confirms that you have reviewed the delivery terms.</Text>
+      <Pressable accessibilityRole="link" onPress={() => navigation.navigate('Policies', { policyId: 'shipping-and-delivery' })} style={styles.policyLinkHit}>
+        <Text style={styles.policyLink}>Shipping & Delivery Policy</Text>
+      </Pressable>
+    </View>
     <Button onPress={() => void submit()} loading={busy} loadingLabel={stage === 'creating-order' ? 'Creating order' : 'Requesting payment'} disabled={busy || orderCreationUncertain || checkoutLoading || (!buyNowProductId && cart.mutating) || !checkoutItemCount || !selected || !isOrderPaymentPhone(phoneNumber) || addressesQuery.isError || quoteQuery.isLoading || quoteQuery.isError || !quote || creating || Boolean(checkoutError)}>{paymentOption === 'pay_on_delivery' ? 'Pay Delivery Fee & Place Order' : 'Place Order & Pay'}</Button>
   </View>;
   return <SafeAreaView style={styles.container}><FlatList testID="checkout-scroll" style={styles.scroll} data={checkoutItems} keyExtractor={item => item.id}
@@ -389,6 +395,10 @@ const styles = StyleSheet.create({
   quoteState: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm },
   quoteError: { gap: theme.spacing.sm, alignItems: 'stretch' },
   quoteHint: { color: theme.colors.muted, textAlign: 'center', fontSize: theme.typography.small.fontSize, lineHeight: 18 },
+  policyNotice: { alignItems: 'center', paddingVertical: theme.spacing.sm },
+  policyNoticeText: { color: theme.colors.muted, textAlign: 'center', fontSize: theme.typography.small.fontSize, lineHeight: theme.typography.small.lineHeight },
+  policyLinkHit: { minHeight: 44, justifyContent: 'center', paddingHorizontal: theme.spacing.sm },
+  policyLink: { color: theme.colors.primary.DEFAULT, fontWeight: '700', textDecorationLine: 'underline' },
   error: { color: theme.colors.error, textAlign: 'center' },
   confirmation: { flex: 1, minHeight: 0, backgroundColor: theme.colors.cream },
   confirmationContent: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', padding: theme.spacing.xl, paddingBottom: theme.spacing.xxl },

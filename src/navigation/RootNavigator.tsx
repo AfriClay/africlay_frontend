@@ -11,6 +11,9 @@ import { createAppStackNavigator, useAppStackScreenOptions } from './appStack';
 import { linking } from './linking';
 import type { AuthStackParamList } from './AuthStack';
 import { canAccessOperations, hasStaffRole, isSuperAdmin } from '../utils/roles';
+import { PolicyNotice } from '../components/legal/PolicyNotice';
+import type { PolicyId } from '../content/policies';
+import { authRoutes } from '../contexts/ResponsiveLayoutContext';
 
 
 export type RootStackParamList = {
@@ -22,6 +25,7 @@ export type RootStackParamList = {
   FinanceDashboard: undefined;
   SuperAdminDashboard: undefined;
   OperationsLogin: undefined;
+  Policies: { policyId?: PolicyId } | undefined;
 };
 
 const Stack = createAppStackNavigator<RootStackParamList>();
@@ -32,6 +36,7 @@ const SalesDashboard = lazyScreen(() => import('../screens/admin/SalesDashboard'
 const FinanceDashboard = lazyScreen(() => import('../screens/admin/FinanceDashboard').then(module => ({ default: module.FinanceDashboard })));
 const SuperAdminDashboard = lazyScreen(() => import('../screens/admin/SuperAdminDashboard').then(module => ({ default: module.SuperAdminDashboard })));
 const OperationsLogin = lazyScreen(() => import('../screens/admin/OperationsLogin').then(module => ({ default: module.OperationsLogin })));
+const Policies = lazyScreen(() => import('../screens/legal/Policies').then(module => ({ default: module.Policies })));
 
 export const RootNavigator = () => {
   const { user, initialized } = useAuth();
@@ -80,6 +85,7 @@ export const RootNavigator = () => {
       <Stack.Screen name="SalesDashboard" component={SalesDashboard} />
       <Stack.Screen name="FinanceDashboard" component={FinanceDashboard} />
       <Stack.Screen name="SuperAdminDashboard" component={SuperAdminDashboard} />
+      <Stack.Screen name="Policies" component={Policies} options={{ headerShown: true, title: 'Terms & Policies' }} />
     </Stack.Navigator>
   ) : (
     <Stack.Navigator key="marketplace" initialRouteName="AppTabs" screenOptions={{ ...stackOptions, headerShown: false }}>
@@ -91,6 +97,7 @@ export const RootNavigator = () => {
       <Stack.Screen name="FinanceDashboard" component={FinanceDashboard} />
       <Stack.Screen name="SuperAdminDashboard" component={SuperAdminDashboard} />
       <Stack.Screen name="OperationsLogin" component={OperationsLogin} />
+      <Stack.Screen name="Policies" component={Policies} options={{ headerShown: true, title: 'Terms & Policies' }} />
     </Stack.Navigator>
   );
 
@@ -105,6 +112,9 @@ export const RootNavigator = () => {
         {navigator}
       </MarketplaceShell>}
     </NavigationContainer>
+    <PolicyNotice enabled={!operationsAccess && currentRoute.name !== 'Policies' && !authRoutes.has(currentRoute.name)} onReview={() => {
+      if (navigationRef.isReady()) navigationRef.navigate('Policies');
+    }} />
     <StatusBar style="dark" />
     </>
   );

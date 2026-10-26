@@ -90,6 +90,7 @@ export const linking = {
       SalesDashboard: 'operations/sales',
       FinanceDashboard: 'operations/finance',
       SuperAdminDashboard: 'operations/admin',
+      Policies: 'policies/:policyId?',
     },
   },
 } as LinkingOptions<RootStackParamList>;

@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useRef, useState, type PropsWithChildren } from 'react';
 import { Animated, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Bell, CircleHelp, Heart, Home, PanelLeftClose, PanelLeftOpen, Plus, Search, Settings, ShoppingCart, User, WalletCards, type LucideIcon } from 'lucide-react-native';
+import { Bell, BookOpenCheck, CircleHelp, Heart, Home, PanelLeftClose, PanelLeftOpen, Plus, Search, Settings, ShoppingCart, User, WalletCards, type LucideIcon } from 'lucide-react-native';
 import { useResponsiveLayout, contentLimit, authRoutes } from '../../contexts/ResponsiveLayoutContext';
 import { useAuth } from '../../hooks/useAuth';
 import { useCart } from '../../hooks/useCart';
@@ -18,7 +18,7 @@ import { MarketplaceBrand } from '../ui/MarketplaceBrand';
 import { paymentKeys, paymentService } from '../../services/paymentService';
 import { formatCurrency } from '../../utils/formatCurrency';
 
-type Destination = { tab?: 'Home' | 'Search' | 'Sell' | 'Profile'; screen?: string; params?: object; root?: 'Cart' };
+type Destination = { tab?: 'Home' | 'Search' | 'Sell' | 'Profile'; screen?: string; params?: object; root?: 'Cart' | 'Policies' };
 type Props = PropsWithChildren<{ route: string; category?: string; navigate: (destination: Destination) => void }>;
 
 const CollapsedSidebar = createContext(false);
@@ -82,6 +82,7 @@ export const MarketplaceShell = ({ children, route, category, navigate }: Props)
         {user && <Action label="Wishlist" icon={Heart} active={route === 'Wishlist'} onPress={() => navigate({ tab: 'Profile', screen: 'Wishlist' })} />}
         {user && <Action label="Notifications" icon={Bell} badge={unreadCount} active={route === 'Notifications'} onPress={() => navigate({ tab: 'Profile', screen: 'Notifications' })} />}
         <Action label="Help & support" icon={CircleHelp} active={route === 'SupportHelp'} onPress={() => navigate({ tab: 'Profile', screen: 'SupportHelp' })} />
+        <Action label="Terms & policies" icon={BookOpenCheck} active={route === 'Policies'} onPress={() => navigate({ root: 'Policies' })} />
         <Action label="Profile" icon={User} active={route === 'ProfileOverview'} onPress={() => navigate({ tab: 'Profile', screen: 'ProfileOverview' })} />
       </ScrollView></Animated.View></CollapsedSidebar.Provider>}
       <View style={[styles.main, (focused || !isExpanded) && { padding: 0 }]}><View style={[styles.route, isExpanded && { maxWidth: contentLimit(route) }]}>{children}</View></View>
