@@ -20,6 +20,7 @@ import { MobileWebPullToRefresh } from './src/components/MobileWebPullToRefresh'
 import { ThemeProvider } from './src/contexts/ThemeContext';
 import { canAccessOperations } from './src/utils/roles';
 import { catalogKeys, isPublicCatalogQuery } from './src/services/catalogQueries';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 
 if (Platform.OS !== 'web') {
   SplashScreen.preventAutoHideAsync();
@@ -84,6 +85,7 @@ export default function App() {
           </QueryClientProvider>
         </ResponsiveLayoutProvider>
       </ThemeProvider>
+      {Platform.OS === 'web' && <SpeedInsights />}
     </SafeAreaProvider>
   );
 }
