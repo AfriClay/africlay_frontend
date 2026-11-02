@@ -1,7 +1,7 @@
 import React from 'react';
 import { Platform, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { BadgeCheck, Landmark, LogOut, RefreshCw, ShieldCheck } from 'lucide-react-native';
 import { Button } from '../../components/ui/Button';
@@ -28,9 +28,9 @@ export const formatQueueAge = (value?: string) => {
   return `${days}d old`;
 };
 
-export const DataFreshness = ({ updatedAt, refreshing, onRefresh }: { updatedAt: number; refreshing: boolean; onRefresh: () => void }) => <View style={styles.freshness}>
-  <Text style={styles.freshnessText}>{refreshing ? 'Refreshing data...' : updatedAt ? `Updated ${new Date(updatedAt).toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit' })}` : 'Waiting for live data'}</Text>
-  <Pressable onPress={onRefresh} accessibilityRole="button" accessibilityLabel="Refresh dashboard data" style={styles.refreshButton}>
+export const DataFreshness = ({ updatedAt, refreshing, failed = false, onRefresh }: { updatedAt: number; refreshing: boolean; failed?: boolean; onRefresh: () => void }) => <View style={styles.freshness}>
+  <Text style={[styles.freshnessText, failed && styles.freshnessError]} accessibilityRole={failed ? 'alert' : undefined}>{failed ? updatedAt ? 'Refresh failed; showing last loaded data' : 'Live data unavailable' : refreshing ? 'Refreshing data...' : updatedAt ? `Updated ${new Date(updatedAt).toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit' })}` : 'Waiting for live data'}</Text>
+  <Pressable onPress={onRefresh} disabled={refreshing} accessibilityRole="button" accessibilityLabel="Refresh dashboard data" accessibilityState={{ disabled: refreshing }} style={styles.refreshButton}>
     <RefreshCw size={15} color={operationsColors.green} /><Text style={styles.refreshText}>Refresh</Text>
   </Pressable>
 </View>;
@@ -46,6 +46,7 @@ export const StatusPill = ({ value }: { value: string }) => {
 export const OperationsScaffold = ({ title, subtitle, children }: { title: string; subtitle: string; children: React.ReactNode }) => {
   const auth = useAuth();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const route = useRoute();
   const { width, height } = useWindowDimensions();
   const compact = width < 720;
   const webViewport = Platform.OS === 'web' ? { height, maxHeight: height } : undefined;
@@ -55,9 +56,10 @@ export const OperationsScaffold = ({ title, subtitle, children }: { title: strin
     isSuperAdmin(auth.user) && { label: 'Administration', route: 'SuperAdminDashboard' as const, icon: ShieldCheck },
   ].filter(Boolean) as Array<{ label: string; route: 'SalesDashboard' | 'FinanceDashboard' | 'SuperAdminDashboard'; icon: typeof BadgeCheck }>;
 
+  const activeSection = links.find(link => link.route === route.name)?.label ?? 'Operations';
   const navigationLinks = <ScrollView horizontal style={compact ? styles.navViewportCompact : styles.navViewport} showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.navigation, compact && styles.navigationCompact]}>
-        {links.map(link => { const Icon = link.icon; return <Pressable key={link.route} onPress={() => navigation.navigate(link.route)} accessibilityRole="link" style={styles.navLink}>
-          <Icon size={17} color={operationsColors.green} /><Text style={styles.navText}>{link.label}</Text>
+        {links.map(link => { const Icon = link.icon; const active = link.route === route.name; return <Pressable key={link.route} onPress={() => navigation.navigate(link.route)} accessibilityRole="link" accessibilityState={{ selected: active }} accessibilityLabel={`${link.label} dashboard`} style={[styles.navLink, active && styles.navLinkActive]}>
+          <Icon size={17} color={operationsColors.green} /><Text style={[styles.navText, active && styles.navTextActive]}>{link.label}</Text>
         </Pressable>; })}
       </ScrollView>;
 
@@ -79,7 +81,7 @@ export const OperationsScaffold = ({ title, subtitle, children }: { title: strin
       showsVerticalScrollIndicator
       testID="operations-scroll"
     >
-      <View style={styles.heading}><Text style={styles.title}>{title}</Text><Text style={styles.subtitle}>{subtitle}</Text></View>
+      <View style={[styles.heading, compact && styles.headingCompact]}><Text style={styles.eyebrow}>AFRICLAY / {activeSection.toUpperCase()}</Text><Text style={[styles.title, compact && styles.titleCompact]}>{title}</Text><Text style={styles.subtitle}>{subtitle}</Text></View>
       {children}
     </ScrollView>
   </SafeAreaView>;
@@ -91,17 +93,19 @@ const styles = StyleSheet.create({
   headerCompact: { paddingBottom: 2 },
   headerMain: { minHeight: 66, flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 18 },
   headerMainCompact: { minHeight: 58, justifyContent: 'space-between', paddingHorizontal: 12 },
-  brand: { flexDirection: 'row', alignItems: 'center', gap: 9 }, brandMark: { width: 34, height: 34, textAlign: 'center', textAlignVertical: 'center', borderRadius: 5, overflow: 'hidden', backgroundColor: operationsColors.green, color: '#FFF', fontSize: 20, fontWeight: '800' },
+  brand: { flexDirection: 'row', alignItems: 'center', gap: 9 }, brandMark: { width: 38, height: 38, textAlign: 'center', textAlignVertical: 'center', borderRadius: 10, overflow: 'hidden', backgroundColor: operationsColors.green, color: '#FFF', fontSize: 21, fontWeight: '800' },
   brandName: { color: operationsColors.ink, fontSize: 15, fontWeight: '800' }, brandSub: { color: operationsColors.muted, fontSize: 10 },
   navViewport: { flex: 1, minWidth: 0 }, navViewportCompact: { flexGrow: 0, flexShrink: 0, width: '100%', height: 44 },
-  navigation: { flexGrow: 1, justifyContent: 'center', gap: 6 }, navigationCompact: { justifyContent: 'flex-start', paddingHorizontal: 8 }, navLink: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10 }, navText: { color: operationsColors.ink, fontSize: 12, fontWeight: '700' },
-  scroll: { flex: 1, minHeight: 0 }, content: { flexGrow: 1, width: '100%', maxWidth: 1280, alignSelf: 'center', padding: 20, paddingBottom: 120 }, contentCompact: { padding: 14, paddingBottom: 144 }, heading: { marginBottom: 18 },
-  title: { color: operationsColors.ink, fontSize: 25, fontWeight: '800' }, subtitle: { color: operationsColors.muted, fontSize: 13, lineHeight: 19, marginTop: 4, maxWidth: 760 },
+  navigation: { flexGrow: 1, justifyContent: 'center', alignItems: 'center', gap: 6 }, navigationCompact: { justifyContent: 'flex-start', paddingHorizontal: 8 }, navLink: { minHeight: 40, flexDirection: 'row', alignItems: 'center', gap: 7, paddingHorizontal: 13, borderRadius: 20 }, navLinkActive: { backgroundColor: operationsColors.greenSoft }, navText: { color: operationsColors.muted, fontSize: 12, fontWeight: '700' }, navTextActive: { color: operationsColors.green },
+  scroll: { flex: 1, minHeight: 0 }, content: { flexGrow: 1, width: '100%', maxWidth: 1320, alignSelf: 'center', padding: 24, paddingBottom: 120 }, contentCompact: { padding: 14, paddingBottom: 144 }, heading: { marginBottom: 20 }, headingCompact: { marginBottom: 16 },
+  eyebrow: { color: operationsColors.green, fontSize: 10, fontWeight: '800', letterSpacing: 1.1, marginBottom: 7 },
+  title: { color: operationsColors.ink, fontSize: 29, fontWeight: '800' }, titleCompact: { fontSize: 24 }, subtitle: { color: operationsColors.muted, fontSize: 13, lineHeight: 20, marginTop: 5, maxWidth: 760 },
   pill: { alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4, backgroundColor: operationsColors.amberSoft },
   pillGreen: { backgroundColor: operationsColors.greenSoft }, pillRed: { backgroundColor: operationsColors.redSoft },
   pillText: { color: operationsColors.amber, fontSize: 10, fontWeight: '800', textTransform: 'uppercase' }, pillTextGreen: { color: operationsColors.green }, pillTextRed: { color: operationsColors.red },
   freshness: { minHeight: 38, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 12 },
   freshnessText: { color: operationsColors.muted, fontSize: 11 },
-  refreshButton: { minHeight: 36, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 9, borderWidth: 1, borderColor: operationsColors.border, borderRadius: 5, backgroundColor: operationsColors.panel },
+  freshnessError: { color: operationsColors.red },
+  refreshButton: { minHeight: 42, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, borderWidth: 1, borderColor: operationsColors.border, borderRadius: 9, backgroundColor: operationsColors.panel },
   refreshText: { color: operationsColors.green, fontSize: 11, fontWeight: '800' },
 });

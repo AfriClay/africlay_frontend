@@ -102,7 +102,9 @@ test('finance reconciliation stays super-admin-only in the UI', () => {
   const finance = source('src/screens/admin/FinanceDashboard.tsx');
   assert.match(finance, /isSuperAdmin\(auth\.user\)/);
   assert.match(finance, /Manual reconciliation is restricted to a super administrator/);
-  assert.match(finance, /downloadTransactions\(filters\)/);
+  assert.match(finance, /downloadTransactions\(exportFilters\)/);
+  assert.match(finance, /status: paymentQueueStatus === 'all' \? undefined : paymentQueueStatus/);
+  assert.match(finance, /setPaymentQueueStatus\('awaiting_confirmation'\)/);
   assert.match(finance, /Needs reconciliation/);
   assert.match(finance, /Failed payments/);
   assert.match(finance, /Transaction detail/);
@@ -117,9 +119,27 @@ test('role dashboards expose real summaries, aging, date filters and freshness s
   assert.match(admin, /Recent administrative activity/);
   assert.match(admin, /DataFreshness/);
   assert.match(finance, /financeSummary\(\{ date_from: dateFrom, date_to: dateTo \}\)/);
+  assert.match(finance, /summary\.data\.refundsRecorded/);
+  assert.match(source('src/services/adminService.ts'), /refundsRecorded: raw\.refunds_recorded == null \? undefined : parseAmount\(raw\.refunds_recorded\)/);
   assert.match(finance, /formatQueueAge\(item\.createdAt\)/);
   assert.match(sales, /adminService\.kycSummary/);
   assert.match(sales, /Reviewer workload/);
   assert.match(sales, /Over 7 days/);
   assert.match(sales, /formatQueueAge\(item\.submittedAt\)/);
+});
+
+test('operations workspaces fit compact screens and retain stale data labels', () => {
+  const shell = source('src/screens/admin/OperationsScaffold.tsx');
+  const admin = source('src/screens/admin/SuperAdminDashboard.tsx');
+  const finance = source('src/screens/admin/FinanceDashboard.tsx');
+  const sales = source('src/screens/admin/SalesDashboard.tsx');
+  assert.match(shell, /Refresh failed; showing last loaded data/);
+  assert.match(shell, /navigationLinks/);
+  assert.match(admin, /horizontal showsHorizontalScrollIndicator=\{false\} style=\{styles\.tabsViewport\}/);
+  assert.match(admin, /compact && styles\.listCompact/);
+  assert.match(admin, /compact && styles\.detailCompact/);
+  assert.match(finance, /compact && styles\.payoutListCompact/);
+  assert.match(finance, /compact && styles\.payoutDetailCompact/);
+  assert.match(sales, /compact && styles\.layoutCompact/);
+  assert.match(sales, /compact && styles\.detailCompact/);
 });

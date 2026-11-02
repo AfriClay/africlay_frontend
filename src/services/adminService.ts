@@ -23,7 +23,7 @@ export type AdminPayout = {
 export type AdminFinanceSummary = {
   walletLiability: number; walletReserved: number; commissionEarned: number;
   sellerProceedsReleased: number; payoutsPending: number; payoutsCompleted: number;
-  customerPayments: number; needsReconciliation: number; reconciliationOver24h: number;
+  customerPayments: number; refundsRecorded?: number; needsReconciliation: number; reconciliationOver24h: number;
   oldestReconciliationAt?: string; failedPayments: number; pendingPayments: number;
   period: { dateFrom?: string; dateTo?: string };
 };
@@ -228,10 +228,10 @@ const taxonomyPayload = (kind: TaxonomyKind, draft: TaxonomyDraft) => kind === '
   : { name: draft.name.trim(), slug: draft.slug.trim(), description: draft.description?.trim() ?? '', parent: draft.parent || null, display_order: draft.displayOrder ?? 0 };
 
 export const adminKeys = {
-  kyc: (status = 'all', search = '', dateFrom = '', dateTo = '') => ['operations', 'kyc', status, search, dateFrom, dateTo] as const,
+  kyc: (status = 'all', search = '', dateFrom = '', dateTo = '', offset = 0) => ['operations', 'kyc', status, search, dateFrom, dateTo, offset] as const,
   kycSummary: (dateFrom = '', dateTo = '') => ['operations', 'kyc-summary', dateFrom, dateTo] as const,
   finance: (dateFrom = '', dateTo = '') => ['operations', 'finance-summary', dateFrom, dateTo] as const,
-  payouts: (status = 'all', search = '') => ['operations', 'payouts', status, search] as const,
+  payouts: (status = 'all', search = '', offset = 0) => ['operations', 'payouts', status, search, offset] as const,
   transactions: (filters: object) => ['operations', 'transactions', filters] as const,
   payments: (filters: object) => ['operations', 'payments', filters] as const,
   users: (search = '') => ['operations', 'users', search] as const,
@@ -258,7 +258,7 @@ export const adminService = {
     return {
       walletLiability: parseAmount(raw.wallet_liability), walletReserved: parseAmount(raw.wallet_reserved),
       commissionEarned: parseAmount(raw.commission_earned), sellerProceedsReleased: parseAmount(raw.seller_proceeds_released),
-      customerPayments: parseAmount(raw.customer_payments), payoutsPending: parseAmount(raw.payouts_pending),
+      customerPayments: parseAmount(raw.customer_payments), refundsRecorded: raw.refunds_recorded == null ? undefined : parseAmount(raw.refunds_recorded), payoutsPending: parseAmount(raw.payouts_pending),
       payoutsCompleted: parseAmount(raw.payouts_completed), needsReconciliation: raw.needs_reconciliation,
       reconciliationOver24h: raw.reconciliation_over_24h, oldestReconciliationAt: raw.oldest_reconciliation_at ?? undefined,
       failedPayments: raw.failed_payments, pendingPayments: raw.pending_payments,
