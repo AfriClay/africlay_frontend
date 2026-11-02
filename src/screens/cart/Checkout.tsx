@@ -39,30 +39,36 @@ export const Checkout: React.FC = () => {
   const auth = useAuth();
   const userId = auth.user?.id ?? '';
   const buyNowProductId = route.params?.buyNowProductId;
+  const buyNowProductSlug = route.params?.buyNowProductSlug;
+  const isBuyNow = Boolean(buyNowProductId || buyNowProductSlug);
   const buyNowQuantity = route.params?.buyNowQuantity ?? 1;
   const buyNowQuery = useQuery({
-    queryKey: catalogKeys.product(buyNowProductId ?? ''),
-    queryFn: () => productService.fetchProductById(buyNowProductId!),
-    enabled: Boolean(buyNowProductId),
+    queryKey: catalogKeys.product(buyNowProductSlug ?? ''),
+    queryFn: () => productService.fetchProductById(buyNowProductSlug!),
+    enabled: Boolean(buyNowProductId && buyNowProductSlug),
   });
-  const checkoutItems = buyNowProductId
-    ? buyNowQuery.data ? [{
-      id: `buy-now:${buyNowQuery.data.id}`,
-      productId: buyNowQuery.data.id,
-      productSlug: buyNowQuery.data.slug,
-      name: buyNowQuery.data.name,
-      price: buyNowQuery.data.price,
+  const buyNowProduct = buyNowQuery.data?.id === buyNowProductId ? buyNowQuery.data : undefined;
+  const checkoutItems = isBuyNow
+    ? buyNowProduct ? [{
+      id: `buy-now:${buyNowProduct.id}`,
+      productId: buyNowProduct.id,
+      productSlug: buyNowProduct.slug,
+      name: buyNowProduct.name,
+      price: buyNowProduct.price,
       quantity: buyNowQuantity,
     }] : []
     : cart.items;
   const checkoutItemCount = checkoutItems.reduce((sum, item) => sum + item.quantity, 0);
-  const checkoutLoading = buyNowProductId ? buyNowQuery.isLoading : cart.loading;
-  const checkoutError = buyNowProductId
-    ? buyNowQuery.isError
+  const checkoutLoading = isBuyNow ? buyNowQuery.isLoading : cart.loading;
+  const checkoutError = isBuyNow
+    ? !buyNowProductId || !buyNowProductSlug
+      ? 'This checkout link is incomplete. Return to the product and tap Buy now again.'
+      : buyNowQuery.isError
       ? getApiErrorMessage(buyNowQuery.error, 'Unable to load this product for checkout.')
-      : !buyNowQuery.isLoading && !buyNowQuery.data ? 'This product is no longer available.' : undefined
+      : !buyNowQuery.isLoading && !buyNowQuery.data ? 'This product is no longer available.'
+      : buyNowQuery.data && !buyNowProduct ? 'This checkout selection has changed. Return to the product and tap Buy now again.' : undefined
     : cart.error;
-  const checkoutScope = buyNowProductId ? {
+  const checkoutScope = isBuyNow ? {
     buy_now_product_id: buyNowProductId,
     buy_now_quantity: buyNowQuantity,
   } : {};
@@ -205,7 +211,7 @@ export const Checkout: React.FC = () => {
   }, [applyPayment, phoneNumber]);
 
   const submit = async () => {
-    if (inFlight.current || !checkoutItemCount || !selected || !auth.user || !cart.available) return;
+    if (inFlight.current || checkoutError || !checkoutItemCount || !selected || !auth.user || !cart.available) return;
     if (!isOrderPaymentPhone(phoneNumber)) {
       setPhoneTouched(true);
       setError('Enter a Kenyan M-Pesa number in 2547XXXXXXXX or 2541XXXXXXXX format.');
@@ -247,7 +253,7 @@ export const Checkout: React.FC = () => {
   };
 
   if (!auth.user) return <SafeAreaView style={styles.container}>
-    <GuestAuthSheet visible={authSheet} onClose={() => setAuthSheet(false)} description={buyNowProductId ? 'Log in or create an account to buy this item. Your normal cart will remain unchanged.' : 'Your cart is saved. Log in or create an account to choose delivery and place the order.'} />
+    <GuestAuthSheet visible={authSheet} onClose={() => setAuthSheet(false)} description={isBuyNow ? 'Log in or create an account to buy this item. Your normal cart will remain unchanged.' : 'Your cart is saved. Log in or create an account to choose delivery and place the order.'} />
     <ScrollView testID="checkout-scroll" style={styles.scroll} contentContainerStyle={styles.gateContent} keyboardShouldPersistTaps="handled"><Text style={styles.title}>Checkout</Text><Text style={styles.note}>An account is required for delivery details, order history, and payment confirmation. No order or payment will be started automatically after sign-in.</Text><Button onPress={() => setAuthSheet(true)}>Continue to Login</Button></ScrollView>
   </SafeAreaView>;
 
@@ -364,7 +370,7 @@ export const Checkout: React.FC = () => {
         <Text style={styles.policyLink}>Shipping & Delivery Policy</Text>
       </Pressable>
     </View>
-    <Button onPress={() => void submit()} loading={busy} loadingLabel={stage === 'creating-order' ? 'Creating order' : 'Requesting payment'} disabled={busy || orderCreationUncertain || checkoutLoading || (!buyNowProductId && cart.mutating) || !checkoutItemCount || !selected || !isOrderPaymentPhone(phoneNumber) || addressesQuery.isError || quoteQuery.isLoading || quoteQuery.isError || !quote || creating || Boolean(checkoutError)}>{paymentOption === 'pay_on_delivery' ? 'Pay Delivery Fee & Place Order' : 'Place Order & Pay'}</Button>
+    <Button onPress={() => void submit()} loading={busy} loadingLabel={stage === 'creating-order' ? 'Creating order' : 'Requesting payment'} disabled={busy || orderCreationUncertain || checkoutLoading || (!isBuyNow && cart.mutating) || !checkoutItemCount || !selected || !isOrderPaymentPhone(phoneNumber) || addressesQuery.isError || quoteQuery.isLoading || quoteQuery.isError || !quote || creating || Boolean(checkoutError)}>{paymentOption === 'pay_on_delivery' ? 'Pay Delivery Fee & Place Order' : 'Place Order & Pay'}</Button>
   </View>;
   return <SafeAreaView style={styles.container}><FlatList testID="checkout-scroll" style={styles.scroll} data={checkoutItems} keyExtractor={item => item.id}
     renderItem={({ item }) => <View style={styles.itemRow}><Text style={styles.itemName}>{item.name} x {item.quantity}</Text><Text style={styles.itemPrice}>{formatCurrency(item.price * item.quantity)}</Text></View>}

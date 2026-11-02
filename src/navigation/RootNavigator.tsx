@@ -20,7 +20,7 @@ export type RootStackParamList = {
   AuthStack: NavigatorScreenParams<AuthStackParamList> | undefined;
   AppTabs: { screen?: 'Home' | 'Search' | 'Sell' | 'Profile'; params?: { screen?: string; params?: object } } | undefined;
   Cart: undefined;
-  Checkout: { orderId?: string; buyNowProductId?: string; buyNowQuantity?: number } | undefined;
+  Checkout: { orderId?: string; buyNowProductId?: string; buyNowProductSlug?: string; buyNowQuantity?: number } | undefined;
   SalesDashboard: undefined;
   FinanceDashboard: undefined;
   SuperAdminDashboard: undefined;

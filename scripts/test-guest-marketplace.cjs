@@ -5,7 +5,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 const ts = require('typescript');
 const { StackRouter, CommonActions } = require('@react-navigation/routers');
-const { getStateFromPath } = require('@react-navigation/core');
+const { getPathFromState, getStateFromPath } = require('@react-navigation/core');
 
 const root = path.resolve(__dirname, '..');
 const source = relativePath => readFileSync(path.join(root, relativePath), 'utf8');
@@ -98,13 +98,26 @@ test('buy now checks out only the selected product without mutating the normal c
   const checkout = source('src/screens/cart/Checkout.tsx');
   const orders = source('src/services/orderService.ts');
 
-  assert.match(product, /navigate\('Checkout', \{ buyNowProductId: product\.id, buyNowQuantity: 1 \}\)/);
+  assert.match(product, /navigate\('Checkout', \{ buyNowProductId: product\.id, buyNowProductSlug: product\.slug, buyNowQuantity: 1 \}\)/);
   assert.doesNotMatch(product, /const buyNow[\s\S]*?cart\.addItem[\s\S]*?navigate\('Checkout'/);
+  assert.match(checkout, /fetchProductById\(buyNowProductSlug!\)/);
+  assert.match(checkout, /buyNowQuery\.data\?\.id === buyNowProductId/);
   assert.match(checkout, /buy_now_product_id: buyNowProductId/);
   assert.match(checkout, /data=\{checkoutItems\}/);
   assert.match(checkout, /: cart\.items/);
   assert.match(orders, /buy_now_product_id\?: string/);
   assert.match(orders, /buy_now_quantity\?: number/);
+});
+
+test('buy-now selection survives checkout deep links and browser refresh', () => {
+  const { linking } = transpile('src/navigation/linking.ts');
+  const selection = { buyNowProductId: 'product-uuid', buyNowProductSlug: 'sisal-rug', buyNowQuantity: 1 };
+  const state = getStateFromPath('/checkout?buyNowProductId=product-uuid&buyNowProductSlug=sisal-rug&buyNowQuantity=1', linking.config);
+  assert.equal(routeChain(state).at(-1), 'Checkout');
+  const { orderId: unusedOrderId, ...params } = state.routes[0].params;
+  assert.deepEqual(params, selection);
+  const { orderId: unusedRoundTripOrderId, ...roundTripParams } = getStateFromPath(getPathFromState(state, linking.config), linking.config).routes[0].params;
+  assert.deepEqual(roundTripParams, selection);
 });
 
 test('authentication modal returns to the preserved in-app destination', () => {

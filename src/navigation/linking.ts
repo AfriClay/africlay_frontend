@@ -85,7 +85,10 @@ export const linking = {
         },
       },
       Cart: 'cart',
-      Checkout: 'checkout/:orderId?',
+      Checkout: {
+        path: 'checkout/:orderId?',
+        parse: { buyNowQuantity: Number },
+      },
       OperationsLogin: 'operations',
       SalesDashboard: 'operations/sales',
       FinanceDashboard: 'operations/finance',

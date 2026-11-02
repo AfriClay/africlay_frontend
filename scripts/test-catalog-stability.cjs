@@ -150,9 +150,10 @@ test('product list maps backend IDs, category, tags, decimal price, stock and im
 });
 
 test('public product detail navigates by slug and missing detail is null', async () => {
-  const { service, requests } = harness(route => route.pathname.endsWith('/products/removed/') ? json({ detail: 'Not found' }, 404) : undefined);
+  const { service, requests } = harness(route => route.pathname.endsWith('/products/removed/') || route.pathname.endsWith('/products/product-id/') ? json({ detail: 'Not found' }, 404) : undefined);
   assert.equal((await service.fetchProductById('sisal-rug')).id, product.id);
   assert.equal(requests[0].path, '/api/products/sisal-rug/');
+  assert.equal(await service.fetchProductById(product.id), null);
   assert.equal(await service.fetchProductById('removed'), null);
 });
 

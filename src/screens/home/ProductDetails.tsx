@@ -75,7 +75,7 @@ export const ProductDetails: React.FC = () => {
   const buyNow = () => {
     if (auth.user && !canAccessBuyerTools(auth.user.role)) { setCartError('Shopping is not available for this account.'); return; }
     if (product) {
-      (navigation as any).navigate('Checkout', { buyNowProductId: product.id, buyNowQuantity: 1 });
+      (navigation as any).navigate('Checkout', { buyNowProductId: product.id, buyNowProductSlug: product.slug, buyNowQuantity: 1 });
     }
   };
 
