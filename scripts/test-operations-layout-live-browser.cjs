@@ -19,9 +19,20 @@ const overview = {
 };
 const financeSummary = {
   wallet_liability: '1000.00', wallet_reserved: '100.00', customer_payments: '1500.00', refunds_recorded: '50.00',
+  wallet_breakdown: { shopping: '600.00', earnings: '400.00', shopping_held: '40.00', earnings_held: '60.00' },
   commission_earned: '150.00', seller_proceeds_released: '500.00', payouts_completed: '200.00',
+  order_mpesa_receipts: '900.00', wallet_topups_received: '200.00',
   payouts_pending: '100.00', needs_reconciliation: 0, reconciliation_over_24h: 0,
   oldest_reconciliation_at: null, failed_payments: 1, pending_payments: 2,
+  payment_status_counts: { initiated: 1, pending: 1, succeeded: 2, failed: 1, cancelled: 0 },
+  payout_status_counts: { requested: 0, processing: 1, unknown: 0, succeeded: 2, failed: 0 },
+  topup_status_counts: { initiated: 0, pending: 0, succeeded: 2, failed: 1, unknown: 0 },
+  payout_aging: { under_24h: 1, hours_24_to_72: 0, over_72h: 0 },
+  trend: [
+    { date: '2026-10-23', order_receipts: '500.00', wallet_topups: '100.00', b2c_payouts: '50.00' },
+    { date: '2026-10-24', order_receipts: '400.00', wallet_topups: '100.00', b2c_payouts: '150.00' },
+  ],
+  trend_period: { date_from: '2026-10-23', date_to: '2026-10-24' },
   period: { date_from: null, date_to: null },
 };
 const salesSummary = {
@@ -65,7 +76,7 @@ async function checkRole(browser, role, expectedHeading, finalSection) {
     if (pathname.endsWith('/auth/admin/audit-logs/')) return route.fulfill(json(page([])));
     if (pathname.endsWith('/payments/admin/finance-summary/')) return route.fulfill(json(financeSummary));
     if (pathname.endsWith('/stores/kyc/review-summary/')) return route.fulfill(json(salesSummary));
-    if (/\/(?:stores\/kyc\/review-queue|payments\/admin\/(?:payouts|payments)|payments\/finance\/transactions)\/$/.test(pathname)) return route.fulfill(json(page([])));
+    if (/\/(?:stores\/kyc\/review-queue|payments\/admin\/(?:payouts|payments|topups)|payments\/finance\/transactions)\/$/.test(pathname)) return route.fulfill(json(page([])));
     return route.fulfill({ status: 404, contentType: 'application/json', body: '{}' });
   });
   try {
@@ -76,6 +87,12 @@ async function checkRole(browser, role, expectedHeading, finalSection) {
     await browserPage.screenshot({ path: path.join(process.env.TEMP, `africlay-${role}-operations-mobile-top.png`) });
     const layout = await scroller.evaluate(node => ({ height: node.clientHeight, scrollHeight: node.scrollHeight }));
     assert.ok(layout.height > 0 && layout.scrollHeight > layout.height, `${role}: dashboard cannot scroll ${JSON.stringify(layout)}`);
+    if (role === 'finance') {
+      await browserPage.getByRole('button', { name: /Failed payments: 1/ }).click();
+      await browserPage.getByText('Order payment records', { exact: true }).waitFor({ timeout: 5000 });
+      await browserPage.waitForTimeout(350);
+      assert.ok(await browserPage.getByText('Order payment records', { exact: true }).isVisible(), 'Finance metric did not open its payment queue');
+    }
     await scroller.evaluate(node => { node.scrollTop = node.scrollHeight; });
     assert.ok(await browserPage.getByText(finalSection, { exact: true }).first().isVisible(), `${role}: final section is unreachable`);
     if (role === 'finance') {

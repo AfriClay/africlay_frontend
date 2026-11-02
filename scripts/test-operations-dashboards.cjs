@@ -108,7 +108,7 @@ test('finance reconciliation stays super-admin-only in the UI', () => {
   assert.match(finance, /Needs reconciliation/);
   assert.match(finance, /Failed payments/);
   assert.match(finance, /Transaction detail/);
-  assert.match(finance, /Payment exceptions/);
+  assert.match(finance, /Order payment records/);
 });
 
 test('role dashboards expose real summaries, aging, date filters and freshness states', () => {

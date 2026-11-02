@@ -43,7 +43,7 @@ export const StatusPill = ({ value }: { value: string }) => {
   </View>;
 };
 
-export const OperationsScaffold = ({ title, subtitle, children }: { title: string; subtitle: string; children: React.ReactNode }) => {
+export const OperationsScaffold = ({ title, subtitle, children, scrollRef }: { title: string; subtitle: string; children: React.ReactNode; scrollRef?: React.RefObject<ScrollView | null> }) => {
   const auth = useAuth();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute();
@@ -73,6 +73,7 @@ export const OperationsScaffold = ({ title, subtitle, children }: { title: strin
       {compact ? navigationLinks : null}
     </View>
     <ScrollView
+      ref={scrollRef}
       style={styles.scroll}
       contentContainerStyle={[styles.content, compact && styles.contentCompact]}
       contentInsetAdjustmentBehavior="automatic"

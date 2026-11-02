@@ -25,6 +25,13 @@ export type AdminFinanceSummary = {
   sellerProceedsReleased: number; payoutsPending: number; payoutsCompleted: number;
   customerPayments: number; refundsRecorded?: number; needsReconciliation: number; reconciliationOver24h: number;
   oldestReconciliationAt?: string; failedPayments: number; pendingPayments: number;
+  walletBreakdown: { shopping: number; earnings: number; shoppingHeld: number; earningsHeld: number };
+  orderMpesaReceipts: number; walletTopupsReceived: number;
+  paymentStatusCounts: Record<string, number>; payoutStatusCounts: Record<string, number>;
+  topupStatusCounts: Record<string, number>;
+  payoutAging: { under24h: number; hours24To72: number; over72h: number };
+  trend: Array<{ date: string; orderReceipts: number; walletTopups: number; b2cPayouts: number }>;
+  trendPeriod: { dateFrom: string; dateTo: string };
   period: { dateFrom?: string; dateTo?: string };
 };
 export type KycOperationsSummary = {
@@ -42,6 +49,11 @@ export type AdminPayment = {
   id: string; orderId: string; buyerEmail: string; provider: string; purpose: string; status: string;
   amount: number; currency: string; phoneNumber: string; checkoutRequestId: string; receiptNumber: string;
   failureCode: string; failureMessage: string; createdAt: string; updatedAt: string; completedAt?: string;
+};
+export type AdminTopup = {
+  id: string; accountEmail: string; amount: number; currency: string; status: string;
+  phoneNumber: string; providerReceipt?: string; resultDescription: string;
+  createdAt: string; updatedAt: string;
 };
 export type OperationsUser = {
   id: string; email: string; phoneNumber?: string; fullName: string; role: UserRole; staffRoles: StaffRole[];
@@ -141,6 +153,11 @@ const mapPayment = (raw: any): AdminPayment => ({
   receiptNumber: raw.receipt_number, failureCode: raw.failure_code, failureMessage: raw.failure_message,
   createdAt: raw.created_at, updatedAt: raw.updated_at, completedAt: raw.completed_at ?? undefined,
 });
+const mapTopup = (raw: any): AdminTopup => ({
+  id: raw.id, accountEmail: raw.account_email, amount: parseAmount(raw.amount), currency: raw.currency,
+  status: raw.status, phoneNumber: raw.phone_number, providerReceipt: raw.provider_receipt ?? undefined,
+  resultDescription: raw.result_description ?? '', createdAt: raw.created_at, updatedAt: raw.updated_at,
+});
 const mapUser = (raw: any): OperationsUser => ({
   id: raw.id, email: raw.email, phoneNumber: raw.phone_number ?? undefined, fullName: raw.full_name,
   role: raw.role, staffRoles: raw.staff_roles ?? [], verified: raw.is_verified, active: raw.is_active,
@@ -231,9 +248,10 @@ export const adminKeys = {
   kyc: (status = 'all', search = '', dateFrom = '', dateTo = '', offset = 0) => ['operations', 'kyc', status, search, dateFrom, dateTo, offset] as const,
   kycSummary: (dateFrom = '', dateTo = '') => ['operations', 'kyc-summary', dateFrom, dateTo] as const,
   finance: (dateFrom = '', dateTo = '') => ['operations', 'finance-summary', dateFrom, dateTo] as const,
-  payouts: (status = 'all', search = '', offset = 0) => ['operations', 'payouts', status, search, offset] as const,
+  payouts: (status = 'all', search = '', offset = 0, dateFrom = '', dateTo = '', dateBasis = '') => ['operations', 'payouts', status, search, offset, dateFrom, dateTo, dateBasis] as const,
   transactions: (filters: object) => ['operations', 'transactions', filters] as const,
   payments: (filters: object) => ['operations', 'payments', filters] as const,
+  topups: (filters: object) => ['operations', 'topups', filters] as const,
   users: (search = '') => ['operations', 'users', search] as const,
   stores: (search = '') => ['operations', 'stores', search] as const,
   audit: ['operations', 'audit'] as const,
@@ -255,20 +273,43 @@ export const adminService = {
   reviewKyc: async (slug: string, decision: 'approved' | 'rejected', reason = ''): Promise<AdminKyc> => mapKyc(await apiClient(`/stores/${encodeURIComponent(slug)}/kyc/review/`, { method: 'POST', body: { decision, ...(decision === 'rejected' ? { rejection_reason: reason.trim() } : {}) } })),
   financeSummary: async (filters: { date_from?: string; date_to?: string } = {}): Promise<AdminFinanceSummary> => {
     const raw: any = await apiClient(`/payments/admin/finance-summary/${query(filters)}`);
+    const counts = (value: unknown): Record<string, number> => {
+      const record = z.record(z.string(), z.number().int().nonnegative()).parse(value);
+      return record;
+    };
+    const trend = z.array(z.object({
+      date: z.iso.date(), order_receipts: z.union([z.string(), z.number()]),
+      wallet_topups: z.union([z.string(), z.number()]), b2c_payouts: z.union([z.string(), z.number()]),
+    })).parse(raw.trend);
     return {
       walletLiability: parseAmount(raw.wallet_liability), walletReserved: parseAmount(raw.wallet_reserved),
+      walletBreakdown: {
+        shopping: parseAmount(raw.wallet_breakdown?.shopping), earnings: parseAmount(raw.wallet_breakdown?.earnings),
+        shoppingHeld: parseAmount(raw.wallet_breakdown?.shopping_held), earningsHeld: parseAmount(raw.wallet_breakdown?.earnings_held),
+      },
       commissionEarned: parseAmount(raw.commission_earned), sellerProceedsReleased: parseAmount(raw.seller_proceeds_released),
       customerPayments: parseAmount(raw.customer_payments), refundsRecorded: raw.refunds_recorded == null ? undefined : parseAmount(raw.refunds_recorded), payoutsPending: parseAmount(raw.payouts_pending),
       payoutsCompleted: parseAmount(raw.payouts_completed), needsReconciliation: raw.needs_reconciliation,
       reconciliationOver24h: raw.reconciliation_over_24h, oldestReconciliationAt: raw.oldest_reconciliation_at ?? undefined,
       failedPayments: raw.failed_payments, pendingPayments: raw.pending_payments,
+      orderMpesaReceipts: parseAmount(raw.order_mpesa_receipts), walletTopupsReceived: parseAmount(raw.wallet_topups_received),
+      paymentStatusCounts: counts(raw.payment_status_counts), payoutStatusCounts: counts(raw.payout_status_counts),
+      topupStatusCounts: counts(raw.topup_status_counts),
+      payoutAging: {
+        under24h: z.number().int().nonnegative().parse(raw.payout_aging?.under_24h),
+        hours24To72: z.number().int().nonnegative().parse(raw.payout_aging?.hours_24_to_72),
+        over72h: z.number().int().nonnegative().parse(raw.payout_aging?.over_72h),
+      },
+      trend: trend.map(item => ({ date: item.date, orderReceipts: parseAmount(item.order_receipts), walletTopups: parseAmount(item.wallet_topups), b2cPayouts: parseAmount(item.b2c_payouts) })),
+      trendPeriod: { dateFrom: z.iso.date().parse(raw.trend_period?.date_from), dateTo: z.iso.date().parse(raw.trend_period?.date_to) },
       period: { dateFrom: raw.period?.date_from ?? undefined, dateTo: raw.period?.date_to ?? undefined },
     };
   },
-  listPayouts: async (filters: { status?: string; search?: string; limit?: number; offset?: number } = {}) => page(await apiClient(`/payments/admin/payouts/${query(filters)}`), mapPayout),
+  listPayouts: async (filters: { status?: string; search?: string; date_from?: string; date_to?: string; date_basis?: 'created' | 'processed'; limit?: number; offset?: number } = {}) => page(await apiClient(`/payments/admin/payouts/${query(filters)}`), mapPayout),
   resolvePayout: async (id: string, resolution: 'succeeded' | 'failed', note: string, transactionReceipt = ''): Promise<AdminPayout> => mapPayout(await apiClient(`/payments/admin/payouts/${encodeURIComponent(id)}/resolve/`, { method: 'POST', body: { resolution, note: note.trim(), transaction_receipt: transactionReceipt.trim() } })),
   listTransactions: async (filters: Record<string, string | number | undefined> = {}) => page(await apiClient(`/payments/finance/transactions/${query(filters)}`), mapTransaction),
   listPayments: async (filters: Record<string, string | number | undefined> = {}) => page(await apiClient(`/payments/admin/payments/${query(filters)}`), mapPayment),
+  listTopups: async (filters: Record<string, string | number | undefined> = {}) => page(await apiClient(`/payments/admin/topups/${query(filters)}`), mapTopup),
   getTransaction: async (id: string): Promise<FinanceTransaction> => mapTransaction(await apiClient(`/payments/finance/transactions/${encodeURIComponent(id)}/`)),
   downloadTransactions: async (filters: Record<string, string | number | undefined> = {}) => {
     if (Platform.OS !== 'web') throw new Error('CSV download is available from the web operations dashboard.');

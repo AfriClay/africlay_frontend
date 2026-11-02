@@ -50,6 +50,7 @@ test('every content screen has a vertical scrolling owner or an intentional exem
   const exempt = new Set([
     'admin/AdminPortal.tsx',
     'admin/FinanceDashboard.tsx',
+    'admin/FinanceInsights.tsx', // Embedded in FinanceDashboard's OperationsScaffold scroll view.
     'admin/SalesDashboard.tsx',
     'admin/SuperAdminDashboard.tsx',
     'auth/Splash.tsx',
