@@ -12,6 +12,7 @@ interface AuthState {
   pendingUser?: User;
   pendingEmail?: string;
   pendingVerification?: 'signup' | 'sign_in' | 'password_reset';
+  verificationDeliveryFailed?: boolean;
   isGuest: boolean;
   loading: boolean;
   initialized: boolean;
@@ -57,7 +58,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = useCallback(async (email: string, password: string): Promise<LoginResult> => {
     setState(current => ({ ...current, loading: true }));
     try {
-      const { user } = await authService.login(email, password);
+      const normalized = email.trim().toLowerCase();
+      const { user, verificationRequired } = await authService.login(normalized, password);
+      if (verificationRequired) {
+        setState({ pendingUser: user, pendingEmail: normalized, pendingVerification: 'sign_in',
+          role: user.role, isGuest: false, loading: false, initialized: true });
+        return 'verification';
+      }
       setState(signedInState(user));
       return 'authenticated';
     } catch (error) { setState(current => ({ ...current, loading: false })); throw error; }
@@ -67,8 +74,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setState(current => ({ ...current, loading: true }));
     try {
       const normalized = email.trim().toLowerCase();
-      const user = await authService.register(name, normalized, password, role);
-      setState(signedInState(user));
+      const { user, deliveryFailed } = await authService.register(name, normalized, password, role);
+      setState({ pendingUser: user, pendingEmail: normalized, pendingVerification: 'signup',
+        verificationDeliveryFailed: deliveryFailed,
+        role: user.role, isGuest: false, loading: false, initialized: true });
     } catch (error) { setState(current => ({ ...current, loading: false })); throw error; }
   }, []);
 
@@ -77,9 +86,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setState(current => ({ ...current, loading: true }));
     try {
       const { user } = await authService.verifyEmail(state.pendingEmail, code);
-      setState({ pendingUser: { ...user, onboardingCompleted: false }, pendingEmail: user.email,
-        role: user.role, isGuest: false, loading: false, initialized: true });
-      return 'onboarding';
+      setState(signedInState(user));
+      return 'authenticated';
     } catch (error) { setState(current => ({ ...current, loading: false })); throw error; }
   }, [state.pendingEmail]);
 

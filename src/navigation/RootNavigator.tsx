@@ -12,7 +12,7 @@ import { linking } from './linking';
 import type { AuthStackParamList } from './AuthStack';
 import { canAccessOperations, hasStaffRole, isSuperAdmin } from '../utils/roles';
 import { PolicyNotice } from '../components/legal/PolicyNotice';
-import type { PolicyId } from '../content/policies';
+import { policyAudienceForRole, type PolicyAudience, type PolicyId } from '../content/policies';
 import { authRoutes } from '../contexts/ResponsiveLayoutContext';
 
 
@@ -25,7 +25,7 @@ export type RootStackParamList = {
   FinanceDashboard: undefined;
   SuperAdminDashboard: undefined;
   OperationsLogin: undefined;
-  Policies: { policyId?: PolicyId } | undefined;
+  Policies: { policyId?: PolicyId; audience?: PolicyAudience } | undefined;
 };
 
 const Stack = createAppStackNavigator<RootStackParamList>();
@@ -106,14 +106,15 @@ export const RootNavigator = () => {
     <NavigationContainer ref={navigationRef} linking={linking} onReady={() => { updateRoute(); leaveAuthAfterSignIn(); }} onStateChange={updateRoute}>
       {operationsAccess || currentRoute.name === 'OperationsLogin' ? navigator : <MarketplaceShell route={currentRoute.name} category={currentRoute.category} navigate={destination => {
         if (!navigationRef.isReady()) return;
-        if (destination.root) navigationRef.navigate(destination.root);
+        if (destination.root === 'Policies') navigationRef.navigate('Policies', destination.params as RootStackParamList['Policies']);
+        else if (destination.root === 'Cart') navigationRef.navigate('Cart');
         else navigationRef.navigate('AppTabs', { screen: destination.tab, params: destination.screen ? { screen: destination.screen, params: destination.params } : undefined });
       }}>
         {navigator}
       </MarketplaceShell>}
     </NavigationContainer>
-    <PolicyNotice enabled={!operationsAccess && currentRoute.name !== 'Policies' && !authRoutes.has(currentRoute.name)} onReview={() => {
-      if (navigationRef.isReady()) navigationRef.navigate('Policies');
+    <PolicyNotice audience={policyAudienceForRole(user?.role)} enabled={!operationsAccess && currentRoute.name !== 'Policies' && !authRoutes.has(currentRoute.name)} onReview={audience => {
+      if (navigationRef.isReady()) navigationRef.navigate('Policies', audience ? { audience } : undefined);
     }} />
     <StatusBar style="dark" />
     </>

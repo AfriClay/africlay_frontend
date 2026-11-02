@@ -33,7 +33,7 @@ export const AuthStack = () => {
   const stackOptions = useAppStackScreenOptions();
 
   const initialRouteName = pendingVerification && pendingEmail
-    ? 'OTPVerification'
+    ? pendingVerification === 'password_reset' ? 'ForgotPassword' : 'OTPVerification'
     : pendingUser?.verified
       ? 'RoleSelection'
       : 'GetStarted';

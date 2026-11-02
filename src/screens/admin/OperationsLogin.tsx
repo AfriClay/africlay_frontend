@@ -35,7 +35,11 @@ export const OperationsLogin = () => {
   const submit = async (values: LoginForm) => {
     setError(undefined);
     try {
-      await auth.login(values.email.trim().toLowerCase(), values.password);
+      const result = await auth.login(values.email.trim().toLowerCase(), values.password);
+      if (result === 'verification') {
+        navigation.navigate('AuthStack', { screen: 'OTPVerification' });
+        return;
+      }
       const user = await authService.currentUser();
       if (!canAccessOperations(user)) {
         await auth.logout();

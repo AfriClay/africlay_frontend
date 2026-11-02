@@ -89,6 +89,8 @@ export const SellerOrders: React.FC = () => {
           <Text style={styles.noticeText}>{item.settlementStatus === 'released' ? 'Available in wallet' : item.settlementStatus === 'held' ? 'Held until delivery is confirmed' : item.settlementStatus === 'reversed' ? 'Reversed' : 'Waiting for item payment'}</Text>
         </View> : null}
         <View style={styles.delivery}><MapPin size={18} color={theme.colors.primary.dark} /><View style={styles.deliveryCopy}><Text style={styles.deliveryLabel}>Delivery address</Text><Text style={styles.address}>{item.deliveryAddress}</Text></View></View>
+        <View style={styles.settlementRow}><Text style={styles.noticeText}>Delivery fee for this shipment</Text><Text style={styles.amount}>{formatCurrency(item.shippingCost, item.currency)}</Text></View>
+        <Text style={styles.noticeText}>Delivery is separate from your proceeds.</Text>
         {item.status === 'pending' ? <View style={styles.orderNotice}><Text style={styles.noticeTitle}>Awaiting buyer payment</Text><Text style={styles.noticeText}>Fulfilment actions become available after payment is confirmed.</Text></View> : null}
         {item.status === 'shipped' && item.courierName ? <View style={styles.orderNotice}><Truck size={18} color={theme.colors.primary.dark} /><View style={styles.deliveryCopy}><Text style={styles.noticeTitle}>{item.courierName}</Text><Text style={styles.noticeText}>Tracking {item.trackingNumber} · {formatCurrency(item.shippingCost, item.currency)} shipping</Text></View></View> : null}
         {showShippingForm ? <View style={styles.shippingForm}>
@@ -99,7 +101,7 @@ export const SellerOrders: React.FC = () => {
           <View style={[styles.formActions, compactActions && styles.formActionsCompact]}><Button style={compactActions && styles.actionButton} fullWidth={compactActions} variant="secondary" disabled={isUpdating} onPress={() => { setShippingOrderId(undefined); setFormError(undefined); }}>Back</Button><Button style={compactActions && styles.actionButton} fullWidth={compactActions} loading={isUpdating} loadingLabel="Saving shipment" onPress={() => shipOrder(item.id)}>Confirm Shipment</Button></View>
         </View> : null}
         <View style={[styles.footer, compactActions && styles.footerCompact]}>
-          <View><Text style={styles.total}>{formatCurrency(item.total, item.currency)}</Text><Text style={styles.paymentState}>{item.paymentStatus === 'paid' ? 'Paid' : item.paymentStatus === 'partial' ? 'Delivery fee paid' : 'Payment pending'}</Text></View>
+          <View><Text style={styles.paymentState}>Items subtotal</Text><Text style={styles.total}>{formatCurrency(item.total, item.currency)}</Text><Text style={styles.paymentState}>{item.paymentStatus === 'paid' ? 'Paid' : item.paymentStatus === 'partial' ? 'Delivery fee paid' : 'Payment pending'}</Text></View>
           {item.status === 'processing' && !showShippingForm ? <View style={[styles.actions, compactActions && styles.actionsCompact]}>
             <Button style={compactActions && styles.actionButton} fullWidth={compactActions} size="sm" loading={false} disabled={isUpdating} onPress={() => { update.reset(); setShippingOrderId(item.id); }}>Mark as Shipped</Button>
             <Button style={compactActions && styles.actionButton} fullWidth={compactActions} size="sm" variant="secondary" loading={isUpdating && update.variables?.update.status === 'cancelled'} disabled={isUpdating} onPress={() => cancelOrder(item.id)}>Cancel Order</Button>

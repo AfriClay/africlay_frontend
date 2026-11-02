@@ -10,19 +10,24 @@ import { passwordResetSchema } from '../../validation/authSchemas';
 import { getAuthErrorMessage } from '../../services/authService';
 import { OTPInput } from '../../components/ui/OTPInput';
 import { useAuth } from '../../hooks/useAuth';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { AuthStackParamList } from '../../navigation/AuthStack';
 
 type ResetForm = {
   email: string;
 };
 
 export const ForgotPassword: React.FC = () => {
-  const [sent, setSent] = useState(false);
+  const auth = useAuth();
+  const navigation = useNavigation<NativeStackNavigationProp<AuthStackParamList, 'ForgotPassword'>>();
+  const [sent, setSent] = useState(auth.pendingVerification === 'password_reset' && Boolean(auth.pendingEmail));
+  const [completed, setCompleted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [code, setCode] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const auth = useAuth();
   const { control, handleSubmit } = useForm<ResetForm>({
     resolver: zodResolver(passwordResetSchema),
     defaultValues: { email: '' },
@@ -59,6 +64,7 @@ export const ForgotPassword: React.FC = () => {
     setLoading(true);
     try {
       await auth.resetPassword(code, password);
+      setCompleted(true);
     } catch (error) {
       setSubmitError(getAuthErrorMessage(error, 'Unable to reset your password.'));
       setCode('');
@@ -67,11 +73,19 @@ export const ForgotPassword: React.FC = () => {
     }
   };
 
+  if (completed) {
+    return <FormFrame style={styles.container}>
+      <Text style={styles.title}>Password reset</Text>
+      <Text style={styles.copy}>Your password has been updated. Sign in with your new password.</Text>
+      <Button fullWidth onPress={() => navigation.navigate('Login')}>Log In</Button>
+    </FormFrame>;
+  }
+
   if (sent) {
     return (
       <FormFrame style={styles.container}>
         <Text style={styles.title}>Enter Reset Code</Text>
-        <Text style={styles.copy}>We sent a 6-digit code to your email. Enter it below and choose a new password.</Text>
+        <Text style={styles.copy}>If an eligible account exists, a 6-digit code will be sent to your email. Enter it below and choose a new password.</Text>
         <OTPInput value={code} onChange={setCode} onComplete={() => undefined} error={submitError ?? undefined} accessibilityLabel="Password reset code" />
         <Input label="New password" required value={password} onChangeText={setPassword} secureTextEntry placeholder="New password" accessibilityLabel="New password" autoComplete="new-password" />
         <Input label="Confirm password" required value={confirmPassword} onChangeText={setConfirmPassword} secureTextEntry placeholder="Repeat new password" accessibilityLabel="Confirm new password" autoComplete="new-password" />

@@ -14,11 +14,11 @@ const RESEND_COOLDOWN_SECONDS = 60;
 
 export const OTPVerification: React.FC = () => {
   const navigation = useNavigation<NativeStackNavigationProp<AuthStackParamList, 'OTPVerification'>>();
-  const { pendingEmail, resendVerification, verifyEmail } = useAuth();
+  const { pendingEmail, pendingVerification, verificationDeliveryFailed, resendVerification, verifyEmail } = useAuth();
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | undefined>(undefined);
   const [notice, setNotice] = useState<string | undefined>(undefined);
-  const [timer, setTimer] = useState(RESEND_COOLDOWN_SECONDS);
+  const [timer, setTimer] = useState(pendingVerification === 'sign_in' || verificationDeliveryFailed ? 0 : RESEND_COOLDOWN_SECONDS);
   const [verifying, setVerifying] = useState(false);
   const [resending, setResending] = useState(false);
   const canResend = timer === 0;
@@ -58,7 +58,7 @@ export const OTPVerification: React.FC = () => {
     try {
       await resendVerification();
       setTimer(RESEND_COOLDOWN_SECONDS);
-      setNotice('A new verification code has been sent.');
+      setNotice('If the account is eligible, a new code will be sent. Check your inbox and spam folder.');
     } catch (resendError) {
       setError(getAuthErrorMessage(resendError, 'Unable to resend the code.'));
     } finally {
@@ -69,7 +69,9 @@ export const OTPVerification: React.FC = () => {
   return (
     <FormFrame style={styles.container}>
       <Text style={styles.title}>Verify your email</Text>
-      <Text style={styles.copy}>Enter the 6-digit code sent to {pendingEmail ?? 'your email'}.</Text>
+      <Text style={styles.copy}>{verificationDeliveryFailed ? `Request a code for ${pendingEmail ?? 'your email'}.` : `Enter the 6-digit code sent to ${pendingEmail ?? 'your email'}.`}</Text>
+      {verificationDeliveryFailed ? <Text style={styles.error} accessibilityRole="alert">We could not send the code. Try resending it, or contact support if delivery continues to fail.</Text> : null}
+      {pendingVerification === 'sign_in' ? <Text style={styles.copy}>If you no longer have a valid code, request a new one below.</Text> : null}
       <OTPInput value={code} onChange={setCode} onComplete={handleComplete} error={error} accessibilityLabel="Email verification code" />
       {notice ? <Text style={styles.notice}>{notice}</Text> : null}
       <Button fullWidth variant="tertiary" onPress={handleResend} disabled={!canResend || resending} loading={resending} loadingLabel="Sending code">Resend code {canResend ? '' : `(${timer}s)`}</Button>
@@ -101,4 +103,5 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: theme.spacing.sm,
   },
+  error: { color: theme.colors.error, marginBottom: theme.spacing.sm },
 });

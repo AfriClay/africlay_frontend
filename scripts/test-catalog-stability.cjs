@@ -11,6 +11,7 @@ const { getPathFromState, getStateFromPath } = require('@react-navigation/core')
 const category = { id: 'category-id', slug: 'handmade', name: 'Handmade', parent: null };
 const tag = { id: 'tag-id', slug: 'woven', name: 'Woven' };
 const store = { id: 'store-id', owner: 'seller-id', slug: 'artisan-shop', name: 'Artisan Shop', description: 'Handmade goods', city: 'Nairobi', country: 'Kenya', logo: '/media/logo.png', banner: null, average_rating: '4.25', total_reviews: 4, total_products: 1, status: 'active' };
+const publicStore = Object.fromEntries(Object.entries(store).filter(([key]) => !['owner', 'city', 'country'].includes(key)));
 const product = { id: 'product-id', store: store.id, category: category.id, tags: [tag.id], images: [{ image: '/media/rug.png', is_primary: true, display_order: 1 }, { image: null, is_primary: false, display_order: 2 }], name: 'Sisal Rug', slug: 'sisal-rug', description: 'Handwoven', sku: 'RUG-001', price: '3200.50', currency: 'KES', stock_quantity: 5, weight_kg: '1.250', length_cm: '40.00', width_cm: '30.00', height_cm: '12.00', status: 'published', average_rating: 4.5, review_count: 12 };
 const childCategory = { id: 'child-category-id', slug: 'farm-tools', name: 'Farm Tools', parent: category.id };
 const json = (body, status = 200) => new Response(JSON.stringify(body), { status });
@@ -53,8 +54,9 @@ function harness(responder = () => undefined) {
         if (route.pathname.endsWith('/categories/path/') && init.method === 'POST') return json({ parent: category, child: childCategory, created: true }, 201);
         if (route.pathname.endsWith('/tags/')) return json([tag]);
         if (route.pathname.endsWith('/products/')) return json([product]);
-        if (route.pathname.endsWith('/stores/')) return json([store]);
-        if (route.pathname.endsWith('/stores/artisan-shop/')) return json(store);
+        if (route.pathname.endsWith('/stores/')) return json([publicStore]);
+        if (route.pathname.endsWith('/stores/mine/')) return json(store);
+        if (route.pathname.endsWith('/stores/artisan-shop/')) return json(publicStore);
         if (route.pathname.endsWith('/products/sisal-rug/')) return json(product);
         if (route.pathname.endsWith('/products/manage/')) return json([product]);
         if (route.pathname.endsWith('/products/manage/product-id/')) return json(product);
@@ -242,12 +244,15 @@ test('store list and detail map real store identifiers and media URLs', async ()
   const { service, requests } = harness();
   const sellers = await service.fetchSellers();
   assert.equal(sellers[0].id, store.id);
-  assert.equal(sellers[0].ownerId, store.owner);
+  assert.equal(sellers[0].ownerId, undefined);
   assert.equal(sellers[0].verified, false);
   assert.equal(sellers[0].logoUrl, 'https://api.example.test/media/logo.png');
   assert.equal((await service.fetchSeller(store.id)).name, store.name);
   assert.ok(requests.some(item => item.path === '/api/stores/artisan-shop/'));
-  assert.equal((await service.fetchOwnStore(store.owner)).id, store.id);
+  const ownStore = await service.fetchOwnStore(store.owner);
+  assert.equal(ownStore.id, store.id);
+  assert.equal(ownStore.ownerId, store.owner);
+  assert.ok(requests.some(item => item.path === '/api/stores/mine/'));
 });
 
 test('public marketplace surfaces do not expose seller dispatch locations', () => {

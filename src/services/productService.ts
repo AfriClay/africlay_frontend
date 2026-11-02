@@ -31,7 +31,7 @@ const tagSchema = z.object({
   categories: z.array(z.string().min(1)).default([]),
 });
 const storeSchema = z.object({
-  id: z.string().min(1), owner: z.string().min(1), slug: z.string().min(1), name: z.string().min(1),
+  id: z.string().min(1), owner: z.string().min(1).optional(), slug: z.string().min(1), name: z.string().min(1),
   description: z.string().nullish(), city: z.string().nullish(), country: z.string().nullish(),
   logo: optionalText, banner: optionalText, average_rating: z.union([z.string(), z.number()]).optional(),
   total_reviews: quantity.optional(), total_products: quantity.optional(), status: z.string().optional(),
@@ -250,7 +250,10 @@ export const productService = {
     const seller = (await productService.fetchSellers()).find(item => item.id === idOrSlug || item.slug === idOrSlug);
     return seller?.slug ? productService.getStore(seller.slug) : null;
   },
-  fetchOwnStore: async (ownerId: string): Promise<Seller | null> => (await productService.fetchSellers()).find(item => item.ownerId === ownerId) ?? null,
+  fetchOwnStore: async (_ownerId: string): Promise<Seller | null> => {
+    try { return toSeller(parse(storeSchema, await apiClient('/stores/mine/'))); }
+    catch (error) { if (error instanceof ApiError && error.status === 404) return null; throw error; }
+  },
   hasApprovedSellerAccess: async (ownerId: string): Promise<boolean> => {
     const store = await productService.fetchOwnStore(ownerId);
     if (!store?.slug) return false;

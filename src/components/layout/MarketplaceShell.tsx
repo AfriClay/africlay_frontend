@@ -17,6 +17,7 @@ import { SearchField } from '../ui/SearchField';
 import { MarketplaceBrand } from '../ui/MarketplaceBrand';
 import { paymentKeys, paymentService } from '../../services/paymentService';
 import { formatCurrency } from '../../utils/formatCurrency';
+import { policyAudienceForRole } from '../../content/policies';
 
 type Destination = { tab?: 'Home' | 'Search' | 'Sell' | 'Profile'; screen?: string; params?: object; root?: 'Cart' | 'Policies' };
 type Props = PropsWithChildren<{ route: string; category?: string; navigate: (destination: Destination) => void }>;
@@ -40,6 +41,8 @@ export const MarketplaceShell = ({ children, route, category, navigate }: Props)
   const { isExpanded, sidebarWidth } = useResponsiveLayout();
   const { user } = useAuth();
   const canSell = canAccessSellerTools(user?.role);
+  const policyAudience = policyAudienceForRole(user?.role);
+  const policyLabel = policyAudience === 'buyer' ? 'Buyer policy' : policyAudience === 'seller' ? 'Seller policies' : 'Terms & policies';
   const userId = user?.id ?? '';
   const wallets = useQuery({ queryKey: paymentKeys.wallets(userId), queryFn: paymentService.listWallets, enabled: canSell && Boolean(userId), staleTime: 60_000 });
   const wallet = wallets.data?.find(item => item.currency === 'KES') ?? wallets.data?.[0];
@@ -82,7 +85,7 @@ export const MarketplaceShell = ({ children, route, category, navigate }: Props)
         {user && <Action label="Wishlist" icon={Heart} active={route === 'Wishlist'} onPress={() => navigate({ tab: 'Profile', screen: 'Wishlist' })} />}
         {user && <Action label="Notifications" icon={Bell} badge={unreadCount} active={route === 'Notifications'} onPress={() => navigate({ tab: 'Profile', screen: 'Notifications' })} />}
         <Action label="Help & support" icon={CircleHelp} active={route === 'SupportHelp'} onPress={() => navigate({ tab: 'Profile', screen: 'SupportHelp' })} />
-        <Action label="Terms & policies" icon={BookOpenCheck} active={route === 'Policies'} onPress={() => navigate({ root: 'Policies' })} />
+        <Action label={policyLabel} icon={BookOpenCheck} active={route === 'Policies'} onPress={() => navigate({ root: 'Policies', params: policyAudience ? { audience: policyAudience } : undefined })} />
         <Action label="Profile" icon={User} active={route === 'ProfileOverview'} onPress={() => navigate({ tab: 'Profile', screen: 'ProfileOverview' })} />
       </ScrollView></Animated.View></CollapsedSidebar.Provider>}
       <View style={[styles.main, (focused || !isExpanded) && { padding: 0 }]}><View style={[styles.route, isExpanded && { maxWidth: contentLimit(route) }]}>{children}</View></View>

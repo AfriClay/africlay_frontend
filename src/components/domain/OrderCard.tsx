@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { theme } from '../../theme';
 import { Order } from '../../types/order';
 import { StatusPill } from '../ui/StatusPill';
+import { formatCurrency } from '../../utils/formatCurrency';
 
 interface OrderCardProps {
   order: Order;
@@ -15,8 +16,9 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order, onPress }) => (
       <Text style={styles.id}>#{order.id}</Text>
       <StatusPill status={order.status} />
     </View>
-    <Text style={styles.summary}>{`${order.items.length} item${order.items.length > 1 ? 's' : ''} · ${order.date}`}</Text>
-    <Text style={styles.total}>{`KSh ${order.total.toLocaleString()}`}</Text>
+    <Text style={styles.summary}>{`${order.items.length} item${order.items.length > 1 ? 's' : ''} Â· ${order.date}`}</Text>
+    <Text style={styles.summary}>Delivery {formatCurrency(order.shippingCost, order.currency)}</Text>
+    <Text style={styles.total}>Order total {formatCurrency(order.total, order.currency)}</Text>
   </Pressable>
 );
 

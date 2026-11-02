@@ -1,5 +1,6 @@
 import { apiClient, getApiErrorMessage, TokenPair, tokenManager } from './api';
 import { RegistrationRole, StaffRole, User, UserRole } from '../types/user';
+import { registrationPolicyRequirements } from '../content/policies';
 
 type BackendRole = UserRole;
 
@@ -24,6 +25,12 @@ type BackendUser = {
 type AuthResponse = {
   user: BackendUser;
   tokens: TokenPair;
+};
+
+type LoginResponse = AuthResponse | {
+  user: BackendUser;
+  verification_required: true;
+  message: string;
 };
 
 export const mapBackendUser = (backendUser: BackendUser): User => {
@@ -61,19 +68,22 @@ const splitName = (name: string): { first_name: string; last_name: string } => {
 };
 
 export const authService = {
-  async login(email: string, password: string): Promise<{ user: User; tokens: TokenPair }> {
-    const response = await apiClient<AuthResponse>('/auth/login/', {
+  async login(email: string, password: string): Promise<{ user: User; tokens?: TokenPair; verificationRequired: boolean }> {
+    const response = await apiClient<LoginResponse>('/auth/login/', {
       method: 'POST',
       auth: false,
       body: { email: email.trim().toLowerCase(), password },
     });
+    if ('verification_required' in response) {
+      return { user: mapBackendUser(response.user), verificationRequired: true };
+    }
     await tokenManager.setTokens(response.tokens);
-    return { user: mapBackendUser(response.user), tokens: response.tokens };
+    return { user: mapBackendUser(response.user), tokens: response.tokens, verificationRequired: false };
   },
 
-  async register(name: string, email: string, password: string, role: RegistrationRole = 'buyer'): Promise<User> {
+  async register(name: string, email: string, password: string, role: RegistrationRole = 'buyer'): Promise<{ user: User; deliveryFailed: boolean }> {
     const names = splitName(name);
-    await apiClient<{ user: BackendUser }>('/auth/register/', {
+    const response = await apiClient<{ user: BackendUser; verification_delivery?: 'sent' | 'failed' }>('/auth/register/', {
       method: 'POST',
       auth: false,
       body: {
@@ -81,11 +91,11 @@ export const authService = {
         password,
         password_confirm: password,
         role,
+        accepted_policies: registrationPolicyRequirements[role],
         ...names,
       },
     });
-    const { user } = await authService.login(email, password);
-    return user;
+    return { user: mapBackendUser(response.user), deliveryFailed: response.verification_delivery === 'failed' };
   },
 
   async verifyEmail(email: string, code: string): Promise<{ user: User; tokens: TokenPair }> {

@@ -23,16 +23,20 @@ test('policies are public, deep-linkable, and available from marketplace navigat
   const shell = source('src/components/layout/MarketplaceShell.tsx');
   assert.match(rootNavigator, /<Stack\.Screen name="Policies" component=\{Policies\}/);
   assert.match(linking, /Policies: 'policies\/:policyId\?'/);
-  assert.match(profile, /label: 'Terms & Policies', route: 'Policies'/);
-  assert.match(shell, /label="Terms & policies"/);
+  assert.match(profile, /Buyer Policy/);
+  assert.match(profile, /Seller Policies/);
+  assert.match(profile, /route: 'Policies'/);
+  assert.match(shell, /const policyLabel =/);
+  assert.match(shell, /root: 'Policies'/);
 });
 
 test('registration, checkout, and seller onboarding link to relevant policies', () => {
   const register = source('src/screens/auth/Register.tsx');
   const checkout = source('src/screens/cart/Checkout.tsx');
   const startSelling = source('src/screens/seller/StartSelling.tsx');
-  assert.match(register, /accessibilityRole="link"[\s\S]*Terms & Policies/);
-  assert.match(register, /navigate\('Policies'\)/);
+  assert.match(register, /registrationPolicyRequirements\[role\]/);
+  assert.match(register, /navigate\('Policies', \{ policyId, audience \}\)/);
+  assert.match(register, /setAcceptTerms\(false\)/);
   assert.match(checkout, /policyId: 'shipping-and-delivery'/);
   assert.match(checkout, /Shipping & Delivery Policy/);
   assert.match(startSelling, /policyId: 'seller-commission'/);

@@ -5,7 +5,7 @@
     "scheme": "africlay",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/africlay-brand-v1.png",
+    "icon": "./assets/africlay-app-icon.png",
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true
@@ -13,8 +13,8 @@
     "android": {
       "package": "com.africlay.appfront",
       "adaptiveIcon": {
-        "backgroundColor": "#17532F",
-        "foregroundImage": "./assets/africlay-brand-v1.png"
+        "backgroundColor": "#FFFFFF",
+        "foregroundImage": "./assets/africlay-app-icon.png"
       },
       "predictiveBackGestureEnabled": false
     },

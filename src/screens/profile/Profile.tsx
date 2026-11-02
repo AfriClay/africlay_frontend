@@ -15,6 +15,7 @@ import { useQuery } from '@tanstack/react-query';
 import { orderService } from '../../services/orderService';
 import { useWishlist } from '../../hooks/useWishlist';
 import { Button } from '../../components/ui/Button';
+import { policyAudienceForRole } from '../../content/policies';
 
 type ProfileNavigation = NativeStackNavigationProp<ProfileStackParamList, 'ProfileOverview'>;
 type ProfileRouteName = 'MyOrders' | 'MyAddresses' | 'Wishlist' | 'Notifications' | 'MyBookings' | 'Wallet' | 'DashboardAccessRequests' | 'Settings' | 'SupportHelp';
@@ -30,7 +31,6 @@ const menuItems: ReadonlyArray<{ label: string; route: ProfileMenuRoute; icon: t
   { label: 'My Addresses', route: 'MyAddresses', icon: MapPin },
   { label: 'Settings', route: 'Settings', icon: Settings },
   { label: 'Help & Support', route: 'SupportHelp', icon: CircleHelp },
-  { label: 'Terms & Policies', route: 'Policies', icon: BookOpenCheck },
 ];
 
 export const Profile: React.FC = () => {
@@ -39,12 +39,18 @@ export const Profile: React.FC = () => {
   const navigation = useNavigation<ProfileNavigation>();
   const [authSheetVisible, setAuthSheetVisible] = useState(false);
   const wishlist = useWishlist();
+  const policyAudience = policyAudienceForRole(auth.user?.role);
+  const visibleMenuItems = [...menuItems, {
+    label: policyAudience === 'buyer' ? 'Buyer Policy' : policyAudience === 'seller' ? 'Seller Policies' : 'Terms & Policies',
+    route: 'Policies' as const,
+    icon: BookOpenCheck,
+  }];
   const userId = auth.user?.id ?? '';
   const ordersQuery = useQuery({ queryKey: ['buyer-orders', userId], queryFn: orderService.fetchOrders, enabled: Boolean(userId) });
 
   const openRoute = (route: ProfileMenuRoute) => {
     if (route === 'Policies') {
-      navigation.dispatch(CommonActions.navigate('Policies'));
+      navigation.dispatch(CommonActions.navigate('Policies', policyAudience ? { audience: policyAudience } : undefined));
       return;
     }
     navigation.navigate(route);
@@ -73,7 +79,7 @@ export const Profile: React.FC = () => {
         </View>
 
         <View style={[styles.menu, isExpanded && styles.desktopMenu]}>
-          {menuItems.map(item => {
+          {visibleMenuItems.map(item => {
             const Icon = item.icon;
             return (
               <Pressable key={item.route} style={[styles.menuRow, isExpanded && styles.desktopRow]} onPress={() => openRoute(item.route)} accessibilityRole="button">

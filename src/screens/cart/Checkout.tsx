@@ -18,7 +18,7 @@ import { orderKeys, orderService } from '../../services/orderService';
 import { isOrderPaymentPhone, paymentKeys, paymentService } from '../../services/paymentService';
 import { theme } from '../../theme';
 import { Payment } from '../../types/payment';
-import { OrderPaymentOption } from '../../types/order';
+import { Order, OrderPaymentOption } from '../../types/order';
 import { formatCurrency } from '../../utils/formatCurrency';
 import { checkoutAddressSchema } from '../../validation/checkoutSchemas';
 import { catalogKeys } from '../../services/catalogQueries';
@@ -80,7 +80,7 @@ export const Checkout: React.FC = () => {
   const [orderCreationUncertain, setOrderCreationUncertain] = useState(false);
   const [authSheet, setAuthSheet] = useState(!auth.user);
   const [orderId, setOrderId] = useState<string>();
-  const [orderTotal, setOrderTotal] = useState(0);
+  const [createdOrder, setCreatedOrder] = useState<Order>();
   const [payment, setPayment] = useState<Payment>();
   const inFlight = useRef(false);
   const statusRequest = useRef<AbortController | undefined>(undefined);
@@ -226,7 +226,7 @@ export const Checkout: React.FC = () => {
         ...checkoutScope,
       });
       setOrderId(order.id);
-      setOrderTotal(order.total);
+      setCreatedOrder(order);
       inFlight.current = false;
       await Promise.allSettled([
         cart.refresh(),
@@ -262,13 +262,14 @@ export const Checkout: React.FC = () => {
 
   if (orderId && stage !== 'idle') {
     const succeeded = stage === 'payment-succeeded';
-    const pending = stage === 'payment-pending' || stage === 'requesting-payment';
+    const pending = stage === 'creating-order' || stage === 'payment-pending' || stage === 'requesting-payment';
     const Icon = succeeded ? CircleCheckBig : pending ? Clock3 : AlertTriangle;
     const title = succeeded ? 'Payment confirmed' : pending ? 'Payment pending' : stage === 'payment-failed' ? 'Payment failed' : 'Payment status unknown';
     const description = succeeded
       ? payment?.purpose === 'delivery_fee'
         ? `Order #${orderId.slice(0, 8)} is confirmed. The delivery fee is paid and the item balance is due at delivery.`
         : `Order #${orderId.slice(0, 8)} is paid and ready for the seller to process.`
+      : stage === 'creating-order' ? 'Your order was created. Preparing payment...'
       : pending
         ? 'Complete the M-Pesa prompt on your phone. This screen checks for confirmation for a limited time.'
         : stage === 'payment-failed'
@@ -279,7 +280,13 @@ export const Checkout: React.FC = () => {
         {stage === 'requesting-payment' ? <ActivityIndicator size="large" color={theme.colors.primary.DEFAULT} /> : <Icon color={succeeded ? theme.colors.success : pending ? theme.colors.secondary.dark : theme.colors.error} size={68} />}
         <Text style={styles.title}>{title}</Text>
         <Text style={styles.confirmationText}>{description}</Text>
-        <Text style={styles.orderMeta}>{formatCurrency(payment?.amount ?? orderTotal, payment?.currency ?? 'KES')}</Text>
+        {createdOrder ? <View style={styles.confirmationBreakdown}>
+          <View style={styles.totalRow}><Text style={styles.note}>Items</Text><Text style={styles.summaryAmount}>{formatCurrency(createdOrder.itemSubtotal, createdOrder.currency)}</Text></View>
+          <View style={styles.totalRow}><Text style={styles.note}>Delivery</Text><Text style={styles.summaryAmount}>{formatCurrency(createdOrder.shippingCost, createdOrder.currency)}</Text></View>
+          <View style={styles.totalRow}><Text style={styles.note}>Order total</Text><Text style={styles.summaryAmount}>{formatCurrency(createdOrder.total, createdOrder.currency)}</Text></View>
+        </View> : null}
+        <Text style={styles.note}>{payment?.purpose === 'delivery_fee' || (!payment && paymentOption === 'pay_on_delivery') ? 'Delivery payment' : 'Payment amount'}</Text>
+        <Text style={styles.orderMeta}>{formatCurrency(payment?.amount ?? (paymentOption === 'pay_on_delivery' ? createdOrder?.shippingCost : createdOrder?.total) ?? 0, payment?.currency ?? createdOrder?.currency ?? 'KES')}</Text>
         {payment?.receiptNumber ? <Text style={styles.note}>Receipt {payment.receiptNumber}</Text> : null}
         {error ? <Text style={styles.error} accessibilityRole="alert">{error}</Text> : null}
         {statusError ? <Text style={styles.error} accessibilityRole="alert">{statusError}</Text> : null}
@@ -377,6 +384,7 @@ const styles = StyleSheet.create({
   selectedAddress: { borderColor: theme.colors.primary.DEFAULT, borderWidth: 2 },
   addressName: { fontWeight: '700', color: theme.colors.ink },
   note: { color: theme.colors.muted, marginVertical: theme.spacing.xs },
+  confirmationBreakdown: { width: '100%', marginTop: theme.spacing.md },
   itemRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: theme.spacing.sm },
   itemName: { flex: 1, color: theme.colors.ink },
   itemPrice: { color: theme.colors.ink, fontWeight: '700' },

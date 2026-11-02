@@ -105,6 +105,31 @@ test('withdrawal requests the full selected balance source without an amount', a
   assert.deepEqual(JSON.parse(requests[0].init.body), { balance_source: 'shopping' });
 });
 
+test('shipping quote and created order preserve their separate delivery amounts', async () => {
+  const id = '33333333-3333-4333-8333-333333333333';
+  const sellerId = '44444444-4444-4444-8444-444444444444';
+  const order = {
+    id, buyer_id: id, item_subtotal: '1000.00', shipping_cost: '220.00',
+    total_amount: '1220.00', currency: 'KES', status: 'pending', payment_method: 'mpesa',
+    payment_status: 'pending', payment_option: 'pay_now', amount_paid: '0.00', amount_due: '1220.00',
+    delivery_fee_paid: false, shipping_address: '123 Main Street', shipping_city: 'Nairobi',
+    shipping_postal_code: '00100', shipping_country: 'Kenya', courier_name: '', tracking_number: '',
+    shipped_at: null, items: [], fulfillments: [], created_at: '2026-10-29T12:00:00Z',
+  };
+  const { load } = harness(route => route.pathname.endsWith('/shipping-quote/')
+    ? json({ item_subtotal: '1000.00', shipping_cost: '220.00', total_amount: '1220.00', currency: 'KES',
+      shipments: [{ seller_id: sellerId, origin_city: 'Nairobi', destination_city: 'Nairobi',
+        chargeable_weight_kg: '1.000', shipping_cost: '220.00', is_remote: false }] })
+    : json(order, 201));
+  const service = load('services/orderService.ts').orderService;
+  const payload = { shipping_address: '123 Main Street', shipping_city: 'Nairobi', shipping_postal_code: '00100', shipping_country: 'Kenya' };
+  const quote = await service.shippingQuote(payload);
+  const created = await service.checkout(payload);
+  assert.equal(quote.shippingCost, 220);
+  assert.equal(created.shippingCost, 220);
+  assert.equal(created.total, created.itemSubtotal + created.shippingCost);
+});
+
 test('wallet UI has no manual payout amount field', () => {
   const source = readFileSync(path.resolve(__dirname, '../src/screens/profile/Wallet.tsx'), 'utf8');
   assert.doesNotMatch(source, /Payout amount/);

@@ -3,12 +3,13 @@ import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-na
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { AlertCircle, BookOpenCheck, ChevronDown, ChevronRight, ChevronUp, Download, ShieldCheck, Truck, WalletCards } from 'lucide-react-native';
+import { AlertCircle, BookOpenCheck, ChevronDown, ChevronRight, ChevronUp, Download, ShieldCheck, ShoppingBag, Store, Truck, WalletCards } from 'lucide-react-native';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
-import { getPolicy, policies, type PolicyDocument, type PolicySection } from '../../content/policies';
+import { getPolicy, policies, policyAudienceForRole, policyIdsByAudience, type PolicyAudience, type PolicyDocument, type PolicySection } from '../../content/policies';
 import type { RootStackParamList } from '../../navigation/RootNavigator';
 import { theme } from '../../theme';
+import { useAuth } from '../../hooks/useAuth';
 
 type Navigation = NativeStackNavigationProp<RootStackParamList, 'Policies'>;
 type PolicyRoute = RouteProp<RootStackParamList, 'Policies'>;
@@ -38,6 +39,21 @@ const PolicyCard = ({ policy, onPress }: { policy: PolicyDocument; onPress: () =
   </Pressable>;
 };
 
+const AudienceCard = ({ audience, onPress }: { audience: PolicyAudience; onPress: () => void }) => {
+  const buyer = audience === 'buyer';
+  const Icon = buyer ? ShoppingBag : Store;
+  return <Pressable onPress={onPress} accessibilityRole="link" accessibilityLabel={`View ${audience} policies`}
+    style={({ pressed }) => [styles.policyCard, pressed && styles.pressed]}>
+    <View style={styles.cardIcon}><Icon size={22} color={theme.colors.primary.dark} /></View>
+    <View style={styles.cardCopy}>
+      <Text style={styles.audience}>{buyer ? 'BUYING ON AFRICLAY' : 'SELLING ON AFRICLAY'}</Text>
+      <Text style={styles.cardTitle}>{buyer ? 'Buyer policy' : 'Seller policies'}</Text>
+      <Text style={styles.summary}>{buyer ? 'Shipping, delivery fees, timelines, and delivery responsibilities.' : 'Partner marketplace terms and the 10% seller commission policy.'}</Text>
+    </View>
+    <ChevronRight size={21} color={theme.colors.muted} />
+  </Pressable>;
+};
+
 const PolicyTable = ({ rows }: { rows: string[][] }) => <View style={styles.table} accessibilityRole="summary">
   {rows.map((row, rowIndex) => {
     const header = rowIndex === 0 && row.some(cell => /sale price|seller share|africlay market/i.test(cell));
@@ -62,7 +78,12 @@ const PolicySectionView = ({ section, expanded, onToggle }: { section: PolicySec
 export const Policies = () => {
   const navigation = useNavigation<Navigation>();
   const route = useRoute<PolicyRoute>();
-  const policy = getPolicy(route.params?.policyId);
+  const auth = useAuth();
+  const roleAudience = policyAudienceForRole(auth.user?.role);
+  const audience = route.params?.audience ?? roleAudience;
+  const visibleIds = audience ? policyIdsByAudience[audience] : [];
+  const requestedPolicy = getPolicy(route.params?.policyId);
+  const policy = requestedPolicy && (!audience || visibleIds.includes(requestedPolicy.id)) ? requestedPolicy : undefined;
   const [query, setQuery] = useState('');
   const [expanded, setExpanded] = useState<Set<number>>(() => new Set([0]));
 
@@ -88,16 +109,36 @@ export const Policies = () => {
     return next;
   });
 
-  if (!policy) return <SafeAreaView style={styles.container} edges={['bottom']}>
+  if (!policy && !audience) return <SafeAreaView style={styles.container} edges={['bottom']}>
     <ScrollView testID="policies-scroll" style={styles.scroll} contentContainerStyle={styles.content}>
       <View style={styles.hero}>
         <View style={styles.heroIcon}><BookOpenCheck size={30} color={theme.colors.primary.dark} /></View>
         <Text style={styles.title}>Terms & Policies</Text>
-        <Text style={styles.lead}>Clear rules for buying, selling, delivery, and marketplace settlements. These documents are public and can be reviewed without an account.</Text>
+        <Text style={styles.lead}>Choose how you use AfriClay to see only the policies that apply to that part of the marketplace.</Text>
       </View>
-      <View style={styles.policyList}>{policies.map(item => <PolicyCard key={item.id} policy={item} onPress={() => navigation.push('Policies', { policyId: item.id })} />)}</View>
+      <View style={styles.policyList}>
+        <AudienceCard audience="buyer" onPress={() => navigation.push('Policies', { audience: 'buyer' })} />
+        <AudienceCard audience="seller" onPress={() => navigation.push('Policies', { audience: 'seller' })} />
+      </View>
     </ScrollView>
   </SafeAreaView>;
+
+  if (!policy && audience) {
+    const collection = policies.filter(item => visibleIds.includes(item.id));
+    return <SafeAreaView style={styles.container} edges={['bottom']}>
+      <ScrollView testID="policies-scroll" style={styles.scroll} contentContainerStyle={styles.content}>
+        <View style={styles.hero}>
+          <View style={styles.heroIcon}>{audience === 'buyer' ? <ShoppingBag size={30} color={theme.colors.primary.dark} /> : <Store size={30} color={theme.colors.primary.dark} />}</View>
+          <Text style={styles.title}>{audience === 'buyer' ? 'Buyer policy' : 'Seller policies'}</Text>
+          <Text style={styles.lead}>{audience === 'buyer' ? 'The delivery rules that apply when purchasing through AfriClay.' : 'The marketplace terms and commission rules that apply when selling through AfriClay.'}</Text>
+        </View>
+        <View style={styles.policyList}>{collection.map(item => <PolicyCard key={item.id} policy={item} onPress={() => navigation.push('Policies', { policyId: item.id, audience })} />)}</View>
+        {!roleAudience ? <View style={styles.collectionSwitch}><Button variant="tertiary" onPress={() => navigation.push('Policies')}>Choose another policy group</Button></View> : null}
+      </ScrollView>
+    </SafeAreaView>;
+  }
+
+  if (!policy) return null;
 
   const searching = Boolean(query.trim());
   return <SafeAreaView style={styles.container} edges={['bottom']}>
@@ -142,6 +183,7 @@ const styles = StyleSheet.create({
   lead: { maxWidth: 760, color: theme.colors.muted, fontSize: theme.typography.body.fontSize, lineHeight: theme.typography.body.lineHeight, marginTop: theme.spacing.smd },
   eyebrow: { color: theme.colors.primary.dark, fontSize: 11, lineHeight: 16, fontWeight: '800', letterSpacing: 1.2, marginBottom: theme.spacing.xs },
   policyList: { gap: theme.spacing.smd },
+  collectionSwitch: { alignItems: 'flex-start', marginTop: theme.spacing.lg },
   policyCard: { minHeight: 132, flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md, padding: theme.spacing.lg, backgroundColor: theme.colors.white, borderWidth: 1, borderColor: theme.colors.border, borderRadius: theme.radii.md },
   cardIcon: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', flexShrink: 0, backgroundColor: theme.colors.primary.tint, borderRadius: theme.radii.sm },
   cardCopy: { flex: 1, minWidth: 0 },

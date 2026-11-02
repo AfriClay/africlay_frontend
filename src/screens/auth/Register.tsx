@@ -16,6 +16,7 @@ import { getAuthErrorMessage } from '../../services/authService';
 import { Check } from 'lucide-react-native';
 import { ChoiceGroup } from '../../components/ui/ChoiceGroup';
 import type { RootStackParamList } from '../../navigation/RootNavigator';
+import { registrationPolicyDetails, registrationPolicyRequirements, type RegistrationPolicyCode } from '../../content/policies';
 
 type RegisterForm = {
   name: string;
@@ -36,8 +37,9 @@ export const Register: React.FC = () => {
     setAcceptTerms(nextValue);
     setValue('acceptTerms', nextValue, { shouldValidate: true });
   };
-  const openPolicies = () => {
-    navigation.getParent<NativeStackNavigationProp<RootStackParamList>>()?.navigate('Policies');
+  const openPolicy = (code: RegistrationPolicyCode) => {
+    const { policyId, audience } = registrationPolicyDetails[code];
+    navigation.getParent<NativeStackNavigationProp<RootStackParamList>>()?.navigate('Policies', { policyId, audience });
   };
   const returnToMarketplace = () => {
     const root = navigation.getParent<any>();
@@ -53,6 +55,7 @@ export const Register: React.FC = () => {
     setSubmitError(null);
     try {
       await auth.register(data.name, data.email, data.password, role);
+      navigation.navigate(ROUTES.OTPVerification);
     } catch (error) {
       setSubmitError(getAuthErrorMessage(error, 'Unable to create account.'));
     }
@@ -105,7 +108,7 @@ export const Register: React.FC = () => {
         label="Account type"
         required
         value={role}
-        onChange={setRole}
+        onChange={value => { setRole(value); setAcceptTerms(false); setValue('acceptTerms', false, { shouldValidate: true }); }}
         options={[
           { value: 'buyer', label: 'Buyer' },
           { value: 'seller', label: 'Seller' },
@@ -115,10 +118,10 @@ export const Register: React.FC = () => {
       <View style={styles.checkboxRow}>
         <Pressable onPress={toggleTerms} style={styles.checkboxControl} accessibilityRole="checkbox" accessibilityState={{ checked: acceptTerms }} accessibilityLabel="Agree to the Terms and Policies">
           <View style={[styles.checkbox, acceptTerms ? styles.checkboxChecked : null]}>{acceptTerms ? <Check size={16} color={theme.colors.white} strokeWidth={3} /> : null}</View>
-          <Text style={styles.checkboxLabel}>I agree to the</Text>
+          <Text style={styles.checkboxLabel}>I agree to the applicable policies below</Text>
         </Pressable>
-        <Pressable onPress={openPolicies} accessibilityRole="link" style={styles.policyLinkHit}><Text style={styles.policyLink}>Terms & Policies</Text></Pressable>
       </View>
+      {registrationPolicyRequirements[role].map(code => <Pressable key={code} onPress={() => openPolicy(code)} accessibilityRole="link" style={styles.policyLinkHit}><Text style={styles.policyLink}>{registrationPolicyDetails[code].label}</Text></Pressable>)}
       {formState.errors.acceptTerms?.message ? <Text style={styles.error} accessibilityRole="alert">{formState.errors.acceptTerms.message}</Text> : null}
       {submitError ? <Text style={styles.error}>{submitError}</Text> : null}
       <Button fullWidth onPress={handleSubmit(onSubmit)} disabled={!acceptTerms || auth.loading} loading={auth.loading} loadingLabel="Creating account" accessibilityLabel="Create Account">Create Account</Button>
