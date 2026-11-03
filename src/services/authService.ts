@@ -9,7 +9,7 @@ type BackendProfile = {
   last_name?: string;
   avatar_url?: string | null;
   bio?: string;
-  notification_preferences?: { email_order_updates?: boolean; email_seller_sales?: boolean; email_booking_updates?: boolean; email_seller_bookings?: boolean };
+  notification_preferences?: { email_order_updates?: boolean; email_seller_sales?: boolean; email_booking_updates?: boolean; email_seller_bookings?: boolean; email_wallet_updates?: boolean; email_promotions?: boolean };
 };
 
 type BackendUser = {
@@ -56,6 +56,8 @@ export const mapBackendUser = (backendUser: BackendUser): User => {
       email_seller_sales: profile?.notification_preferences?.email_seller_sales === true,
       email_booking_updates: profile?.notification_preferences?.email_booking_updates !== false,
       email_seller_bookings: profile?.notification_preferences?.email_seller_bookings === true,
+      email_wallet_updates: profile?.notification_preferences?.email_wallet_updates !== false,
+      email_promotions: profile?.notification_preferences?.email_promotions === true,
     },
     stats: {
       orders: 0,

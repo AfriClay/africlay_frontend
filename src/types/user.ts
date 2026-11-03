@@ -26,5 +26,7 @@ export interface User {
     email_seller_sales: boolean;
     email_booking_updates: boolean;
     email_seller_bookings: boolean;
+    email_wallet_updates: boolean;
+    email_promotions: boolean;
   };
 }

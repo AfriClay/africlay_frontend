@@ -21,12 +21,26 @@ const toNotification = (value: z.infer<typeof notificationSchema>): Notification
   createdAt: value.created_at,
 });
 
+const emailDeliverySchema = z.object({
+  id: z.string().uuid(),
+  subject: z.string(),
+  status: z.enum(['pending', 'sending', 'sent', 'delivered', 'retry', 'deferred', 'failed', 'bounced', 'complained', 'suppressed', 'unknown']),
+  created_at: z.string(),
+  sent_at: z.string().nullable(),
+  delivered_at: z.string().nullable(),
+});
+
+export type EmailDeliveryItem = z.infer<typeof emailDeliverySchema>;
+
 export const notificationKeys = {
   all: (userId: string) => ['notifications', userId] as const,
   unread: (userId: string) => ['notifications', userId, 'unread'] as const,
+  emailHistory: (userId: string) => ['email-history', userId] as const,
 };
 
 export const notificationService = {
+  emailHistory: async (): Promise<EmailDeliveryItem[]> =>
+    parseCommerceList(emailDeliverySchema, await apiClient('/notifications/email-history/')),
   list: async (isRead?: boolean): Promise<NotificationItem[]> => {
     const query = isRead === undefined ? '' : `?is_read=${isRead}`;
     return parseCommerceList(notificationSchema, await apiClient(`/notifications/${query}`)).map(toNotification);

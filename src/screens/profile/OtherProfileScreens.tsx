@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FlatList, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { FlatList, Linking, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { MapPin } from 'lucide-react-native';
@@ -12,6 +12,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { addressService, AddressInput, SavedAddress } from '../../services/addressService';
 import { authService } from '../../services/authService';
 import { getApiErrorMessage } from '../../services/api';
+import { notificationKeys, notificationService } from '../../services/notificationService';
 import { theme } from '../../theme';
 
 export const MyAddresses: React.FC = () => {
@@ -65,6 +66,7 @@ export const Settings: React.FC = () => {
   const userId = auth.user?.id ?? '';
   const client = useQueryClient();
   const profileQuery = useQuery({ queryKey: ['profile', userId], queryFn: authService.currentUser, enabled: Boolean(userId) });
+  const emailHistoryQuery = useQuery({ queryKey: notificationKeys.emailHistory(userId), queryFn: notificationService.emailHistory, enabled: Boolean(userId) });
   const [name, setName] = useState(auth.user?.name ?? '');
   const [phone, setPhone] = useState(auth.user?.phoneNumber ?? '');
   const [bio, setBio] = useState(auth.user?.bio ?? '');
@@ -88,7 +90,7 @@ export const Settings: React.FC = () => {
     } catch (cause) { setError(getApiErrorMessage(cause, 'Unable to update profile.')); }
     finally { setSaving(false); }
   };
-  const updateEmailPreference = async (key: 'email_order_updates' | 'email_seller_sales' | 'email_booking_updates' | 'email_seller_bookings', enabled: boolean) => {
+  const updateEmailPreference = async (key: 'email_order_updates' | 'email_seller_sales' | 'email_booking_updates' | 'email_seller_bookings' | 'email_wallet_updates' | 'email_promotions', enabled: boolean) => {
     if (savingEmail || !profileQuery.data) return;
     setSavingEmail(true); setError(undefined); setSuccess(undefined);
     try {
@@ -97,6 +99,8 @@ export const Settings: React.FC = () => {
         email_seller_sales: profileQuery.data.notificationPreferences?.email_seller_sales === true,
         email_booking_updates: profileQuery.data.notificationPreferences?.email_booking_updates !== false,
         email_seller_bookings: profileQuery.data.notificationPreferences?.email_seller_bookings === true,
+        email_wallet_updates: profileQuery.data.notificationPreferences?.email_wallet_updates !== false,
+        email_promotions: profileQuery.data.notificationPreferences?.email_promotions === true,
         [key]: enabled,
       } });
       await client.invalidateQueries({ queryKey: ['profile', userId] });
@@ -142,14 +146,31 @@ export const Settings: React.FC = () => {
         <View style={styles.rowContent}><Text style={styles.name}>New service bookings</Text><Text style={styles.note}>Get an email when someone requests your service.</Text></View>
         <Switch accessibilityLabel="Email me about new service bookings" disabled={savingEmail} value={profileQuery.data?.notificationPreferences?.email_seller_bookings === true} onValueChange={value => void updateEmailPreference('email_seller_bookings', value)} />
       </View>}
+      <View style={styles.preferenceRow}>
+        <View style={styles.rowContent}><Text style={styles.name}>Wallet and payouts</Text><Text style={styles.note}>Confirmed refunds, released seller earnings, and final withdrawal results.</Text></View>
+        <Switch accessibilityLabel="Email me wallet and payout updates" disabled={savingEmail} value={profileQuery.data?.notificationPreferences?.email_wallet_updates !== false} onValueChange={value => void updateEmailPreference('email_wallet_updates', value)} />
+      </View>
+      <View style={styles.preferenceRow}>
+        <View style={styles.rowContent}><Text style={styles.name}>Offers and news</Text><Text style={styles.note}>Optional promotional email. Off unless you choose to receive it; you can turn it off at any time.</Text></View>
+        <Switch accessibilityLabel="Email me optional offers and news" disabled={savingEmail} value={profileQuery.data?.notificationPreferences?.email_promotions === true} onValueChange={value => void updateEmailPreference('email_promotions', value)} />
+      </View>
       {error && !editing && <Text style={styles.error} accessibilityRole="alert">{error}</Text>}
       {success === 'preferences' && !editing && <Text style={styles.success} accessibilityRole="alert">Preferences saved.</Text>}
+    </View>}
+    {!profileQuery.isLoading && <View style={styles.preferences}>
+      <Text style={styles.heading}>Recent email updates</Text>
+      <Text style={styles.note}>“Sent” means the email provider accepted the message. “Delivered” means the receiving mail server accepted it.</Text>
+      {emailHistoryQuery.isLoading ? <Text style={styles.note}>Loading email history...</Text> :
+        emailHistoryQuery.isError ? <><Text style={styles.error} accessibilityRole="alert">Unable to load email history.</Text><Button variant="outline" onPress={() => void emailHistoryQuery.refetch()}>Retry</Button></> :
+          emailHistoryQuery.data?.length ? emailHistoryQuery.data.slice(0, 8).map(item => <View key={item.id} style={styles.preferenceRow}>
+            <View style={styles.rowContent}><Text style={styles.name}>{item.subject}</Text><Text style={styles.note}>{new Date(item.created_at).toLocaleDateString()} · {item.status.replace('_', ' ')}</Text></View>
+          </View>) : <Text style={styles.note}>No optional marketplace emails have been queued for this account yet.</Text>}
     </View>}
   </ScrollView></SafeAreaView>;
 };
 
 const faqs = [
-  { question: 'How do I place an order?', answer: 'Add a product to your cart, select an address, and place the order. Payment is not collected in the app.' },
+  { question: 'How do I place an order?', answer: 'Add a product to your cart, select an address, and choose a payment option at checkout.' },
   { question: 'Can I track delivery?', answer: 'Live delivery tracking is not available yet. My Orders shows the status currently held by the backend.' },
 ];
 export const SupportHelp: React.FC = () => {
@@ -159,7 +180,8 @@ export const SupportHelp: React.FC = () => {
     {faqs.map((faq, index) => <Pressable key={faq.question} style={styles.row} onPress={() => setOpen(open === index ? undefined : index)} accessibilityRole="button" accessibilityState={{ expanded: open === index }}>
       <View><Text style={styles.name}>{faq.question}</Text>{open === index && <Text style={styles.note}>{faq.answer}</Text>}</View>
     </Pressable>)}
-    <Text style={styles.note}>In-app support messaging is not available.</Text>
+    <Text style={styles.note}>Need help with an account, order, payment, or email update?</Text>
+    <Button variant="outline" onPress={() => void Linking.openURL('mailto:support@africlaymarket.com')}>Email AfriClay support</Button>
   </ScrollView></SafeAreaView>;
 };
 
