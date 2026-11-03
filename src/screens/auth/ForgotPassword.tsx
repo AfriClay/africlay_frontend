@@ -10,7 +10,7 @@ import { passwordResetSchema } from '../../validation/authSchemas';
 import { getAuthErrorMessage } from '../../services/authService';
 import { OTPInput } from '../../components/ui/OTPInput';
 import { useAuth } from '../../hooks/useAuth';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../../navigation/AuthStack';
 
@@ -21,6 +21,9 @@ type ResetForm = {
 export const ForgotPassword: React.FC = () => {
   const auth = useAuth();
   const navigation = useNavigation<NativeStackNavigationProp<AuthStackParamList, 'ForgotPassword'>>();
+  const route = useRoute<RouteProp<AuthStackParamList, 'ForgotPassword'>>();
+  const returnToOperations = route.params?.returnToOperations === true;
+  const [resetEmail, setResetEmail] = useState(auth.pendingEmail || '');
   const [sent, setSent] = useState(auth.pendingVerification === 'password_reset' && Boolean(auth.pendingEmail));
   const [completed, setCompleted] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -30,7 +33,7 @@ export const ForgotPassword: React.FC = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const { control, handleSubmit } = useForm<ResetForm>({
     resolver: zodResolver(passwordResetSchema),
-    defaultValues: { email: '' },
+    defaultValues: { email: auth.pendingEmail || '' },
   });
 
   const onSubmit = async (data: ResetForm) => {
@@ -38,6 +41,7 @@ export const ForgotPassword: React.FC = () => {
     setSubmitError(null);
     try {
       await auth.sendPasswordReset(data.email);
+      setResetEmail(data.email.trim().toLowerCase());
       setSent(true);
     } catch (error) {
       setSubmitError(getAuthErrorMessage(error, 'Unable to send the reset email.'));
@@ -76,8 +80,12 @@ export const ForgotPassword: React.FC = () => {
   if (completed) {
     return <FormFrame style={styles.container}>
       <Text style={styles.title}>Password reset</Text>
-      <Text style={styles.copy}>Your password has been updated. Sign in with your new password.</Text>
-      <Button fullWidth onPress={() => navigation.navigate('Login')}>Log In</Button>
+      <Text style={styles.copy}>Your password for {resetEmail} has been updated. Sign in with your new password.</Text>
+      <Button fullWidth onPress={() => {
+        const root = navigation.getParent<any>();
+        if (returnToOperations && root) root.navigate('OperationsLogin');
+        else navigation.navigate('Login');
+      }}>{returnToOperations ? 'Operations sign in' : 'Log In'}</Button>
     </FormFrame>;
   }
 
@@ -85,7 +93,7 @@ export const ForgotPassword: React.FC = () => {
     return (
       <FormFrame style={styles.container}>
         <Text style={styles.title}>Enter Reset Code</Text>
-        <Text style={styles.copy}>If an eligible account exists, a 6-digit code will be sent to your email. Enter it below and choose a new password.</Text>
+        <Text style={styles.copy}>If an eligible account exists, a 6-digit code was sent to {resetEmail}. Enter it below and choose a new password for that account.</Text>
         <OTPInput value={code} onChange={setCode} onComplete={() => undefined} error={submitError ?? undefined} accessibilityLabel="Password reset code" />
         <Input label="New password" required value={password} onChangeText={setPassword} secureTextEntry placeholder="New password" accessibilityLabel="New password" autoComplete="new-password" />
         <Input label="Confirm password" required value={confirmPassword} onChangeText={setConfirmPassword} secureTextEntry placeholder="Repeat new password" accessibilityLabel="Confirm new password" autoComplete="new-password" />
@@ -97,6 +105,7 @@ export const ForgotPassword: React.FC = () => {
   return (
     <FormFrame style={styles.container}>
       <Text style={styles.title}>Forgot Password</Text>
+      {returnToOperations && <Text style={styles.copy}>Enter the email assigned to your Operations dashboard. The new password will apply only to that account.</Text>}
       <Controller
         control={control}
         name="email"

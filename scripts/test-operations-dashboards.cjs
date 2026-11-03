@@ -4,6 +4,7 @@ const { readFileSync } = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const ts = require('typescript');
+const { getPathFromState, getStateFromPath } = require('@react-navigation/core');
 
 const root = path.resolve(__dirname, '..');
 const source = relativePath => readFileSync(path.join(root, relativePath), 'utf8');
@@ -48,6 +49,15 @@ test('operations login routes assigned accounts and rejects unassigned marketpla
   assert.match(login, /dashboardFor\(auth\.user\)/);
   assert.match(login, /has not been assigned access to an operations dashboard/);
   assert.doesNotMatch(login, /Create account/);
+});
+
+test('operations password reset keeps its sign-in destination through a web refresh', () => {
+  const { linking } = transpile('src/navigation/linking.ts');
+  const state = getStateFromPath('/auth/forgot-password?returnToOperations=true', linking.config);
+  assert.equal(state.routes[0].name, 'AuthStack');
+  assert.equal(state.routes[0].state.routes[0].name, 'ForgotPassword');
+  assert.equal(state.routes[0].state.routes[0].params.returnToOperations, true);
+  assert.equal(getPathFromState(state, linking.config), '/auth/forgot-password?returnToOperations=true');
 });
 
 test('dashboard services use role-specific backend contracts', () => {

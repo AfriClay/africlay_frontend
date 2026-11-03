@@ -19,7 +19,11 @@ export const linking = {
           OTPVerification: 'verify',
           RoleSelection: 'role',
           ProfileCompletion: 'profile',
-          ForgotPassword: 'forgot-password',
+          ForgotPassword: {
+            path: 'forgot-password',
+            parse: { returnToOperations: value => value === 'true' },
+            stringify: { returnToOperations: value => String(value) },
+          },
           StorefrontSetup: 'storefront',
           KYCUpload: 'seller-verification',
           VerificationPending: 'verification-pending',

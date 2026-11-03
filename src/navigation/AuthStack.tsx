@@ -23,7 +23,7 @@ export type AuthStackParamList = {
   VerificationPending: undefined;
   StorefrontSetup: undefined;
   ProfileCompletion: undefined;
-  ForgotPassword: undefined;
+  ForgotPassword: { returnToOperations?: boolean } | undefined;
 };
 
 const Stack = createAppStackNavigator<AuthStackParamList>();

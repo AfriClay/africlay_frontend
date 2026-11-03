@@ -69,7 +69,10 @@ export const OperationsLogin = () => {
       <Controller control={control} name="password" render={({ field: { onChange, value }, fieldState }) => <Input label="Password" required value={value} onChangeText={onChange} secureTextEntry autoComplete="current-password" placeholder="Enter your password" error={fieldState.error?.message} accessibilityLabel="Operations password" />} />
       {error ? <Text style={styles.error} accessibilityRole="alert">{error}</Text> : null}
       <Button fullWidth loading={auth.loading} loadingLabel="Signing in" onPress={handleSubmit(submit)}>Sign in</Button>
-      <Button fullWidth variant="tertiary" onPress={() => navigation.navigate('AuthStack', { screen: 'ForgotPassword' })}>Forgot password?</Button>
+      <Button fullWidth variant="tertiary" onPress={() => navigation.navigate('AuthStack', {
+        screen: 'ForgotPassword',
+        params: { returnToOperations: true },
+      })}>Forgot password?</Button>
       <View style={styles.notice}><ShieldCheck size={17} color={operationsColors.green} /><Text style={styles.noticeText}>Dashboard access is assigned and audited by a super administrator.</Text></View>
       <Button fullWidth variant="outline" onPress={() => navigation.navigate('AppTabs')}>Back to marketplace</Button>
     </View></ScrollView>
