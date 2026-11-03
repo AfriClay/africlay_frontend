@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FlatList, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { MapPin } from 'lucide-react-native';
@@ -70,22 +70,39 @@ export const Settings: React.FC = () => {
   const [bio, setBio] = useState(auth.user?.bio ?? '');
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [savingEmail, setSavingEmail] = useState(false);
   const [error, setError] = useState<string>();
-  const [success, setSuccess] = useState(false);
+  const [success, setSuccess] = useState<'profile' | 'preferences'>();
   const startEditing = () => {
     const source = profileQuery.data ?? auth.user;
     setName(source?.name ?? ''); setPhone(source?.phoneNumber ?? ''); setBio(source?.bio ?? '');
-    setError(undefined); setSuccess(false); setEditing(true);
+    setError(undefined); setSuccess(undefined); setEditing(true);
   };
   const save = async () => {
     if (saving || !name.trim()) { setError('Enter your name.'); return; }
-    setSaving(true); setError(undefined); setSuccess(false);
+    setSaving(true); setError(undefined); setSuccess(undefined);
     try {
       await auth.saveProfile({ name: name.trim(), phoneNumber: phone.trim(), bio: bio.trim() });
       await client.invalidateQueries({ queryKey: ['profile', userId] });
-      setEditing(false); setSuccess(true);
+      setEditing(false); setSuccess('profile');
     } catch (cause) { setError(getApiErrorMessage(cause, 'Unable to update profile.')); }
     finally { setSaving(false); }
+  };
+  const updateEmailPreference = async (key: 'email_order_updates' | 'email_seller_sales' | 'email_booking_updates' | 'email_seller_bookings', enabled: boolean) => {
+    if (savingEmail || !profileQuery.data) return;
+    setSavingEmail(true); setError(undefined); setSuccess(undefined);
+    try {
+      await auth.saveProfile({ notificationPreferences: {
+        email_order_updates: profileQuery.data.notificationPreferences?.email_order_updates !== false,
+        email_seller_sales: profileQuery.data.notificationPreferences?.email_seller_sales === true,
+        email_booking_updates: profileQuery.data.notificationPreferences?.email_booking_updates !== false,
+        email_seller_bookings: profileQuery.data.notificationPreferences?.email_seller_bookings === true,
+        [key]: enabled,
+      } });
+      await client.invalidateQueries({ queryKey: ['profile', userId] });
+      setSuccess('preferences');
+    } catch (cause) { setError(getApiErrorMessage(cause, 'Unable to save email preferences.')); }
+    finally { setSavingEmail(false); }
   };
   if (!userId) return <EmptyState title="Sign in to edit your profile" description="Profile details belong to your account." />;
   if (profileQuery.isError) return <ErrorState message="Unable to load your profile." onRetry={() => void profileQuery.refetch()} />;
@@ -103,9 +120,31 @@ export const Settings: React.FC = () => {
       <Text style={styles.note}>{profileQuery.data?.email}</Text>
       <Text style={styles.note}>{profileQuery.data?.phoneNumber || 'No phone number'}</Text>
       <Text style={styles.note}>{profileQuery.data?.bio || 'No bio'}</Text>
-      {success && <Text style={styles.success} accessibilityRole="alert">Profile updated.</Text>}
+      {success === 'profile' && <Text style={styles.success} accessibilityRole="alert">Profile updated.</Text>}
       <Button onPress={startEditing}>Edit Profile</Button>
     </>}
+    {!profileQuery.isLoading && <View style={styles.preferences}>
+      <Text style={styles.heading}>Email updates</Text>
+      <Text style={styles.note}>Choose which marketplace updates you receive by email. Account verification and password reset emails are always sent.</Text>
+      <View style={styles.preferenceRow}>
+        <View style={styles.rowContent}><Text style={styles.name}>Order updates</Text><Text style={styles.note}>Payment, shipping, cancellation and delivery updates for your purchases.</Text></View>
+        <Switch accessibilityLabel="Email me updates about my orders" disabled={savingEmail} value={profileQuery.data?.notificationPreferences?.email_order_updates !== false} onValueChange={value => void updateEmailPreference('email_order_updates', value)} />
+      </View>
+      <View style={styles.preferenceRow}>
+        <View style={styles.rowContent}><Text style={styles.name}>Service bookings</Text><Text style={styles.note}>Requests, confirmations and changes to your bookings.</Text></View>
+        <Switch accessibilityLabel="Email me updates about my service bookings" disabled={savingEmail} value={profileQuery.data?.notificationPreferences?.email_booking_updates !== false} onValueChange={value => void updateEmailPreference('email_booking_updates', value)} />
+      </View>
+      {['seller', 'both'].includes(profileQuery.data?.role ?? '') && <View style={styles.preferenceRow}>
+        <View style={styles.rowContent}><Text style={styles.name}>New purchases</Text><Text style={styles.note}>Get an email when a customer payment for your product is confirmed.</Text></View>
+        <Switch accessibilityLabel="Email me when customers purchase my products" disabled={savingEmail} value={profileQuery.data?.notificationPreferences?.email_seller_sales === true} onValueChange={value => void updateEmailPreference('email_seller_sales', value)} />
+      </View>}
+      {['seller', 'both'].includes(profileQuery.data?.role ?? '') && <View style={styles.preferenceRow}>
+        <View style={styles.rowContent}><Text style={styles.name}>New service bookings</Text><Text style={styles.note}>Get an email when someone requests your service.</Text></View>
+        <Switch accessibilityLabel="Email me about new service bookings" disabled={savingEmail} value={profileQuery.data?.notificationPreferences?.email_seller_bookings === true} onValueChange={value => void updateEmailPreference('email_seller_bookings', value)} />
+      </View>}
+      {error && !editing && <Text style={styles.error} accessibilityRole="alert">{error}</Text>}
+      {success === 'preferences' && !editing && <Text style={styles.success} accessibilityRole="alert">Preferences saved.</Text>}
+    </View>}
   </ScrollView></SafeAreaView>;
 };
 
@@ -135,4 +174,6 @@ const styles = StyleSheet.create({
   actions: { flexDirection: 'row', gap: theme.spacing.lg, marginTop: theme.spacing.sm },
   error: { color: theme.colors.error, marginVertical: theme.spacing.sm },
   success: { color: theme.colors.success, marginVertical: theme.spacing.sm },
+  preferences: { gap: theme.spacing.sm, marginTop: theme.spacing.lg },
+  preferenceRow: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md, padding: theme.spacing.md, borderRadius: theme.radii.md, backgroundColor: theme.colors.white },
 });

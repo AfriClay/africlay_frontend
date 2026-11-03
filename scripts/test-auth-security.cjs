@@ -48,3 +48,33 @@ test('registration reports an email delivery failure and verification stores iss
   assert.equal(verified.user.verified, true);
   assert.equal(savedTokens[0], tokens);
 });
+
+test('profile email preferences round-trip through the authenticated profile contract', async () => {
+  const backendUser = { ...user, profile: { notification_preferences: {
+    email_order_updates: true, email_seller_sales: false,
+  } } };
+  const { service, calls } = createAuth({
+    '/auth/me/': { user: backendUser },
+  });
+  const result = await service.updateProfile({ notificationPreferences: {
+    email_order_updates: true, email_seller_sales: false,
+    email_booking_updates: true, email_seller_bookings: false,
+  } });
+  assert.deepEqual(calls[0].options.body.notification_preferences, {
+    email_order_updates: true, email_seller_sales: false,
+    email_booking_updates: true, email_seller_bookings: false,
+  });
+  assert.equal(result.notificationPreferences.email_order_updates, true);
+  assert.equal(result.notificationPreferences.email_seller_sales, false);
+  assert.equal(result.notificationPreferences.email_booking_updates, true);
+  assert.equal(result.notificationPreferences.email_seller_bookings, false);
+});
+
+test('buyer order emails default on and seller emails default off', async () => {
+  const { service } = createAuth({ '/auth/me/': { ...user, profile: { notification_preferences: {} } } });
+  const result = await service.currentUser();
+  assert.equal(result.notificationPreferences.email_order_updates, true);
+  assert.equal(result.notificationPreferences.email_seller_sales, false);
+  assert.equal(result.notificationPreferences.email_booking_updates, true);
+  assert.equal(result.notificationPreferences.email_seller_bookings, false);
+});

@@ -21,4 +21,10 @@ export interface User {
   role: UserRole;
   staffRoles: StaffRole[];
   avatarUrl?: string;
+  notificationPreferences?: {
+    email_order_updates: boolean;
+    email_seller_sales: boolean;
+    email_booking_updates: boolean;
+    email_seller_bookings: boolean;
+  };
 }

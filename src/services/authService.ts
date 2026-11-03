@@ -9,6 +9,7 @@ type BackendProfile = {
   last_name?: string;
   avatar_url?: string | null;
   bio?: string;
+  notification_preferences?: { email_order_updates?: boolean; email_seller_sales?: boolean; email_booking_updates?: boolean; email_seller_bookings?: boolean };
 };
 
 type BackendUser = {
@@ -50,6 +51,12 @@ export const mapBackendUser = (backendUser: BackendUser): User => {
     role: backendUser.role ?? 'buyer',
     staffRoles: backendUser.staff_roles ?? [],
     avatarUrl: profile?.avatar_url ?? undefined,
+    notificationPreferences: {
+      email_order_updates: profile?.notification_preferences?.email_order_updates !== false,
+      email_seller_sales: profile?.notification_preferences?.email_seller_sales === true,
+      email_booking_updates: profile?.notification_preferences?.email_booking_updates !== false,
+      email_seller_bookings: profile?.notification_preferences?.email_seller_bookings === true,
+    },
     stats: {
       orders: 0,
       wishlist: 0,
@@ -183,6 +190,7 @@ export const authService = {
         ...names,
         ...(profile.phoneNumber !== undefined ? { phone_number: profile.phoneNumber } : {}),
         ...(profile.bio !== undefined ? { bio: profile.bio } : {}),
+        ...(profile.notificationPreferences !== undefined ? { notification_preferences: profile.notificationPreferences } : {}),
       },
     });
     return mapBackendUser(response.user);
