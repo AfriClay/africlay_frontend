@@ -32,15 +32,27 @@ const emailDeliverySchema = z.object({
 
 export type EmailDeliveryItem = z.infer<typeof emailDeliverySchema>;
 
+const smsDeliverySchema = z.object({
+  id: z.string().uuid(),
+  title: z.string(),
+  status: z.enum(['pending', 'submitting', 'accepted', 'rejected', 'unknown', 'suppressed']),
+  created_at: z.string(),
+});
+
+export type SMSDeliveryItem = z.infer<typeof smsDeliverySchema>;
+
 export const notificationKeys = {
   all: (userId: string) => ['notifications', userId] as const,
   unread: (userId: string) => ['notifications', userId, 'unread'] as const,
   emailHistory: (userId: string) => ['email-history', userId] as const,
+  smsHistory: (userId: string) => ['sms-history', userId] as const,
 };
 
 export const notificationService = {
   emailHistory: async (): Promise<EmailDeliveryItem[]> =>
     parseCommerceList(emailDeliverySchema, await apiClient('/notifications/email-history/')),
+  smsHistory: async (): Promise<SMSDeliveryItem[]> =>
+    parseCommerceList(smsDeliverySchema, await apiClient('/notifications/sms-history/')),
   list: async (isRead?: boolean): Promise<NotificationItem[]> => {
     const query = isRead === undefined ? '' : `?is_read=${isRead}`;
     return parseCommerceList(notificationSchema, await apiClient(`/notifications/${query}`)).map(toNotification);

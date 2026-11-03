@@ -9,7 +9,7 @@ type BackendProfile = {
   last_name?: string;
   avatar_url?: string | null;
   bio?: string;
-  notification_preferences?: { email_order_updates?: boolean; email_seller_sales?: boolean; email_booking_updates?: boolean; email_seller_bookings?: boolean; email_wallet_updates?: boolean; email_promotions?: boolean };
+  notification_preferences?: { email_order_updates?: boolean; email_seller_sales?: boolean; email_booking_updates?: boolean; email_seller_bookings?: boolean; email_wallet_updates?: boolean; email_promotions?: boolean; sms_order_updates?: boolean; sms_seller_sales?: boolean; sms_booking_updates?: boolean; sms_seller_bookings?: boolean; sms_wallet_updates?: boolean };
 };
 
 type BackendUser = {
@@ -58,6 +58,11 @@ export const mapBackendUser = (backendUser: BackendUser): User => {
       email_seller_bookings: profile?.notification_preferences?.email_seller_bookings === true,
       email_wallet_updates: profile?.notification_preferences?.email_wallet_updates !== false,
       email_promotions: profile?.notification_preferences?.email_promotions === true,
+      sms_order_updates: profile?.notification_preferences?.sms_order_updates === true,
+      sms_seller_sales: profile?.notification_preferences?.sms_seller_sales === true,
+      sms_booking_updates: profile?.notification_preferences?.sms_booking_updates === true,
+      sms_seller_bookings: profile?.notification_preferences?.sms_seller_bookings === true,
+      sms_wallet_updates: profile?.notification_preferences?.sms_wallet_updates === true,
     },
     stats: {
       orders: 0,

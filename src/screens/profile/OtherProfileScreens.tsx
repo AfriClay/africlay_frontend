@@ -13,6 +13,7 @@ import { addressService, AddressInput, SavedAddress } from '../../services/addre
 import { authService } from '../../services/authService';
 import { getApiErrorMessage } from '../../services/api';
 import { notificationKeys, notificationService } from '../../services/notificationService';
+import { isOrderPaymentPhone } from '../../services/paymentService';
 import { theme } from '../../theme';
 
 export const MyAddresses: React.FC = () => {
@@ -67,6 +68,7 @@ export const Settings: React.FC = () => {
   const client = useQueryClient();
   const profileQuery = useQuery({ queryKey: ['profile', userId], queryFn: authService.currentUser, enabled: Boolean(userId) });
   const emailHistoryQuery = useQuery({ queryKey: notificationKeys.emailHistory(userId), queryFn: notificationService.emailHistory, enabled: Boolean(userId) });
+  const smsHistoryQuery = useQuery({ queryKey: notificationKeys.smsHistory(userId), queryFn: notificationService.smsHistory, enabled: Boolean(userId) });
   const [name, setName] = useState(auth.user?.name ?? '');
   const [phone, setPhone] = useState(auth.user?.phoneNumber ?? '');
   const [bio, setBio] = useState(auth.user?.bio ?? '');
@@ -90,7 +92,7 @@ export const Settings: React.FC = () => {
     } catch (cause) { setError(getApiErrorMessage(cause, 'Unable to update profile.')); }
     finally { setSaving(false); }
   };
-  const updateEmailPreference = async (key: 'email_order_updates' | 'email_seller_sales' | 'email_booking_updates' | 'email_seller_bookings' | 'email_wallet_updates' | 'email_promotions', enabled: boolean) => {
+  const updateEmailPreference = async (key: 'email_order_updates' | 'email_seller_sales' | 'email_booking_updates' | 'email_seller_bookings' | 'email_wallet_updates' | 'email_promotions' | 'sms_order_updates' | 'sms_seller_sales' | 'sms_booking_updates' | 'sms_seller_bookings' | 'sms_wallet_updates', enabled: boolean) => {
     if (savingEmail || !profileQuery.data) return;
     setSavingEmail(true); setError(undefined); setSuccess(undefined);
     try {
@@ -101,11 +103,16 @@ export const Settings: React.FC = () => {
         email_seller_bookings: profileQuery.data.notificationPreferences?.email_seller_bookings === true,
         email_wallet_updates: profileQuery.data.notificationPreferences?.email_wallet_updates !== false,
         email_promotions: profileQuery.data.notificationPreferences?.email_promotions === true,
+        sms_order_updates: profileQuery.data.notificationPreferences?.sms_order_updates === true,
+        sms_seller_sales: profileQuery.data.notificationPreferences?.sms_seller_sales === true,
+        sms_booking_updates: profileQuery.data.notificationPreferences?.sms_booking_updates === true,
+        sms_seller_bookings: profileQuery.data.notificationPreferences?.sms_seller_bookings === true,
+        sms_wallet_updates: profileQuery.data.notificationPreferences?.sms_wallet_updates === true,
         [key]: enabled,
       } });
       await client.invalidateQueries({ queryKey: ['profile', userId] });
       setSuccess('preferences');
-    } catch (cause) { setError(getApiErrorMessage(cause, 'Unable to save email preferences.')); }
+    } catch (cause) { setError(getApiErrorMessage(cause, 'Unable to save notification preferences.')); }
     finally { setSavingEmail(false); }
   };
   if (!userId) return <EmptyState title="Sign in to edit your profile" description="Profile details belong to your account." />;
@@ -156,6 +163,37 @@ export const Settings: React.FC = () => {
       </View>
       {error && !editing && <Text style={styles.error} accessibilityRole="alert">{error}</Text>}
       {success === 'preferences' && !editing && <Text style={styles.success} accessibilityRole="alert">Preferences saved.</Text>}
+    </View>}
+    {!profileQuery.isLoading && <View style={styles.preferences}>
+      <Text style={styles.heading}>SMS updates</Text>
+      <Text style={styles.note}>Optional text messages to your account phone number. All SMS alerts are off until you enable them. Email settings are separate.</Text>
+      {!profileQuery.data?.phoneNumber || !isOrderPaymentPhone(profileQuery.data.phoneNumber) ? <Text style={styles.error} accessibilityRole="alert">Add a valid Kenyan mobile number in Edit Profile before SMS can be sent.</Text> : null}
+      <View style={styles.preferenceRow}>
+        <View style={styles.rowContent}><Text style={styles.name}>Order updates</Text><Text style={styles.note}>Payment, shipping, cancellation and delivery.</Text></View>
+        <Switch accessibilityLabel="Text me order updates" disabled={savingEmail} value={profileQuery.data?.notificationPreferences?.sms_order_updates === true} onValueChange={value => void updateEmailPreference('sms_order_updates', value)} />
+      </View>
+      <View style={styles.preferenceRow}>
+        <View style={styles.rowContent}><Text style={styles.name}>Service bookings</Text><Text style={styles.note}>Requests and status changes.</Text></View>
+        <Switch accessibilityLabel="Text me service booking updates" disabled={savingEmail} value={profileQuery.data?.notificationPreferences?.sms_booking_updates === true} onValueChange={value => void updateEmailPreference('sms_booking_updates', value)} />
+      </View>
+      {['seller', 'both'].includes(profileQuery.data?.role ?? '') && <View style={styles.preferenceRow}>
+        <View style={styles.rowContent}><Text style={styles.name}>New purchases</Text><Text style={styles.note}>Confirmed sales from your store.</Text></View>
+        <Switch accessibilityLabel="Text me new purchase alerts" disabled={savingEmail} value={profileQuery.data?.notificationPreferences?.sms_seller_sales === true} onValueChange={value => void updateEmailPreference('sms_seller_sales', value)} />
+      </View>}
+      {['seller', 'both'].includes(profileQuery.data?.role ?? '') && <View style={styles.preferenceRow}>
+        <View style={styles.rowContent}><Text style={styles.name}>New service bookings</Text><Text style={styles.note}>Customer booking requests.</Text></View>
+        <Switch accessibilityLabel="Text me new service booking alerts" disabled={savingEmail} value={profileQuery.data?.notificationPreferences?.sms_seller_bookings === true} onValueChange={value => void updateEmailPreference('sms_seller_bookings', value)} />
+      </View>}
+      <View style={styles.preferenceRow}>
+        <View style={styles.rowContent}><Text style={styles.name}>Wallet and payouts</Text><Text style={styles.note}>Confirmed wallet and withdrawal outcomes.</Text></View>
+        <Switch accessibilityLabel="Text me wallet and payout updates" disabled={savingEmail} value={profileQuery.data?.notificationPreferences?.sms_wallet_updates === true} onValueChange={value => void updateEmailPreference('sms_wallet_updates', value)} />
+      </View>
+      <Text style={styles.note}>Accepted means the SMS provider accepted the request. Delivery to the handset has not been confirmed.</Text>
+      {smsHistoryQuery.isLoading ? <Text style={styles.note}>Loading SMS history...</Text> :
+        smsHistoryQuery.isError ? <><Text style={styles.error} accessibilityRole="alert">Unable to load SMS history.</Text><Button variant="outline" onPress={() => void smsHistoryQuery.refetch()}>Retry</Button></> :
+          smsHistoryQuery.data?.length ? smsHistoryQuery.data.slice(0, 5).map(item => <View key={item.id} style={styles.preferenceRow}>
+            <View style={styles.rowContent}><Text style={styles.name}>{item.title}</Text><Text style={styles.note}>{new Date(item.created_at).toLocaleDateString()} - {item.status}</Text></View>
+          </View>) : <Text style={styles.note}>No SMS updates have been requested for this account.</Text>}
     </View>}
     {!profileQuery.isLoading && <View style={styles.preferences}>
       <Text style={styles.heading}>Recent email updates</Text>

@@ -28,5 +28,10 @@ export interface User {
     email_seller_bookings: boolean;
     email_wallet_updates: boolean;
     email_promotions: boolean;
+    sms_order_updates: boolean;
+    sms_seller_sales: boolean;
+    sms_booking_updates: boolean;
+    sms_seller_bookings: boolean;
+    sms_wallet_updates: boolean;
   };
 }

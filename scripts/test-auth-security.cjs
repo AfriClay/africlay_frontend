@@ -77,4 +77,18 @@ test('buyer order emails default on and seller emails default off', async () => 
   assert.equal(result.notificationPreferences.email_seller_sales, false);
   assert.equal(result.notificationPreferences.email_booking_updates, true);
   assert.equal(result.notificationPreferences.email_seller_bookings, false);
+  assert.equal(result.notificationPreferences.sms_order_updates, false);
+  assert.equal(result.notificationPreferences.sms_wallet_updates, false);
+});
+
+test('SMS opt-in maps separately from email and is editable in profile', async () => {
+  const { service } = createAuth({ '/auth/me/': { ...user, profile: { notification_preferences: {
+    email_order_updates: true, sms_order_updates: true, sms_seller_sales: false,
+  } } } });
+  const result = await service.currentUser();
+  assert.equal(result.notificationPreferences.sms_order_updates, true);
+  assert.equal(result.notificationPreferences.email_order_updates, true);
+  const profile = require('node:fs').readFileSync(require('node:path').join(__dirname, '../src/screens/profile/OtherProfileScreens.tsx'), 'utf8');
+  assert.match(profile, /SMS updates/);
+  assert.match(profile, /sms_order_updates/);
 });
