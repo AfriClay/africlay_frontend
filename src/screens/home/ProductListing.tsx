@@ -14,22 +14,25 @@ import { catalogKeys } from '../../services/catalogQueries';
 import { rootCategories } from '../../utils/categoryTree';
 import { SearchField } from '../../components/ui/SearchField';
 import { Button } from '../../components/ui/Button';
+import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 
 export const ProductListing: React.FC = () => {
   const { isExpanded, productColumns } = useResponsiveLayout();
   const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList, 'ProductListing'>>();
   const route = useRoute<RouteProp<HomeStackParamList, 'ProductListing'>>();
   const [query, setQuery] = useState('');
+  const search = useDebouncedValue(query.trim(), 250);
   const [activeCategory, setActiveCategory] = useState<string | undefined>(route.params?.categoryId);
   const [activeTag, setActiveTag] = useState<string>();
-  useEffect(() => setActiveCategory(route.params?.categoryId), [route.params?.categoryId]);
+  useEffect(() => { setActiveCategory(route.params?.categoryId); setActiveTag(undefined); }, [route.params?.categoryId]);
   const categoriesQuery = useQuery({ queryKey: catalogKeys.categories, queryFn: productService.fetchCategories });
   const tagsQuery = useQuery({ queryKey: catalogKeys.tags, queryFn: productService.fetchTags });
   const productsQuery = useInfiniteQuery({
-    queryKey: catalogKeys.productsFiltered(activeCategory, activeTag),
+    queryKey: catalogKeys.productsFiltered(activeCategory, activeTag, search),
     queryFn: ({ pageParam }) => productService.fetchProductPage({
       category: activeCategory,
       tag: activeTag,
+      search,
       limit: 24,
       offset: pageParam,
     }),
@@ -48,10 +51,6 @@ export const ProductListing: React.FC = () => {
     return selected && !roots.some(category => category.id === selected.id) ? [selected, ...roots] : roots;
   }, [activeCategory, categoriesQuery.data]);
 
-  const filtered = useMemo(() => products.filter(product => {
-    const matchesQuery = query.length === 0 || product.name.toLowerCase().includes(query.toLowerCase());
-    return matchesQuery;
-  }), [products, query]);
   const tagButtons = [{ slug: '', label: 'All tags' }, ...(tagsQuery.data ?? [])].map(tag => (
     <Pressable key={tag.slug} onPress={() => setActiveTag(tag.slug || undefined)} style={[styles.filterChip, activeTag === (tag.slug || undefined) ? styles.filterActive : null]} accessibilityRole="button" accessibilityLabel={tag.label}>
       <Text style={[styles.filterText, activeTag === (tag.slug || undefined) ? styles.filterTextActive : null]}>{tag.label}</Text>
@@ -64,17 +63,17 @@ export const ProductListing: React.FC = () => {
     <View style={styles.container}>
       {isExpanded ? <Text style={styles.title}>Products</Text> : null}
       <SearchField value={query} onChangeText={setQuery} placeholder="Search products" accessibilityLabel="Search products" containerStyle={styles.search} />
-      {!isExpanded && <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroller} contentContainerStyle={styles.categoryFilters} accessibilityRole="radiogroup">
-        <Pressable onPress={() => setActiveCategory(undefined)} style={[styles.filterChip, !activeCategory ? styles.filterActive : null]} accessibilityRole="radio" accessibilityState={{ selected: !activeCategory }} accessibilityLabel="All categories">
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroller} contentContainerStyle={styles.categoryFilters} accessibilityRole="radiogroup">
+        <Pressable onPress={() => { setActiveCategory(undefined); setActiveTag(undefined); }} style={[styles.filterChip, !activeCategory ? styles.filterActive : null]} accessibilityRole="radio" accessibilityState={{ selected: !activeCategory }} accessibilityLabel="All categories">
           <Text style={[styles.filterText, !activeCategory ? styles.filterTextActive : null]}>All products</Text>
         </Pressable>
         {categoryOptions.map(category => (
-          <Pressable key={category.id} onPress={() => setActiveCategory(category.slug)} style={[styles.filterChip, activeCategory === category.slug && styles.filterActive]}
+          <Pressable key={category.id} onPress={() => { setActiveCategory(category.slug); setActiveTag(undefined); }} style={[styles.filterChip, activeCategory === category.slug && styles.filterActive]}
             accessibilityRole="radio" accessibilityState={{ selected: activeCategory === category.slug }} accessibilityLabel={`Browse ${category.label}`}>
             <Text numberOfLines={1} style={[styles.filterText, activeCategory === category.slug && styles.filterTextActive]}>{category.label}</Text>
           </Pressable>
         ))}
-      </ScrollView>}
+      </ScrollView>
       {isExpanded ? <View style={styles.filters}>{tagButtons}</View> : <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroller} contentContainerStyle={styles.mobileFilters}>{tagButtons}</ScrollView>}
       {isLoading || categoriesQuery.isLoading || tagsQuery.isLoading ? (
         <View style={styles.skeletonGrid}>
@@ -84,7 +83,7 @@ export const ProductListing: React.FC = () => {
         </View>
       ) : (
         <FlatList
-          data={filtered}
+          data={products}
           key={productColumns}
           numColumns={productColumns}
           keyExtractor={item => item.id}
@@ -108,7 +107,7 @@ export const ProductListing: React.FC = () => {
             }
           }}
           onEndReachedThreshold={0.4}
-          contentContainerStyle={filtered.length === 0 ? styles.emptyList : styles.list}
+          contentContainerStyle={products.length === 0 ? styles.emptyList : styles.list}
           columnWrapperStyle={styles.column}
         />
       )}

@@ -3,7 +3,7 @@ import type { QueryClient } from '@tanstack/react-query';
 export const catalogKeys = {
   products: ['products'] as const,
   featuredProducts: (limit: number) => ['products', 'featured', limit] as const,
-  productsFiltered: (category?: string, tag?: string) => ['products', { category: category ?? '', tag: tag ?? '' }] as const,
+  productsFiltered: (category?: string, tag?: string, search?: string) => ['products', { category: category ?? '', tag: tag ?? '', search: search ?? '' }] as const,
   categories: ['categories'] as const,
   tags: ['tags'] as const,
   sellers: ['sellers'] as const,

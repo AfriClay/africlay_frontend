@@ -149,6 +149,16 @@ test('product list maps backend IDs, category, tags, decimal price, stock and im
   assert.equal(requests.find(item => item.path === '/api/products/').init.credentials, 'omit');
 });
 
+test('catalog requests use category and text search without requiring a tag', async () => {
+  const { service, requests } = harness();
+  const page = await service.fetchProductPage({ category: 'handmade', search: 'Sisal Rug', limit: 24 });
+  assert.equal(page.results.length, 1);
+  const request = requests.find(item => item.path === '/api/products/');
+  assert.equal(request.search.get('category'), 'handmade');
+  assert.equal(request.search.get('search'), 'Sisal Rug');
+  assert.equal(request.search.has('tag'), false);
+});
+
 test('public product detail navigates by slug and missing detail is null', async () => {
   const { service, requests } = harness(route => route.pathname.endsWith('/products/removed/') || route.pathname.endsWith('/products/product-id/') ? json({ detail: 'Not found' }, 404) : undefined);
   assert.equal((await service.fetchProductById('sisal-rug')).id, product.id);
@@ -185,7 +195,7 @@ test('product cards clamp names and keep rating before price', () => {
   assert.match(home, /desktopCategoryGrid: \{ justifyContent: 'flex-start', columnGap:/);
 });
 
-test('desktop category menu keeps hierarchy while mobile opens products from compact categories', () => {
+test('desktop category menu keeps hierarchy and the listing exposes category filters on all sizes', () => {
   const source = readFileSync(path.join(__dirname, '../src/components/layout/CategoryMegaMenu.tsx'), 'utf8');
   const shell = readFileSync(path.join(__dirname, '../src/components/layout/MarketplaceShell.tsx'), 'utf8');
   const listing = readFileSync(path.join(__dirname, '../src/screens/home/ProductListing.tsx'), 'utf8');
@@ -196,7 +206,7 @@ test('desktop category menu keeps hierarchy while mobile opens products from com
   assert.match(source, /Animated\.timing\(reveal/);
   assert.match(source, /Shop all/);
   assert.doesNotMatch(shell, /Shop by category/);
-  assert.match(listing, /\{!isExpanded && <ScrollView horizontal/);
+  assert.match(listing, /<ScrollView horizontal[^>]*contentContainerStyle=\{styles\.categoryFilters\}/);
   assert.match(listing, /rootCategories\(categories\)/);
   assert.doesNotMatch(listing, /flattenCategoryTree/);
   assert.match(sideMenu, /rootCategories\(categoriesQuery\.data \?\? \[\]\)/);

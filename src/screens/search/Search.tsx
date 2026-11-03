@@ -15,7 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { Clock3, PackageSearch, Store, Trash2 } from 'lucide-react-native';
 import { CatalogImage } from '../../components/ui/CatalogImage';
 import { Button } from '../../components/ui/Button';
@@ -85,11 +85,17 @@ export const Search: React.FC<SearchProps> = ({ presentation = 'screen', focusRe
     return () => task.cancel();
   }, [focusRequest]);
 
-  const productsQuery = useQuery({ queryKey: catalogKeys.products, queryFn: () => productService.fetchProducts({ limit: 100 }) });
+  const productsQuery = useInfiniteQuery({
+    queryKey: ['products', 'search', debouncedQuery],
+    queryFn: ({ pageParam }) => productService.fetchProductPage({ search: debouncedQuery, limit: 24, offset: pageParam }),
+    initialPageParam: 0,
+    getNextPageParam: lastPage => lastPage.nextOffset,
+    enabled: Boolean(debouncedQuery),
+  });
   const sellersQuery = useQuery({ queryKey: catalogKeys.sellers, queryFn: productService.fetchSellers, staleTime: 60_000 });
-  const products = productsQuery.data ?? [];
+  const products = useMemo(() => productsQuery.data?.pages.flatMap(page => page.results) ?? [], [productsQuery.data]);
   const sellers = sellersQuery.data ?? [];
-  const loading = productsQuery.isPending || sellersQuery.isPending;
+  const loading = (Boolean(debouncedQuery) && productsQuery.isPending) || sellersQuery.isPending;
 
   useEffect(() => {
     if (!loading) { setSlow(false); return; }
@@ -102,7 +108,6 @@ export const Search: React.FC<SearchProps> = ({ presentation = 'screen', focusRe
     if (!normalized) return [];
     return products
       .filter(product => !availableOnly || product.availableQuantity > 0)
-      .filter(product => `${product.name} ${product.description}`.toLocaleLowerCase().includes(normalized))
       .filter(product => Boolean(product.slug))
       .map(product => ({
         key: `product-${product.id}`,
@@ -234,6 +239,9 @@ export const Search: React.FC<SearchProps> = ({ presentation = 'screen', focusRe
       </Pressable>;
     }}
     ListEmptyComponent={<EmptyState title="No matches found" description="Try a product name or seller." />}
+    ListFooterComponent={productsQuery.hasNextPage ? <Button size="sm" variant="outline" onPress={() => void productsQuery.fetchNextPage()} loading={productsQuery.isFetchingNextPage}>Load more products</Button> : null}
+    onEndReached={() => { if (productsQuery.hasNextPage && !productsQuery.isFetchingNextPage) void productsQuery.fetchNextPage(); }}
+    onEndReachedThreshold={0.4}
   />;
 
   const searchContent = hasBlockingFailure ? (

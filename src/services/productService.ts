@@ -173,11 +173,12 @@ export const productService = {
   },
   fetchTags: async (): Promise<CatalogTag[]> => list(tagSchema, await apiClient('/products/tags/', { auth: false }))
     .map(item => ({ id: item.id, slug: item.slug, label: item.name, categoryIds: item.categories })),
-  fetchProductPage: async (filters: { category?: string; tag?: string; store?: string; limit?: number; offset?: number } = {}): Promise<CatalogPage<Product>> => {
+  fetchProductPage: async (filters: { category?: string; tag?: string; store?: string; search?: string; limit?: number; offset?: number } = {}): Promise<CatalogPage<Product>> => {
     const params = new URLSearchParams();
     if (filters.category) params.set('category', filters.category);
     if (filters.tag) params.set('tag', filters.tag);
     if (filters.store) params.set('store', filters.store);
+    if (filters.search?.trim()) params.set('search', filters.search.trim());
     params.set('limit', String(filters.limit ?? 24));
     if (filters.offset) params.set('offset', String(filters.offset));
     const query = params.toString();
@@ -186,7 +187,7 @@ export const productService = {
     const response = page(productSchema, raw, filters.offset ?? 0);
     return { ...response, results: response.results.map(item => toProduct(item, categories)) };
   },
-  fetchProducts: async (filters: { category?: string; tag?: string; store?: string; limit?: number; offset?: number } = {}): Promise<Product[]> =>
+  fetchProducts: async (filters: { category?: string; tag?: string; store?: string; search?: string; limit?: number; offset?: number } = {}): Promise<Product[]> =>
     (await productService.fetchProductPage(filters)).results,
   fetchProductById: async (slug: string): Promise<Product | null> => {
     if (!recordId(slug)) return null;
