@@ -69,6 +69,8 @@ export const Settings: React.FC = () => {
   const profileQuery = useQuery({ queryKey: ['profile', userId], queryFn: authService.currentUser, enabled: Boolean(userId) });
   const emailHistoryQuery = useQuery({ queryKey: notificationKeys.emailHistory(userId), queryFn: notificationService.emailHistory, enabled: Boolean(userId) });
   const smsHistoryQuery = useQuery({ queryKey: notificationKeys.smsHistory(userId), queryFn: notificationService.smsHistory, enabled: Boolean(userId) });
+  const smsStatusQuery = useQuery({ queryKey: notificationKeys.smsStatus(userId), queryFn: notificationService.smsStatus, enabled: Boolean(userId) });
+  const smsAvailable = smsStatusQuery.data?.enabled === true;
   const [name, setName] = useState(auth.user?.name ?? '');
   const [phone, setPhone] = useState(auth.user?.phoneNumber ?? '');
   const [bio, setBio] = useState(auth.user?.bio ?? '');
@@ -93,7 +95,7 @@ export const Settings: React.FC = () => {
     finally { setSaving(false); }
   };
   const updateEmailPreference = async (key: 'email_order_updates' | 'email_seller_sales' | 'email_booking_updates' | 'email_seller_bookings' | 'email_wallet_updates' | 'email_promotions' | 'sms_order_updates' | 'sms_seller_sales' | 'sms_booking_updates' | 'sms_seller_bookings' | 'sms_wallet_updates', enabled: boolean) => {
-    if (savingEmail || !profileQuery.data) return;
+    if (savingEmail || !profileQuery.data || (key.startsWith('sms_') && !smsAvailable)) return;
     setSavingEmail(true); setError(undefined); setSuccess(undefined);
     try {
       await auth.saveProfile({ notificationPreferences: {
@@ -167,26 +169,29 @@ export const Settings: React.FC = () => {
     {!profileQuery.isLoading && <View style={styles.preferences}>
       <Text style={styles.heading}>SMS updates</Text>
       <Text style={styles.note}>Optional text messages to your account phone number. All SMS alerts are off until you enable them. Email settings are separate.</Text>
+      {smsStatusQuery.isLoading ? <Text style={styles.note}>Checking SMS availability...</Text> :
+        smsStatusQuery.isError ? <><Text style={styles.error} accessibilityRole="alert">Unable to check SMS availability.</Text><Button variant="outline" onPress={() => void smsStatusQuery.refetch()}>Retry</Button></> :
+          !smsAvailable ? <Text style={styles.error} accessibilityRole="alert">SMS updates are temporarily unavailable. Your saved preferences remain in place; email and in-app updates continue.</Text> : null}
       {!profileQuery.data?.phoneNumber || !isOrderPaymentPhone(profileQuery.data.phoneNumber) ? <Text style={styles.error} accessibilityRole="alert">Add a valid Kenyan mobile number in Edit Profile before SMS can be sent.</Text> : null}
       <View style={styles.preferenceRow}>
         <View style={styles.rowContent}><Text style={styles.name}>Order updates</Text><Text style={styles.note}>Payment, shipping, cancellation and delivery.</Text></View>
-        <Switch accessibilityLabel="Text me order updates" disabled={savingEmail} value={profileQuery.data?.notificationPreferences?.sms_order_updates === true} onValueChange={value => void updateEmailPreference('sms_order_updates', value)} />
+        <Switch accessibilityLabel="Text me order updates" disabled={savingEmail || !smsAvailable} value={profileQuery.data?.notificationPreferences?.sms_order_updates === true} onValueChange={value => void updateEmailPreference('sms_order_updates', value)} />
       </View>
       <View style={styles.preferenceRow}>
         <View style={styles.rowContent}><Text style={styles.name}>Service bookings</Text><Text style={styles.note}>Requests and status changes.</Text></View>
-        <Switch accessibilityLabel="Text me service booking updates" disabled={savingEmail} value={profileQuery.data?.notificationPreferences?.sms_booking_updates === true} onValueChange={value => void updateEmailPreference('sms_booking_updates', value)} />
+        <Switch accessibilityLabel="Text me service booking updates" disabled={savingEmail || !smsAvailable} value={profileQuery.data?.notificationPreferences?.sms_booking_updates === true} onValueChange={value => void updateEmailPreference('sms_booking_updates', value)} />
       </View>
       {['seller', 'both'].includes(profileQuery.data?.role ?? '') && <View style={styles.preferenceRow}>
         <View style={styles.rowContent}><Text style={styles.name}>New purchases</Text><Text style={styles.note}>Confirmed sales from your store.</Text></View>
-        <Switch accessibilityLabel="Text me new purchase alerts" disabled={savingEmail} value={profileQuery.data?.notificationPreferences?.sms_seller_sales === true} onValueChange={value => void updateEmailPreference('sms_seller_sales', value)} />
+        <Switch accessibilityLabel="Text me new purchase alerts" disabled={savingEmail || !smsAvailable} value={profileQuery.data?.notificationPreferences?.sms_seller_sales === true} onValueChange={value => void updateEmailPreference('sms_seller_sales', value)} />
       </View>}
       {['seller', 'both'].includes(profileQuery.data?.role ?? '') && <View style={styles.preferenceRow}>
         <View style={styles.rowContent}><Text style={styles.name}>New service bookings</Text><Text style={styles.note}>Customer booking requests.</Text></View>
-        <Switch accessibilityLabel="Text me new service booking alerts" disabled={savingEmail} value={profileQuery.data?.notificationPreferences?.sms_seller_bookings === true} onValueChange={value => void updateEmailPreference('sms_seller_bookings', value)} />
+        <Switch accessibilityLabel="Text me new service booking alerts" disabled={savingEmail || !smsAvailable} value={profileQuery.data?.notificationPreferences?.sms_seller_bookings === true} onValueChange={value => void updateEmailPreference('sms_seller_bookings', value)} />
       </View>}
       <View style={styles.preferenceRow}>
         <View style={styles.rowContent}><Text style={styles.name}>Wallet and payouts</Text><Text style={styles.note}>Confirmed wallet and withdrawal outcomes.</Text></View>
-        <Switch accessibilityLabel="Text me wallet and payout updates" disabled={savingEmail} value={profileQuery.data?.notificationPreferences?.sms_wallet_updates === true} onValueChange={value => void updateEmailPreference('sms_wallet_updates', value)} />
+        <Switch accessibilityLabel="Text me wallet and payout updates" disabled={savingEmail || !smsAvailable} value={profileQuery.data?.notificationPreferences?.sms_wallet_updates === true} onValueChange={value => void updateEmailPreference('sms_wallet_updates', value)} />
       </View>
       <Text style={styles.note}>Accepted means the SMS provider accepted the request. Delivery to the handset has not been confirmed.</Text>
       {smsHistoryQuery.isLoading ? <Text style={styles.note}>Loading SMS history...</Text> :

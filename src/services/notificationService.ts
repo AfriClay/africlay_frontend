@@ -46,6 +46,7 @@ export const notificationKeys = {
   unread: (userId: string) => ['notifications', userId, 'unread'] as const,
   emailHistory: (userId: string) => ['email-history', userId] as const,
   smsHistory: (userId: string) => ['sms-history', userId] as const,
+  smsStatus: (userId: string) => ['sms-status', userId] as const,
 };
 
 export const notificationService = {
@@ -53,6 +54,8 @@ export const notificationService = {
     parseCommerceList(emailDeliverySchema, await apiClient('/notifications/email-history/')),
   smsHistory: async (): Promise<SMSDeliveryItem[]> =>
     parseCommerceList(smsDeliverySchema, await apiClient('/notifications/sms-history/')),
+  smsStatus: async (): Promise<{ enabled: boolean }> =>
+    parseCommerce(z.object({ enabled: z.boolean() }), await apiClient('/notifications/sms-status/')),
   list: async (isRead?: boolean): Promise<NotificationItem[]> => {
     const query = isRead === undefined ? '' : `?is_read=${isRead}`;
     return parseCommerceList(notificationSchema, await apiClient(`/notifications/${query}`)).map(toNotification);
