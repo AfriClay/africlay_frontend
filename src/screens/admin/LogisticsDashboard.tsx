@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Linking, StyleSheet, Text, View } from 'react-native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
@@ -7,6 +7,9 @@ import { useAuth } from '../../hooks/useAuth';
 import { getApiErrorMessage } from '../../services/api';
 import { logisticsService, LogisticsShipment, LogisticsStage } from '../../services/logisticsService';
 import { homeDeliveryService, HomeDeliveryJob, HomeDeliveryRiderStage } from '../../services/homeDeliveryService';
+import { riderService } from '../../services/riderService';
+import { notificationService } from '../../services/notificationService';
+import { RiderApplicationForm } from './RiderApplicationForm';
 import { hasStaffRole, isSuperAdmin } from '../../utils/roles';
 import { DataFreshness, formatOperationsDate, OperationsScaffold, operationsColors } from './OperationsScaffold';
 
@@ -34,16 +37,22 @@ export const LogisticsDashboard = () => {
   const administrator = isSuperAdmin(auth.user);
   const [offset, setOffset] = useState(0);
   const [homeOffset, setHomeOffset] = useState(0);
+  const [riderOffset, setRiderOffset] = useState(0);
   const [email, setEmail] = useState('');
   const [reason, setReason] = useState('');
   const [busyId, setBusyId] = useState<string>();
   const [error, setError] = useState<string>();
+  const [reviewReason, setReviewReason] = useState('');
+  const [declineReason, setDeclineReason] = useState('');
   const key = ['operations', 'logistics', auth.user?.id, offset] as const;
-  const shipments = useQuery({ queryKey: key, queryFn: () => logisticsService.list(offset), enabled: allowed });
-  const homeJobs = useQuery({ queryKey: ['operations', 'home-deliveries', auth.user?.id, homeOffset], queryFn: () => homeDeliveryService.list(homeOffset), enabled: allowed });
+  const shipments = useQuery({ queryKey: key, queryFn: () => logisticsService.list(offset), enabled: allowed, refetchInterval: 30_000 });
+  const homeJobs = useQuery({ queryKey: ['operations', 'home-deliveries', auth.user?.id, homeOffset], queryFn: () => homeDeliveryService.list(homeOffset), enabled: allowed, refetchInterval: 30_000 });
+  const applications = useQuery({ queryKey: ['operations', 'rider-applications', auth.user?.id, riderOffset], queryFn: () => riderService.pending(riderOffset), enabled: administrator });
+  const notices = useQuery({ queryKey: ['operations', 'delivery-notices', auth.user?.id], queryFn: () => notificationService.list(), enabled: allowed, refetchInterval: 30_000 });
   const refresh = async () => { await Promise.all([
     client.invalidateQueries({ queryKey: ['operations', 'logistics'] }),
     client.invalidateQueries({ queryKey: ['operations', 'home-deliveries'] }),
+    client.invalidateQueries({ queryKey: ['operations', 'delivery-notices'] }),
   ]); };
   const record = async (shipment: LogisticsShipment, stage: LogisticsStage) => {
     setBusyId(shipment.id); setError(undefined);
@@ -69,9 +78,43 @@ export const LogisticsDashboard = () => {
     catch (value) { setError(getApiErrorMessage(value, 'Could not assign this rider.')); }
     finally { setBusyId(undefined); }
   };
+  const reviewApplication = async (id: number, decision: 'approved' | 'rejected') => {
+    if (reviewReason.trim().length < 5) { setError('Enter a review reason of at least five characters.'); return; }
+    setBusyId(String(id)); setError(undefined);
+    try { await riderService.review(id, decision, reviewReason.trim()); setReviewReason(''); await applications.refetch(); }
+    catch (cause) { setError(getApiErrorMessage(cause, 'Could not review this rider.')); }
+    finally { setBusyId(undefined); }
+  };
+  const declineHome = async (job: HomeDeliveryJob) => {
+    if (declineReason.trim().length < 5) { setError('Enter a reason for declining the job.'); return; }
+    setBusyId(job.order_id); setError(undefined);
+    try { await homeDeliveryService.record(job.order_id, 'rider_declined', declineReason.trim()); setDeclineReason(''); await refresh(); }
+    catch (cause) { setError(getApiErrorMessage(cause, 'Could not decline this delivery.')); }
+    finally { setBusyId(undefined); }
+  };
 
   return <OperationsScaffold title="Delivery logistics" subtitle="Seller collections, pickup points and assigned doorstep rides. Record milestones only after the physical handover has happened.">
     {!allowed ? <Text style={styles.error}>Logistics access required.</Text> : <>
+      <Text style={styles.title}>Delivery alerts</Text>
+      {notices.isLoading ? <Text style={styles.muted}>Loading alerts...</Text> : null}
+      {notices.isError ? <Button variant="outline" onPress={() => void notices.refetch()}>Retry alerts</Button> : null}
+      {notices.data?.filter(item => ['New delivery assigned', 'Delivery assignment changed', 'Seller collection assigned', 'Delivery declined'].includes(item.title)).slice(0, 5).map(item =>
+        <View key={item.id} style={styles.card}><Text style={styles.title}>{item.title}</Text><Text style={styles.detail}>{item.message}</Text><Text style={styles.muted}>{formatOperationsDate(item.createdAt)}</Text></View>)}
+      {!administrator && auth.user?.verified ? <RiderApplicationForm userId={auth.user.id} /> : null}
+      {administrator ? <><Text style={styles.title}>Rider applications</Text>
+        {applications.isLoading ? <Text style={styles.muted}>Loading applications...</Text> : null}
+        {applications.isError ? <Button variant="outline" onPress={() => void applications.refetch()}>Retry rider applications</Button> : null}
+        {applications.data && !applications.data.results.length ? <Text style={styles.muted}>No rider applications await review.</Text> : null}
+        {applications.data?.results.map(application => <View key={application.id} style={styles.card}>
+          <Text style={styles.title}>{application.applicant_email}</Text>
+          <Text style={styles.detail}>{application.city} · {application.vehicle_type} · {application.vehicle_registration}</Text>
+          <Text style={styles.detail}>Licence: {application.licence_number} · Phone: {application.applicant_phone}</Text>
+          {application.identity_document_url ? <Button variant="outline" onPress={() => void Linking.openURL(application.identity_document_url!)}>View identity document</Button> : null}
+          {application.licence_document_url ? <Button variant="outline" onPress={() => void Linking.openURL(application.licence_document_url!)}>View licence document</Button> : null}
+          <Input label="Review reason" value={reviewReason} onChangeText={setReviewReason} />
+          <View style={styles.pager}><Button variant="outline" disabled={Boolean(busyId)} onPress={() => void reviewApplication(application.id, 'rejected')}>Request changes</Button><Button disabled={Boolean(busyId)} onPress={() => void reviewApplication(application.id, 'approved')}>Approve rider</Button></View>
+        </View>)}
+        {applications.data && applications.data.count > 30 ? <View style={styles.pager}><Button variant="outline" disabled={riderOffset === 0} onPress={() => setRiderOffset(Math.max(0, riderOffset - 30))}>Previous</Button><Text style={styles.muted}>{riderOffset + 1}–{Math.min(riderOffset + 30, applications.data.count)} of {applications.data.count}</Text><Button variant="outline" disabled={!applications.data.next} onPress={() => setRiderOffset(riderOffset + 30)}>Next</Button></View> : null}</> : null}
       <DataFreshness updatedAt={shipments.dataUpdatedAt} refreshing={shipments.isFetching} failed={shipments.isError} onRefresh={() => void shipments.refetch()} />
       {shipments.isLoading ? <Text style={styles.muted}>Loading shipments...</Text> : null}
       {shipments.isError ? <View><Text style={styles.error}>Shipments could not be loaded.</Text><Button variant="secondary" onPress={() => void shipments.refetch()}>Retry</Button></View> : null}
@@ -108,9 +151,11 @@ export const LogisticsDashboard = () => {
           {job.delivery_instructions ? <Text style={styles.detail}>Instructions: {job.delivery_instructions}</Text> : null}
           {job.buyer_phone ? <Text style={styles.detail}>Buyer phone: {job.buyer_phone}</Text> : null}
           <Text style={styles.muted}>Quoted road distance: {(Number(job.distance_meters) / 1000).toFixed(2)} km</Text>
+          {job.status === 'rider_assigned' && job.accept_by ? <Text style={new Date(job.accept_by).getTime() < Date.now() ? styles.error : styles.muted}>{new Date(job.accept_by).getTime() < Date.now() ? 'Acceptance deadline passed. Ask logistics to reassign.' : `Accept by ${formatOperationsDate(job.accept_by)}`}</Text> : null}
           {job.events.map(event => <Text key={event.id} style={styles.muted}>{event.stage.replaceAll('_', ' ')} · {formatOperationsDate(event.created_at)}</Text>)}
           {next && job.assigned_rider_id === auth.user?.id ? <Button disabled={Boolean(busyId)} onPress={() => void recordHome(job, next.value)}>{next.label}</Button> : null}
-          {administrator && job.status === 'waiting_for_parcels' ? <View style={styles.assign}><Input label="Rider staff email" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" /><Input label="Assignment reason" value={reason} onChangeText={setReason} /><Button variant="secondary" disabled={Boolean(busyId) || !email.trim() || reason.trim().length < 5} onPress={() => void assignHome(job)}>Assign rider</Button></View> : null}
+          {job.assigned_rider_id === auth.user?.id && ['rider_assigned', 'rider_accepted'].includes(job.status) ? <View style={styles.assign}><Input label="Reason if declining" value={declineReason} onChangeText={setDeclineReason} /><Button variant="outline" disabled={Boolean(busyId)} onPress={() => void declineHome(job)}>Decline delivery</Button></View> : null}
+          {administrator && ['waiting_for_parcels', 'rider_assigned'].includes(job.status) ? <View style={styles.assign}><Input label="Approved rider email" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" /><Input label="Assignment reason" value={reason} onChangeText={setReason} /><Button variant="secondary" disabled={Boolean(busyId) || !email.trim() || reason.trim().length < 5} onPress={() => void assignHome(job)}>{job.status === 'rider_assigned' ? 'Reassign rider' : 'Assign rider'}</Button></View> : null}
         </View>;
       })}
       {homeJobs.data && homeJobs.data.count > 30 ? <View style={styles.pager}><Button variant="secondary" disabled={homeOffset === 0} onPress={() => setHomeOffset(Math.max(0, homeOffset - 30))}>Previous</Button><Text style={styles.muted}>{homeOffset + 1}–{Math.min(homeOffset + 30, homeJobs.data.count)} of {homeJobs.data.count}</Text><Button variant="secondary" disabled={!homeJobs.data.next} onPress={() => setHomeOffset(homeOffset + 30)}>Next</Button></View> : null}
