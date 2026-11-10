@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { apiClient } from './api';
+import type { DeviceCoordinates } from './deviceLocation';
 
 const supportedTownsSchema = z.object({
   towns: z.array(z.string().trim().min(1)),
@@ -23,6 +24,13 @@ export const shippingService = {
     return homeLocationsSchema.parse(await apiClient('/cart/doorstep/locations/', {
       method: 'POST', body: { pickup_point_id: pickupPointId, query },
     })).locations;
+  },
+  currentLocation: async (pickupPointId: string, coordinates: DeviceCoordinates): Promise<HomeLocation> => {
+    const parsed = homeLocationsSchema.parse(await apiClient('/cart/doorstep/locations/', {
+      method: 'POST', body: { pickup_point_id: pickupPointId, ...coordinates },
+    }));
+    if (parsed.locations.length !== 1) throw new Error('No delivery address was found near you. Search for a building instead.');
+    return parsed.locations[0];
   },
   supportedTowns: async (): Promise<string[]> => {
     const parsed = supportedTownsSchema.safeParse(await apiClient('/cart/shipping-towns/', { auth: false }));

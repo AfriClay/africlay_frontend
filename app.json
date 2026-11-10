@@ -27,6 +27,12 @@
       "expo-secure-store",
       "expo-notifications",
       [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Allow AfriClay to use your location once to find your doorstep delivery address."
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "backgroundColor": "#17532F",

@@ -17,7 +17,7 @@ test('doorstep checkout requires server availability, a selected location, and a
   assert.doesNotMatch(checkout, /addressService\.list/);
 });
 
-function harness(responder) {
+function harness(responder, geoNavigator) {
   const requests = [];
   const modules = new Map();
   const storage = new Map([['africlay.accessToken', 'test-access']]);
@@ -32,6 +32,7 @@ function harness(responder) {
     }).outputText;
     vm.runInNewContext(code, {
       exports, Headers, FormData, URLSearchParams, AbortController, setTimeout, clearTimeout,
+      navigator: geoNavigator,
       process: { env: { EXPO_PUBLIC_API_URL: 'https://api.example.test/api' } },
       localStorage: {
         getItem: key => storage.get(key) ?? null,
@@ -56,6 +57,43 @@ function harness(responder) {
 
   return { service: load('services/paymentService.ts').paymentService, requests, load };
 }
+
+test('device location asks only on demand and rejects inaccurate fixes', async () => {
+  const hosting = JSON.parse(readFileSync(path.resolve(__dirname, '../vercel.json'), 'utf8'));
+  const permissions = hosting.headers[0].headers.find(header => header.key === 'Permissions-Policy');
+  assert.match(permissions.value, /geolocation=\(self\)/);
+  let permissionRequests = 0;
+  const { load } = harness(() => json({}), {
+    geolocation: { getCurrentPosition: success => {
+      permissionRequests += 1;
+      success({ coords: { latitude: -1.29, longitude: 36.82, accuracy: 24 } });
+    } },
+  });
+  assert.equal(permissionRequests, 0);
+  const position = await load('services/deviceLocation.ts').getDeviceCoordinates();
+  assert.equal(permissionRequests, 1);
+  assert.equal(position.latitude, -1.29);
+  assert.equal(position.accuracy_meters, 24);
+  const inaccurate = harness(() => json({}), {
+    geolocation: { getCurrentPosition: success => success({ coords: {
+      latitude: -1.29, longitude: 36.82, accuracy: 1000,
+    } }) },
+  });
+  await assert.rejects(inaccurate.load('services/deviceLocation.ts').getDeviceCoordinates(), /not accurate enough/);
+});
+
+test('GPS pin lookup uses the existing authenticated location endpoint', async () => {
+  const { load, requests } = harness(() => json({ locations: [{ label: 'Example Road, Nairobi', token: 'signed-gps' }] }));
+  const pin = await load('services/shippingService.ts').shippingService.currentLocation('pickup-id', {
+    latitude: -1.29, longitude: 36.82, accuracy_meters: 24,
+  });
+  assert.equal(pin.token, 'signed-gps');
+  assert.equal(requests[0].path, '/api/cart/doorstep/locations/');
+  assert.equal(requests[0].init.headers.get('Authorization'), 'Bearer test-access');
+  assert.deepEqual(JSON.parse(requests[0].init.body), {
+    pickup_point_id: 'pickup-id', latitude: -1.29, longitude: 36.82, accuracy_meters: 24,
+  });
+});
 
 test('missing payout account is represented by null query data', async () => {
   const { service } = harness(route => {

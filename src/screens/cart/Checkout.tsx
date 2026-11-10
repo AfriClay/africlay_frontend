@@ -21,6 +21,7 @@ import { formatCurrency } from '../../utils/formatCurrency';
 import { catalogKeys } from '../../services/catalogQueries';
 import { productService } from '../../services/productService';
 import { HomeLocation, shippingService } from '../../services/shippingService';
+import { getDeviceCoordinates } from '../../services/deviceLocation';
 
 type CheckoutNavigation = NativeStackNavigationProp<RootStackParamList, 'Checkout'>;
 type CheckoutRoute = RouteProp<RootStackParamList, 'Checkout'>;
@@ -79,6 +80,10 @@ export const Checkout: React.FC = () => {
   const [homeSearch, setHomeSearch] = useState('');
   const [debouncedHomeSearch, setDebouncedHomeSearch] = useState('');
   const [selectedHome, setSelectedHome] = useState<HomeLocation>();
+  const [gpsSuggestion, setGpsSuggestion] = useState<HomeLocation>();
+  const [locating, setLocating] = useState(false);
+  const [locationError, setLocationError] = useState<string>();
+  const locationRequestId = useRef(0);
   const [homeInstructions, setHomeInstructions] = useState('');
   const [stage, setStage] = useState<CheckoutStage>('idle');
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -120,9 +125,37 @@ export const Checkout: React.FC = () => {
   }, [homeSearch]);
 
   useEffect(() => {
+    locationRequestId.current += 1;
     setSelectedHome(undefined);
+    setGpsSuggestion(undefined);
+    setLocationError(undefined);
     setHomeSearch('');
   }, [selectedPickup?.id]);
+
+  const useCurrentLocation = async () => {
+    if (!selectedPickup?.doorstep_available || locating) return;
+    const requestId = ++locationRequestId.current;
+    setLocationError(undefined);
+    setGpsSuggestion(undefined);
+    setSelectedHome(undefined);
+    setLocating(true);
+    try {
+      const coordinates = await getDeviceCoordinates();
+      const suggestion = await shippingService.currentLocation(selectedPickup.id, coordinates);
+      if (locationRequestId.current !== requestId) return;
+      setHomeSearch('');
+      setDebouncedHomeSearch('');
+      setGpsSuggestion(suggestion);
+    } catch (cause) {
+      if (locationRequestId.current === requestId) {
+        setLocationError(cause instanceof ApiError
+          ? getApiErrorMessage(cause, 'Could not confirm this location. Search for a building instead.')
+          : cause instanceof Error ? cause.message : 'Could not get your location. Search for a building instead.');
+      }
+    } finally {
+      setLocating(false);
+    }
+  };
 
   useEffect(() => {
     if (!auth.user) setAuthSheet(true);
@@ -345,7 +378,7 @@ export const Checkout: React.FC = () => {
   const header = <>
     <View style={styles.header}><Text style={styles.title}>Checkout</Text><Button variant="icon" icon={<X color={theme.colors.ink} size={22} />} onPress={() => navigation.goBack()} accessibilityLabel="Close checkout" /></View>
     <Text style={styles.sectionTitle}>Delivery</Text>
-    <Pressable onPress={() => setDeliveryMethod('pickup_point')} accessibilityRole="radio" accessibilityState={{ selected: deliveryMethod === 'pickup_point' }} style={[styles.address, deliveryMethod === 'pickup_point' && styles.selectedAddress]}>
+    <Pressable onPress={() => { locationRequestId.current += 1; setDeliveryMethod('pickup_point'); }} accessibilityRole="radio" accessibilityState={{ selected: deliveryMethod === 'pickup_point' }} style={[styles.address, deliveryMethod === 'pickup_point' && styles.selectedAddress]}>
       <Text style={styles.addressName}>Collect from an AfriClay pickup point</Text>
       <Text style={styles.note}>The logistics company collects from each seller and delivers to your chosen point.</Text>
     </Pressable>
@@ -363,10 +396,17 @@ export const Checkout: React.FC = () => {
       </Pressable>)}
     {deliveryMethod === 'doorstep' ? <View>
       <Text style={styles.sectionTitle}>Confirm your delivery location</Text>
-      <Input label="Building or landmark" value={homeSearch} onChangeText={value => { setHomeSearch(value); setSelectedHome(undefined); }} placeholder="Search a building or landmark in the pickup city" autoComplete="street-address" />
+      <Button variant="secondary" onPress={() => void useCurrentLocation()} loading={locating} loadingLabel="Finding your location" accessibilityLabel="Use my current location for doorstep delivery">Use my current location</Button>
+      <Text style={styles.note}>We’ll ask for location access, then show the nearby address for you to confirm before calculating the delivery fee.</Text>
+      {locationError ? <Text style={styles.error} accessibilityRole="alert">{locationError}</Text> : null}
+      {gpsSuggestion ? <Pressable accessibilityRole="radio" accessibilityState={{ selected: selectedHome?.token === gpsSuggestion.token }} onPress={() => { locationRequestId.current += 1; setSelectedHome(gpsSuggestion); }} style={[styles.address, selectedHome?.token === gpsSuggestion.token && styles.selectedAddress]}>
+        <Text style={styles.addressName}>Confirm this delivery pin</Text>
+        <Text style={styles.note}>{gpsSuggestion.label}</Text>
+      </Pressable> : null}
+      <Input label="Or search a building or landmark" value={homeSearch} onChangeText={value => { locationRequestId.current += 1; setHomeSearch(value); setSelectedHome(undefined); setGpsSuggestion(undefined); setLocationError(undefined); }} placeholder="Search a building or landmark in the pickup city" autoComplete="street-address" />
       {homeLocationsQuery.isFetching ? <Text style={styles.note}>Searching locations...</Text> : null}
       {homeLocationsQuery.isError ? <View><Text style={styles.error}>Address search failed. Please try again.</Text><Button variant="secondary" onPress={() => void homeLocationsQuery.refetch()}>Retry address search</Button></View> : null}
-      {homeLocationsQuery.data?.map(location => <Pressable key={location.token} accessibilityRole="radio" accessibilityState={{ selected: selectedHome?.token === location.token }} onPress={() => { setSelectedHome(location); setHomeSearch(location.label); }} style={[styles.address, selectedHome?.token === location.token && styles.selectedAddress]}>
+      {homeLocationsQuery.data?.map(location => <Pressable key={location.token} accessibilityRole="radio" accessibilityState={{ selected: selectedHome?.token === location.token }} onPress={() => { locationRequestId.current += 1; setSelectedHome(location); setHomeSearch(location.label); }} style={[styles.address, selectedHome?.token === location.token && styles.selectedAddress]}>
         <Text style={styles.addressName}>{location.label}</Text>
       </Pressable>)}
       {debouncedHomeSearch.length >= 5 && homeLocationsQuery.isSuccess && !homeLocationsQuery.data?.length && !selectedHome ? <Text style={styles.note}>No precise location found in {selectedPickup?.city}. Try a nearby named building or choose pickup-point collection.</Text> : null}
