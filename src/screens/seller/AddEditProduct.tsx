@@ -20,6 +20,7 @@ import { productIdentifiers } from '../../utils/productIdentifiers';
 import { ChoiceGroup } from '../../components/ui/ChoiceGroup';
 import { FormField } from '../../components/ui/FormField';
 import { SearchField } from '../../components/ui/SearchField';
+import { useReducedMotionSafe } from '../../hooks/useReducedMotionSafe';
 
 type AddEditRoute = RouteProp<SellerDashboardStackParamList, 'AddEditProduct'>;
 type AddEditNavigation = NativeStackNavigationProp<SellerDashboardStackParamList, 'AddEditProduct'>;
@@ -37,11 +38,15 @@ export const AddEditProduct: React.FC = () => {
   const route = useRoute<AddEditRoute>();
   const navigation = useNavigation<AddEditNavigation>();
   const queryClient = useQueryClient();
+  const reducedMotion = useReducedMotionSafe();
   const sellerId = useAuth().user?.id ?? '';
   const productId = route.params?.productId;
   const populated = useRef(false);
   const savedProductId = useRef<string | undefined>(undefined);
   const pendingUploads = useRef<ImagePicker.ImagePickerAsset[]>([]);
+  const scrollRef = useRef<ScrollView>(null);
+  const categoryY = useRef(0);
+  const measurementsY = useRef(0);
   const generatedIdentifierSeed = useRef(identifierSeed());
   const productQuery = useQuery({ queryKey: catalogKeys.ownedProduct(productId ?? ''), queryFn: () => productService.fetchOwnedProductById(productId!), enabled: Boolean(productId) });
   const categoriesQuery = useQuery({ queryKey: catalogKeys.categories, queryFn: productService.fetchCategories });
@@ -71,6 +76,7 @@ export const AddEditProduct: React.FC = () => {
   const [images, setImages] = useState<ImagePicker.ImagePickerAsset[]>([]);
   const [status, setStatus] = useState<ProductStatus>('draft');
   const [saving, setSaving] = useState(false);
+  const [submitAttempted, setSubmitAttempted] = useState(false);
   const [error, setError] = useState<string>();
 
   useEffect(() => {
@@ -82,7 +88,7 @@ export const AddEditProduct: React.FC = () => {
     setCategoryPickerOpen(false); setCategoryQuery(''); setCategoryCreatorOpen(false);
     setCategoryParentId(undefined); setCategoryParentName(''); setCategoryChildName(''); setCategoryCreateError(undefined);
     setTagIds([]); setPrice(''); setStock('0'); setWeightKg('1'); setLengthCm(''); setWidthCm(''); setHeightCm(''); setExistingImages([]); setImages([]);
-    setStatus('draft'); setError(undefined);
+    setStatus('draft'); setError(undefined); setSubmitAttempted(false);
   }, [productId]);
 
   useEffect(() => {
@@ -165,6 +171,10 @@ export const AddEditProduct: React.FC = () => {
     status === 'published' && !hasValidCategory ? 'Choose a specific category before publishing.' :
     status === 'published' && !validDimensions ? 'Enter package length, width, and height below 100 cm.' : undefined;
 
+  const scrollToMeasurements = () => scrollRef.current?.scrollTo({ y: Math.max(0, measurementsY.current - 16), animated: !reducedMotion });
+  const dimensionError = (value: number) => submitAttempted && status === 'published' && !(Number.isFinite(value) && value > 0 && value < 100)
+    ? 'Enter a value greater than 0 and below 100 cm to publish.' : undefined;
+
   const createCategory = async () => {
     if (!canCreateCategory || categoryCreating) return;
     setCategoryCreating(true);
@@ -197,7 +207,15 @@ export const AddEditProduct: React.FC = () => {
   };
 
   const save = async () => {
-    if (!canSave || saving) return;
+    if (saving) return;
+    if (!canSave) {
+      setSubmitAttempted(true);
+      const targetY = !baseDetailsValid ? (!validWeight ? measurementsY.current : 0)
+        : status === 'published' && !hasValidCategory ? categoryY.current
+        : status === 'published' && !validDimensions ? measurementsY.current : 0;
+      scrollRef.current?.scrollTo({ y: Math.max(0, targetY - 16), animated: !reducedMotion });
+      return;
+    }
     setSaving(true);
     setError(undefined);
     try {
@@ -241,10 +259,10 @@ export const AddEditProduct: React.FC = () => {
   if (productId && productQuery.isError) return <ErrorState message="Unable to load this product." onRetry={() => void productQuery.refetch()} />;
   if (productId && productQuery.isLoading) return <Text style={styles.label}>Loading product...</Text>;
   if (productId && !product) return <EmptyState title="Product not found" description="This product can no longer be edited." />;
-  return <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+  return <ScrollView ref={scrollRef} contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
     <Input label="Product name" required value={name} onChangeText={setName} placeholder="What are you selling?" accessibilityLabel="Product name" />
     <Input label="Description" required value={description} onChangeText={setDescription} placeholder="Describe the product, materials, and condition" multiline accessibilityLabel="Product description" />
-    <FormField label="Specific category" required>
+    <View onLayout={event => { categoryY.current = event.nativeEvent.layout.y; }}><FormField label="Specific category" required>
       {categoriesQuery.isLoading ? <Text style={styles.optionMessage}>Loading categories...</Text> :
       categoriesQuery.isError ? <View style={styles.optionFailure}><Text style={styles.optionError}>Unable to load categories.</Text><Button size="sm" variant="tertiary" onPress={() => void categoriesQuery.refetch()} accessibilityLabel="Retry loading product categories">Retry</Button></View> :
         <View style={styles.categoryPicker}>
@@ -298,7 +316,7 @@ export const AddEditProduct: React.FC = () => {
               </View> : null}
             </View> : null}
           </View>}
-    </FormField>
+    </FormField></View>
     <TagPicker
       tags={tagsQuery.data ?? []}
       selectedIds={tagIds}
@@ -313,17 +331,24 @@ export const AddEditProduct: React.FC = () => {
       <View style={styles.column}><Input label="Price (KSh)" required value={price} onChangeText={setPrice} keyboardType="decimal-pad" placeholder="0" accessibilityLabel="Product price" /></View>
       <View style={styles.column}><Input label="Stock count" required value={stock} onChangeText={setStock} keyboardType="number-pad" placeholder="0" accessibilityLabel="Stock count" /></View>
     </View>
+    <View onLayout={event => { measurementsY.current = event.nativeEvent.layout.y; }}>
     <Text style={styles.label}>Package measurements</Text>
+    {status === 'published' && !validDimensions ? <Text style={styles.measurementHint} accessibilityLiveRegion="polite">Enter all three package dimensions to publish. Each side must be greater than 0 and below 100 cm.</Text> : null}
     <View style={styles.twoColumns}>
       <View style={styles.column}><Input label="Weight (kg)" required value={weightKg} onChangeText={setWeightKg} keyboardType="decimal-pad" placeholder="1.0" accessibilityLabel="Packaged product weight in kilograms" /></View>
-      <View style={styles.column}><Input label="Length (cm)" optional value={lengthCm} onChangeText={setLengthCm} keyboardType="decimal-pad" placeholder="0" accessibilityLabel="Package length in centimetres" /></View>
+      <View style={styles.column}><Input label="Length (cm)" required={status === 'published'} optional={status !== 'published'} error={dimensionError(numericLength)} value={lengthCm} onChangeText={setLengthCm} keyboardType="decimal-pad" placeholder="0" accessibilityLabel="Package length in centimetres" /></View>
     </View>
     <View style={styles.twoColumns}>
-      <View style={styles.column}><Input label="Width (cm)" optional value={widthCm} onChangeText={setWidthCm} keyboardType="decimal-pad" placeholder="0" accessibilityLabel="Package width in centimetres" /></View>
-      <View style={styles.column}><Input label="Height (cm)" optional value={heightCm} onChangeText={setHeightCm} keyboardType="decimal-pad" placeholder="0" accessibilityLabel="Package height in centimetres" /></View>
+      <View style={styles.column}><Input label="Width (cm)" required={status === 'published'} optional={status !== 'published'} error={dimensionError(numericWidth)} value={widthCm} onChangeText={setWidthCm} keyboardType="decimal-pad" placeholder="0" accessibilityLabel="Package width in centimetres" /></View>
+      <View style={styles.column}><Input label="Height (cm)" required={status === 'published'} optional={status !== 'published'} error={dimensionError(numericHeight)} value={heightCm} onChangeText={setHeightCm} keyboardType="decimal-pad" placeholder="0" accessibilityLabel="Package height in centimetres" /></View>
+    </View>
     </View>
     <ChoiceGroup label="Listing status" required value={status} onChange={setStatus} disabled={saving}
       options={productStatuses.filter(option => option.value !== 'archived' || Boolean(productId)).map(option => ({ value: option.value, label: option.label, description: option.summary }))} />
+    {productId && product?.status === 'archived' && status === 'published' && !validDimensions ? <View style={styles.restoreHint}>
+      <Text style={styles.restoreHintText}>This archived listing needs package measurements before it can return to the marketplace.</Text>
+      <Button variant="tertiary" size="sm" onPress={scrollToMeasurements}>Add package measurements</Button>
+    </View> : null}
     <FormField label={`Images (${existingImages.length + images.length}/8)`} optional helperText="Add clear JPG or PNG images. The first image is used as the cover.">
       <View style={styles.imageGrid}>
       {existingImages.length + images.length < 8 && <Pressable style={styles.addImage} onPress={pickImages} accessibilityRole="button" accessibilityLabel="Add product images"><ImagePlus color={theme.colors.primary.DEFAULT} size={25} /><Text style={styles.addImageText}>Add images</Text></Pressable>}
@@ -336,7 +361,7 @@ export const AddEditProduct: React.FC = () => {
     </FormField>
     {error && <Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
     {validationMessage && <Text accessibilityLiveRegion="polite" style={styles.validationMessage}>{validationMessage}</Text>}
-    <Button onPress={save} disabled={!canSave} loading={saving}>
+    <Button onPress={save} loading={saving}>
       {productId ? 'Save Changes' : status === 'published' ? 'Publish Product' : 'Save Draft'}
     </Button>
   </ScrollView>;
@@ -376,4 +401,7 @@ const styles = StyleSheet.create({
   optionFailure: { alignItems: 'flex-start', marginBottom: theme.spacing.md },
   optionError: { color: theme.colors.error, lineHeight: 20 },
   validationMessage: { color: theme.colors.muted, lineHeight: 20, marginBottom: theme.spacing.sm },
+  measurementHint: { color: theme.colors.muted, lineHeight: 20, marginBottom: theme.spacing.sm },
+  restoreHint: { marginBottom: theme.spacing.md, padding: theme.spacing.md, borderRadius: theme.radii.md, backgroundColor: theme.colors.primary.tint },
+  restoreHintText: { color: theme.colors.ink, lineHeight: 20 },
 });

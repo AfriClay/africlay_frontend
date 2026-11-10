@@ -314,6 +314,29 @@ test('create and update use backend fields, POST and PATCH, not local storage', 
   assert.equal(storage.has('africlay-seller-catalog-v1'), false);
 });
 
+test('legacy archived product measurements can be supplied when republishing', async () => {
+  const archived = { ...product, status: 'archived', length_cm: null, width_cm: null, height_cm: null };
+  const { api, service, requests } = harness((route, init) => {
+    if (route.pathname.endsWith('/products/manage/product-id/') && (!init.method || init.method === 'GET')) return json(archived);
+    if (route.pathname.endsWith('/products/manage/product-id/') && init.method === 'PATCH') return json({
+      ...archived, status: 'published', length_cm: '25.00', width_cm: '20.00', height_cm: '15.00',
+    });
+    return undefined;
+  });
+  await api.tokenManager.setTokens({ access: 'seller-access', refresh: 'seller-refresh' });
+  const owned = await service.fetchOwnedProductById(product.id);
+  assert.equal(owned.status, 'archived');
+  assert.equal(owned.lengthCm, undefined);
+  const restored = await service.updateSellerProduct(store.owner, product.id, {
+    ...draft, status: 'published', lengthCm: 25, widthCm: 20, heightCm: 15,
+  });
+  assert.equal(restored.status, 'published');
+  const update = requests.find(item => item.path.endsWith('/products/manage/product-id/') && item.init.method === 'PATCH');
+  const body = JSON.parse(update.init.body);
+  assert.deepEqual([body.status, body.length_cm, body.width_cm, body.height_cm],
+    ['published', '25.00', '20.00', '15.00']);
+});
+
 test('seller UI exposes listing status and makes current visibility explicit', () => {
   const editor = readFileSync(path.join(__dirname, '../src/screens/seller/AddEditProduct.tsx'), 'utf8');
   const management = readFileSync(path.join(__dirname, '../src/screens/seller/ProductManagement.tsx'), 'utf8');
