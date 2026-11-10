@@ -71,7 +71,9 @@ export const Checkout: React.FC = () => {
     buy_now_quantity: buyNowQuantity,
   } : {};
   const queryClient = useQueryClient();
-  const pickupPointsQuery = useQuery({ queryKey: ['pickup-points'], queryFn: shippingService.pickupPoints });
+  const pickupPointsQuery = useQuery({
+    queryKey: ['pickup-points', userId], queryFn: shippingService.pickupPoints, enabled: Boolean(userId),
+  });
   const [selectedPickupId, setSelectedPickupId] = useState<string>();
   const [deliveryMethod, setDeliveryMethod] = useState<'pickup_point' | 'doorstep'>('pickup_point');
   const [homeSearch, setHomeSearch] = useState('');

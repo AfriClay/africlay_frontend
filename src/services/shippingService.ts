@@ -18,7 +18,7 @@ export type HomeLocation = z.infer<typeof homeLocationsSchema>['locations'][numb
 
 export const shippingService = {
   pickupPoints: async (): Promise<PickupPoint[]> =>
-    z.array(pickupPointSchema).parse(await apiClient('/cart/pickup-points/', { auth: false })),
+    z.array(pickupPointSchema).parse(await apiClient('/cart/pickup-points/')),
   homeLocations: async (pickupPointId: string, query: string): Promise<HomeLocation[]> => {
     return homeLocationsSchema.parse(await apiClient('/cart/doorstep/locations/', {
       method: 'POST', body: { pickup_point_id: pickupPointId, query },

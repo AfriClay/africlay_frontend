@@ -160,6 +160,7 @@ test('pickup-point checkout sends the reviewed route and preserves its destinati
         created_at: '2026-11-06T12:00:00Z' }, 201));
   const points = await load('services/shippingService.ts').shippingService.pickupPoints();
   assert.equal(points[0].id, pointId);
+  assert.equal(requests[0].init.headers.get('Authorization'), 'Bearer test-access');
   const service = load('services/orderService.ts').orderService;
   const route = { delivery_method: 'pickup_point', pickup_point_id: pointId };
   const quote = await service.shippingQuote(route);
