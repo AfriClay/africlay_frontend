@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Image, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -21,6 +21,7 @@ import { ChoiceGroup } from '../../components/ui/ChoiceGroup';
 import { FormField } from '../../components/ui/FormField';
 import { SearchField } from '../../components/ui/SearchField';
 import { useReducedMotionSafe } from '../../hooks/useReducedMotionSafe';
+import type { ProductImageRecord } from '../../types/product';
 
 type AddEditRoute = RouteProp<SellerDashboardStackParamList, 'AddEditProduct'>;
 type AddEditNavigation = NativeStackNavigationProp<SellerDashboardStackParamList, 'AddEditProduct'>;
@@ -72,7 +73,8 @@ export const AddEditProduct: React.FC = () => {
   const [lengthCm, setLengthCm] = useState('');
   const [widthCm, setWidthCm] = useState('');
   const [heightCm, setHeightCm] = useState('');
-  const [existingImages, setExistingImages] = useState<string[]>([]);
+  const [existingImages, setExistingImages] = useState<ProductImageRecord[]>([]);
+  const [imageBusyId, setImageBusyId] = useState<string>();
   const [images, setImages] = useState<ImagePicker.ImagePickerAsset[]>([]);
   const [status, setStatus] = useState<ProductStatus>('draft');
   const [saving, setSaving] = useState(false);
@@ -106,7 +108,7 @@ export const AddEditProduct: React.FC = () => {
     setLengthCm(product.lengthCm == null ? '' : String(product.lengthCm));
     setWidthCm(product.widthCm == null ? '' : String(product.widthCm));
     setHeightCm(product.heightCm == null ? '' : String(product.heightCm));
-    setExistingImages(product.images);
+    setExistingImages(product.imageRecords ?? product.images.map(url => ({ url, isPrimary: false })));
     setStatus(product.status ?? 'draft');
   }, [product]);
 
@@ -123,6 +125,60 @@ export const AddEditProduct: React.FC = () => {
     }
     setImages(current => [...current, ...result.assets].slice(0, 8 - existingImages.length));
     setError(undefined);
+  };
+
+  const refreshProductImages = async () => {
+    if (product) await invalidateCatalog(queryClient, sellerId, product.sellerId, product.slug, product.id);
+  };
+
+  const removeExistingImage = async (image: ProductImageRecord) => {
+    if (!productId || !image.id || imageBusyId || saving) return;
+    setImageBusyId(image.id);
+    setError(undefined);
+    try {
+      await productService.deleteProductImage(productId, image.id);
+      setExistingImages(current => {
+        const remaining = current.filter(item => item.id !== image.id);
+        if (image.isPrimary && remaining.length && !remaining.some(item => item.isPrimary)) {
+          remaining[0] = { ...remaining[0], isPrimary: true };
+        }
+        return remaining;
+      });
+      await refreshProductImages();
+    } catch (removeError) {
+      setError(removeError instanceof Error ? removeError.message : 'Unable to remove this photo. Try again.');
+    } finally {
+      setImageBusyId(undefined);
+    }
+  };
+
+  const confirmImageRemoval = (image: ProductImageRecord) => {
+    if (Platform.OS === 'web') {
+      if (typeof window !== 'undefined' && window.confirm('Remove this photo from the product? This change is immediate.')) {
+        void removeExistingImage(image);
+      }
+      return;
+    }
+    Alert.alert('Remove photo?', 'This change is immediate.', [
+      { text: 'Keep photo', style: 'cancel' },
+      { text: 'Remove', style: 'destructive', onPress: () => void removeExistingImage(image) },
+    ]);
+  };
+
+  const setCoverImage = async (image: ProductImageRecord) => {
+    if (!productId || !image.id || imageBusyId || saving) return;
+    setImageBusyId(image.id);
+    setError(undefined);
+    try {
+      await productService.setProductCover(productId, image.id);
+      setExistingImages(current => current.map(item => ({ ...item, isPrimary: item.id === image.id }))
+        .sort((a, b) => Number(b.isPrimary) - Number(a.isPrimary)));
+      await refreshProductImages();
+    } catch (coverError) {
+      setError(coverError instanceof Error ? coverError.message : 'Unable to change the cover photo. Try again.');
+    } finally {
+      setImageBusyId(undefined);
+    }
   };
 
   const numericPrice = Number(price.replace(/,/g, ''));
@@ -208,7 +264,7 @@ export const AddEditProduct: React.FC = () => {
   };
 
   const save = async () => {
-    if (saving) return;
+    if (saving || imageBusyId) return;
     if (!canSave) {
       setSubmitAttempted(true);
       const targetY = !baseDetailsValid ? (!validWeight ? measurementsY.current : 0)
@@ -354,10 +410,14 @@ export const AddEditProduct: React.FC = () => {
       <Text style={styles.restoreHintText}>The package dimensions are incomplete. Complete them or clear all three fields before republishing.</Text>
       <Button variant="tertiary" size="sm" onPress={scrollToMeasurements}>Review package measurements</Button>
     </View> : null}
-    <FormField label={`Images (${existingImages.length + images.length}/8)`} optional helperText="Add clear JPG or PNG images. The first image is used as the cover.">
+    <FormField label={`Images (${existingImages.length + images.length}/8)`} optional helperText="Add clear JPG, PNG or WebP images. Remove or change the cover photo below. Saved photo changes take effect immediately.">
       <View style={styles.imageGrid}>
       {existingImages.length + images.length < 8 && <Pressable style={styles.addImage} onPress={pickImages} accessibilityRole="button" accessibilityLabel="Add product images"><ImagePlus color={theme.colors.primary.DEFAULT} size={25} /><Text style={styles.addImageText}>Add images</Text></Pressable>}
-      {existingImages.map(uri => <Image key={uri} source={{ uri }} style={styles.image} />)}
+      {existingImages.map(image => <View key={image.id ?? image.url} style={styles.existingImage}>
+        <Image source={{ uri: image.url }} style={styles.image} />
+        {image.id ? <Button variant="icon" size="sm" style={styles.removeImage} disabled={Boolean(imageBusyId) || saving} onPress={() => confirmImageRemoval(image)} accessibilityLabel={`Remove product photo${image.isPrimary ? ' (cover)' : ''}`} icon={<X color={theme.colors.white} size={15} />} /> : null}
+        {image.isPrimary ? <Text style={styles.coverText}>Cover</Text> : image.id ? <Pressable onPress={() => void setCoverImage(image)} disabled={Boolean(imageBusyId) || saving} accessibilityRole="button" accessibilityLabel="Set product photo as cover" style={styles.coverAction}><Text style={styles.coverActionText}>Set cover</Text></Pressable> : null}
+      </View>)}
       {images.map(asset => <View key={asset.uri}>
         <Image source={{ uri: asset.uri }} style={styles.image} />
         <Button variant="icon" size="sm" style={styles.removeImage} onPress={() => { pendingUploads.current = pendingUploads.current.filter(image => image.uri !== asset.uri); setImages(current => current.filter(image => image.uri !== asset.uri)); }} accessibilityLabel="Remove selected image" icon={<X color={theme.colors.white} size={15} />} />
@@ -366,7 +426,7 @@ export const AddEditProduct: React.FC = () => {
     </FormField>
     {error && <Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
     {validationMessage && <Text accessibilityLiveRegion="polite" style={styles.validationMessage}>{validationMessage}</Text>}
-    <Button onPress={save} loading={saving}>
+    <Button onPress={save} loading={saving} disabled={Boolean(imageBusyId)}>
       {productId ? 'Save Changes' : status === 'published' ? 'Publish Product' : 'Save Draft'}
     </Button>
   </ScrollView>;
@@ -398,6 +458,10 @@ const styles = StyleSheet.create({
   column: { flex: 1 },
   imageGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm, paddingBottom: theme.spacing.md },
   image: { width: 104, height: 104, borderRadius: theme.radii.md },
+  existingImage: { width: 104 },
+  coverText: { color: theme.colors.primary.DEFAULT, fontWeight: '700', textAlign: 'center', marginTop: theme.spacing.xs },
+  coverAction: { minHeight: 40, justifyContent: 'center', alignItems: 'center' },
+  coverActionText: { color: theme.colors.primary.DEFAULT, fontWeight: '700' },
   removeImage: { position: 'absolute', top: 4, right: 4, width: 40, height: 40, minWidth: 40, minHeight: 40, borderRadius: 20, backgroundColor: theme.colors.error, borderColor: theme.colors.error },
   addImage: { width: 104, height: 104, borderRadius: theme.radii.md, borderWidth: 1, borderStyle: 'dashed', borderColor: theme.colors.primary.DEFAULT, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.white },
   addImageText: { color: theme.colors.primary.DEFAULT, fontWeight: '700', marginTop: theme.spacing.xs, fontSize: theme.typography.small.fontSize, textAlign: 'center' },

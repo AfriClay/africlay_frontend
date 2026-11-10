@@ -1,5 +1,7 @@
 export type ProductCategory = string;
 
+export type ProductImageRecord = { id?: string; url: string; isPrimary: boolean };
+
 export interface Product {
   id: string;
   slug?: string;
@@ -15,6 +17,7 @@ export interface Product {
   categoryId?: string;
   sellerId: string;
   images: string[];
+  imageRecords?: ProductImageRecord[];
   deliveryEstimate: string;
   availableQuantity: number;
   weightKg?: number;
@@ -42,4 +45,5 @@ export interface Service {
   tagIds?: string[];
   providerId: string;
   images: string[];
+  imageRecords?: ProductImageRecord[];
 }

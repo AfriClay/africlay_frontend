@@ -5,7 +5,7 @@ import { API_ORIGIN, ApiError, apiClient } from './api';
 import { CatalogDataError, recordId } from './catalogContract';
 
 const categorySchema = z.object({ id: z.string().uuid(), name: z.string(), slug: z.string(), parent: z.string().uuid().nullish() });
-const imageSchema = z.object({ image: z.string().nullish(), is_primary: z.boolean(), display_order: z.number() });
+const imageSchema = z.object({ id: z.string().uuid().optional(), image: z.string().nullish(), is_primary: z.boolean(), display_order: z.number() });
 const serviceSchema = z.object({
   id: z.string().uuid(), store: z.string().uuid(), category: z.string().uuid().nullish(),
   tags: z.array(z.string().uuid()), images: z.array(imageSchema), name: z.string(), slug: z.string(),
@@ -38,14 +38,16 @@ const mediaUrl = (value?: string | null): string | undefined => {
 const toService = (raw: BackendService, categories: ServiceCategory[]): Service => {
   const amount = Number(raw.price);
   if (!Number.isFinite(amount) || amount < 0) throw new CatalogDataError();
+  const imageRecords = [...raw.images].sort((a, b) => Number(b.is_primary) - Number(a.is_primary) || a.display_order - b.display_order)
+    .map(item => ({ id: item.id, url: mediaUrl(item.image), isPrimary: item.is_primary }))
+    .filter((item): item is { id: string | undefined; url: string; isPrimary: boolean } => Boolean(item.url));
   return {
     id: raw.id, slug: raw.slug, status: raw.status, title: raw.name, description: raw.description,
     priceFrom: amount, currency: raw.currency, durationMinutes: raw.duration_minutes,
     bookingBufferMinutes: raw.booking_buffer_minutes,
     category: categories.find(item => item.id === raw.category)?.name ?? 'Uncategorized',
     categoryId: raw.category ?? undefined, tagIds: raw.tags, providerId: raw.store,
-    images: [...raw.images].sort((a, b) => Number(b.is_primary) - Number(a.is_primary) || a.display_order - b.display_order)
-      .map(item => mediaUrl(item.image)).filter((url): url is string => Boolean(url)),
+    images: imageRecords.map(item => item.url), imageRecords,
     rating: 0, reviewCount: 0,
   };
 };
@@ -100,5 +102,13 @@ export const serviceService = {
       form.append('image', (asset.file ?? { uri: asset.uri, name: asset.fileName || 'service.jpg', type: asset.mimeType || 'image/jpeg' }) as Blob);
       await apiClient(`/services/manage/${encodeURIComponent(id)}/images/`, { method: 'POST', body: form });
     }
+  },
+  deleteImage: async (serviceId: string, imageId: string): Promise<void> => {
+    await apiClient(`/services/manage/${encodeURIComponent(serviceId)}/images/${encodeURIComponent(imageId)}/`, { method: 'DELETE' });
+  },
+  setCover: async (serviceId: string, imageId: string): Promise<void> => {
+    await apiClient(`/services/manage/${encodeURIComponent(serviceId)}/images/${encodeURIComponent(imageId)}/`, {
+      method: 'PATCH', body: { is_primary: true },
+    });
   },
 };

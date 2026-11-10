@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Image, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ImagePlus, X } from 'lucide-react-native';
@@ -11,7 +11,7 @@ import { getApiErrorMessage } from '../../services/api';
 import { catalogKeys } from '../../services/catalogQueries';
 import { productService } from '../../services/productService';
 import { serviceService, type ServiceDraft } from '../../services/serviceService';
-import type { Service } from '../../types/product';
+import type { ProductImageRecord, Service } from '../../types/product';
 import { theme } from '../../theme';
 import { useAuth } from '../../hooks/useAuth';
 import { slugifyProductName } from '../../utils/productIdentifiers';
@@ -55,7 +55,8 @@ export const ServiceManagement: React.FC = () => {
   const tagsQuery = useQuery({ queryKey: catalogKeys.tags, queryFn: productService.fetchTags });
   const [editing, setEditing] = useState<Service | 'new'>();
   const [draft, setDraft] = useState<ServiceDraft>(draftFor());
-  const [existingImages, setExistingImages] = useState<string[]>([]);
+  const [existingImages, setExistingImages] = useState<ProductImageRecord[]>([]);
+  const [imageBusyId, setImageBusyId] = useState<string>();
   const [images, setImages] = useState<ImagePicker.ImagePickerAsset[]>([]);
   const [deleteId, setDeleteId] = useState<string>();
   const [busy, setBusy] = useState(false);
@@ -70,13 +71,13 @@ export const ServiceManagement: React.FC = () => {
     pendingUploads.current = [];
     setEditing(service);
     setDraft(draftFor(service === 'new' ? undefined : service));
-    setExistingImages(service === 'new' ? [] : service.images);
+    setExistingImages(service === 'new' ? [] : service.imageRecords ?? service.images.map(url => ({ url, isPrimary: false })));
     setImages([]);
     setError(undefined);
   };
 
   const closeEditor = () => {
-    if (busy) return;
+    if (busy || imageBusyId) return;
     setEditing(undefined);
     setImages([]);
     setError(undefined);
@@ -106,6 +107,64 @@ export const ServiceManagement: React.FC = () => {
     setError(undefined);
   };
 
+  const refreshServiceImages = async (service: Service) => {
+    await Promise.all([
+      client.invalidateQueries({ queryKey: managedKey }),
+      client.invalidateQueries({ queryKey: ['services'] }),
+      client.invalidateQueries({ queryKey: catalogKeys.storeServices(service.providerId) }),
+    ]);
+  };
+
+  const removeExistingImage = async (image: ProductImageRecord) => {
+    if (!editing || editing === 'new' || !image.id || busy || imageBusyId) return;
+    setImageBusyId(image.id);
+    setError(undefined);
+    try {
+      await serviceService.deleteImage(editing.id, image.id);
+      setExistingImages(current => {
+        const remaining = current.filter(item => item.id !== image.id);
+        if (image.isPrimary && remaining.length && !remaining.some(item => item.isPrimary)) {
+          remaining[0] = { ...remaining[0], isPrimary: true };
+        }
+        return remaining;
+      });
+      await refreshServiceImages(editing);
+    } catch (cause) {
+      setError(getApiErrorMessage(cause, 'Unable to remove this service photo. Try again.'));
+    } finally {
+      setImageBusyId(undefined);
+    }
+  };
+
+  const confirmImageRemoval = (image: ProductImageRecord) => {
+    if (Platform.OS === 'web') {
+      if (typeof window !== 'undefined' && window.confirm('Remove this service photo? This change is immediate.')) {
+        void removeExistingImage(image);
+      }
+      return;
+    }
+    Alert.alert('Remove photo?', 'This change is immediate.', [
+      { text: 'Keep photo', style: 'cancel' },
+      { text: 'Remove', style: 'destructive', onPress: () => void removeExistingImage(image) },
+    ]);
+  };
+
+  const setCoverImage = async (image: ProductImageRecord) => {
+    if (!editing || editing === 'new' || !image.id || busy || imageBusyId) return;
+    setImageBusyId(image.id);
+    setError(undefined);
+    try {
+      await serviceService.setCover(editing.id, image.id);
+      setExistingImages(current => current.map(item => ({ ...item, isPrimary: item.id === image.id }))
+        .sort((a, b) => Number(b.isPrimary) - Number(a.isPrimary)));
+      await refreshServiceImages(editing);
+    } catch (cause) {
+      setError(getApiErrorMessage(cause, 'Unable to change the service cover photo. Try again.'));
+    } finally {
+      setImageBusyId(undefined);
+    }
+  };
+
   const resolvedSlug = editing === 'new'
     ? serviceSlug(draft.name, generatedIdentifierSeed.current)
     : draft.slug.trim();
@@ -127,7 +186,7 @@ export const ServiceManagement: React.FC = () => {
     !Number.isInteger(draft.booking_buffer_minutes) || draft.booking_buffer_minutes < 0 ? 'Booking buffer must be a whole number of zero or more.' : undefined;
 
   const save = async () => {
-    if (!canSave || busy || !editing) return;
+    if (!canSave || busy || imageBusyId || !editing) return;
     setBusy(true);
     setError(undefined);
     let saved: Service | undefined;
@@ -241,13 +300,17 @@ export const ServiceManagement: React.FC = () => {
       <ChoiceGroup label="Listing status" required value={draft.status} onChange={status => setDraft(value => ({ ...value, status }))} disabled={busy}
         options={serviceStatuses.filter(option => option.value !== 'archived' || editing !== 'new').map(option => ({ value: option.value, label: option.label, description: option.summary }))} />
 
-      <FormField label={`Images (${existingImages.length + images.length}/8)`} optional helperText="Add clear JPG or PNG images. The first image is used as the cover.">
+      <FormField label={`Images (${existingImages.length + images.length}/8)`} optional helperText="Add clear JPG, PNG or WebP images. Saved photo changes take effect immediately.">
         <View style={styles.imageGrid}>
         {existingImages.length + images.length < 8 && <Pressable style={styles.addImage} onPress={() => void pickImages()} accessibilityRole="button" accessibilityLabel="Add service images">
           <ImagePlus color={theme.colors.primary.DEFAULT} size={25} />
           <Text style={styles.addImageText}>Add images</Text>
         </Pressable>}
-        {existingImages.map(uri => <Image key={uri} source={{ uri }} style={styles.image} />)}
+        {existingImages.map(image => <View key={image.id ?? image.url} style={styles.existingImage}>
+          <Image source={{ uri: image.url }} style={styles.image} />
+          {image.id ? <Button variant="icon" size="sm" style={styles.removeImage} disabled={Boolean(imageBusyId) || busy} onPress={() => confirmImageRemoval(image)} accessibilityLabel={`Remove service photo${image.isPrimary ? ' (cover)' : ''}`} icon={<X color={theme.colors.white} size={15} />} /> : null}
+          {image.isPrimary ? <Text style={styles.coverText}>Cover</Text> : image.id ? <Pressable onPress={() => void setCoverImage(image)} disabled={Boolean(imageBusyId) || busy} accessibilityRole="button" accessibilityLabel="Set service photo as cover" style={styles.coverAction}><Text style={styles.coverActionText}>Set cover</Text></Pressable> : null}
+        </View>)}
         {images.map(asset => <View key={asset.uri}>
           <Image source={{ uri: asset.uri }} style={styles.image} />
           <Button variant="icon" size="sm" style={styles.removeImage} onPress={() => {
@@ -260,7 +323,7 @@ export const ServiceManagement: React.FC = () => {
 
       {error && <Text style={styles.error} accessibilityRole="alert">{error}</Text>}
       {validationMessage && <Text style={styles.validationMessage} accessibilityLiveRegion="polite">{validationMessage}</Text>}
-      <Button onPress={() => void save()} disabled={!canSave} loading={busy}>
+      <Button onPress={() => void save()} disabled={!canSave || Boolean(imageBusyId)} loading={busy}>
         {editing === 'new' ? draft.status === 'published' ? 'Publish Service' : 'Save Draft' : 'Save Changes'}
       </Button>
       <Button variant="outline" onPress={closeEditor} disabled={busy}>Cancel</Button>
@@ -306,6 +369,10 @@ const styles = StyleSheet.create({
   optionError: { color: theme.colors.error, lineHeight: 20 },
   imageGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm, paddingBottom: theme.spacing.md },
   image: { width: 104, height: 104, borderRadius: theme.radii.md },
+  existingImage: { width: 104 },
+  coverText: { color: theme.colors.primary.DEFAULT, fontWeight: '700', textAlign: 'center', marginTop: theme.spacing.xs },
+  coverAction: { minHeight: 40, justifyContent: 'center', alignItems: 'center' },
+  coverActionText: { color: theme.colors.primary.DEFAULT, fontWeight: '700' },
   removeImage: { position: 'absolute', top: 4, right: 4, width: 40, height: 40, minWidth: 40, minHeight: 40, borderRadius: 20, backgroundColor: theme.colors.error, borderColor: theme.colors.error },
   addImage: { width: 104, height: 104, borderRadius: theme.radii.md, borderWidth: 1, borderStyle: 'dashed', borderColor: theme.colors.primary.DEFAULT, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.white },
   addImageText: { color: theme.colors.primary.DEFAULT, fontWeight: '700', marginTop: theme.spacing.xs, fontSize: theme.typography.small.fontSize, textAlign: 'center' },

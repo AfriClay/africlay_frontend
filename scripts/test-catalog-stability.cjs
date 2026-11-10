@@ -75,7 +75,7 @@ function harness(responder = () => undefined) {
   const api = load('services/api.ts');
   const service = load('services/productService.ts').productService;
   return {
-    api, service, requests, storage,
+    api, service, requests, storage, load,
     queries: load('services/catalogQueries.ts'),
     categoryTree: load('utils/categoryTree.ts'),
     identifiers: load('utils/productIdentifiers.ts'),
@@ -398,6 +398,36 @@ test('product image upload uses multipart without a forced Content-Type', async 
   assert.equal(upload.init.headers.get('Authorization'), 'Bearer seller-access');
   assert.ok(upload.init.body instanceof FormData);
   await assert.rejects(service.uploadProductImages(product.id, [{ uri: 'file:///huge.jpg', fileSize: 6 * 1024 * 1024 }]), /5 MB/);
+});
+
+test('seller can identify and manage saved product and service photos by image ID', async () => {
+  const imageId = '11111111-1111-4111-8111-111111111111';
+  const serviceId = '22222222-2222-4222-8222-222222222222';
+  const { api, service, load, requests } = harness((route, init) => {
+    if (route.pathname.endsWith('/products/manage/product-id/') && (!init.method || init.method === 'GET')) {
+      return json({ ...product, images: [{ id: imageId, image: '/media/rug.png', is_primary: true, display_order: 0 }] });
+    }
+    if (route.pathname.endsWith(`/images/${imageId}/`)) {
+      return init.method === 'DELETE' ? new Response(null, { status: 204 }) : json({ is_primary: true });
+    }
+    return undefined;
+  });
+  await api.tokenManager.setTokens({ access: 'seller-access', refresh: 'seller-refresh' });
+  const owned = await service.fetchOwnedProductById(product.id);
+  assert.equal(owned.imageRecords[0].id, imageId);
+  assert.equal(owned.imageRecords[0].isPrimary, true);
+  await service.setProductCover(product.id, imageId);
+  await service.deleteProductImage(product.id, imageId);
+  const services = load('services/serviceService.ts').serviceService;
+  await services.setCover(serviceId, imageId);
+  await services.deleteImage(serviceId, imageId);
+  const photoRequests = requests.filter(item => item.path.endsWith(`/images/${imageId}/`));
+  assert.deepEqual(photoRequests.map(item => item.init.method), ['PATCH', 'DELETE', 'PATCH', 'DELETE']);
+  assert.ok(photoRequests.every(item => item.init.headers.get('Authorization') === 'Bearer seller-access'));
+  const editor = readFileSync(path.join(__dirname, '../src/screens/seller/AddEditProduct.tsx'), 'utf8');
+  const serviceEditor = readFileSync(path.join(__dirname, '../src/screens/seller/ServiceManagement.tsx'), 'utf8');
+  assert.match(editor, /Remove product photo/);
+  assert.match(serviceEditor, /Remove service photo/);
 });
 
 test('validation errors and unauthorized seller mutations are reported', async () => {

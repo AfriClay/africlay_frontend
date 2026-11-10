@@ -8,7 +8,7 @@ import { serviceService } from './serviceService';
 
 const optionalText = z.string().nullish();
 const quantity = z.number().int().nonnegative();
-const imageSchema = z.object({ image: optionalText, is_primary: z.boolean().optional(), display_order: z.number().optional() });
+const imageSchema = z.object({ id: z.string().uuid().optional(), image: optionalText, is_primary: z.boolean().optional(), display_order: z.number().optional() });
 const productSchema = z.object({
   id: z.string().min(1), store: z.string().min(1), category: optionalText,
   tags: z.array(z.string()).default([]), images: z.array(imageSchema).default([]),
@@ -117,11 +117,13 @@ const toCategory = (item: z.infer<typeof categorySchema>): CatalogCategory => ({
 const toProduct = (raw: BackendProduct, categories: CatalogCategory[]): Product => {
   const category = categories.find(item => item.id === raw.category);
   const orderedImages = [...raw.images].sort((a, b) => Number(Boolean(b.is_primary)) - Number(Boolean(a.is_primary)) || (a.display_order ?? 0) - (b.display_order ?? 0));
+  const imageRecords = orderedImages.map(item => ({ id: item.id, url: imageUrl(item.image), isPrimary: Boolean(item.is_primary) }))
+    .filter((item): item is { id: string | undefined; url: string; isPrimary: boolean } => Boolean(item.url));
   return {
     id: raw.id, slug: raw.slug, sku: raw.sku, status: raw.status,
     name: raw.name, description: raw.description ?? '', price: asPrice(raw.price),
     currency: raw.currency, category: category?.label ?? 'Uncategorized', categoryId: raw.category ?? undefined,
-    tagIds: raw.tags, sellerId: raw.store, images: orderedImages.map(item => imageUrl(item.image)).filter((url): url is string => Boolean(url)),
+    tagIds: raw.tags, sellerId: raw.store, images: imageRecords.map(item => item.url), imageRecords,
     availableQuantity: raw.stock_quantity, rating: asPrice(raw.average_rating), reviewCount: raw.review_count, deliveryEstimate: '',
     weightKg: asPrice(raw.weight_kg),
     lengthCm: raw.length_cm == null ? undefined : asPrice(raw.length_cm),
@@ -234,6 +236,14 @@ export const productService = {
       form.append('image', upload as Blob);
       await apiClient(`/products/manage/${encodeURIComponent(id)}/images/`, { method: 'POST', body: form });
     }
+  },
+  deleteProductImage: async (productId: string, imageId: string): Promise<void> => {
+    await apiClient(`/products/manage/${encodeURIComponent(productId)}/images/${encodeURIComponent(imageId)}/`, { method: 'DELETE' });
+  },
+  setProductCover: async (productId: string, imageId: string): Promise<void> => {
+    await apiClient(`/products/manage/${encodeURIComponent(productId)}/images/${encodeURIComponent(imageId)}/`, {
+      method: 'PATCH', body: { is_primary: true },
+    });
   },
   fetchSellers: (): Promise<Seller[]> => {
     storesInFlight ??= apiClient('/stores/', { auth: false })
