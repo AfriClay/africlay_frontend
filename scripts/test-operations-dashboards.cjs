@@ -26,6 +26,21 @@ test('marketplace roles and operations roles remain separate', () => {
   assert.equal(roles.hasStaffRole(salesBuyer, 'sales_reviewer'), true);
   assert.equal(roles.hasStaffRole(salesBuyer, 'finance'), false);
   assert.equal(roles.canAccessOperations({ role: 'super_admin', staffRoles: [] }), true);
+  assert.equal(roles.hasStaffRole({ role: 'buyer', staffRoles: ['logistics'] }, 'logistics'), true);
+  assert.equal(roles.hasStaffRole({ role: 'buyer', staffRoles: ['logistics'] }, 'finance'), false);
+});
+
+test('logistics staff use their own guarded dashboard and assigned shipment API', () => {
+  const navigator = source('src/navigation/RootNavigator.tsx');
+  const login = source('src/screens/admin/OperationsLogin.tsx');
+  const dashboard = source('src/screens/admin/LogisticsDashboard.tsx');
+  const service = source('src/services/logisticsService.ts');
+  assert.match(navigator, /name="LogisticsDashboard" component=\{LogisticsDashboard\}/);
+  assert.match(login, /hasStaffRole\(user, 'finance'\) \? 'FinanceDashboard' : 'LogisticsDashboard'/);
+  assert.match(dashboard, /hasStaffRole\(auth\.user, 'logistics'\)/);
+  assert.match(service, /\/cart\/logistics\/fulfillments\/\?limit=30&offset=/);
+  assert.match(service, /\/events\//);
+  assert.match(service, /\/assign\//);
 });
 
 test('root navigation exposes separate guarded dashboard routes', () => {

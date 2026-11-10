@@ -17,7 +17,8 @@ type LoginForm = { email: string; password: string };
 
 const dashboardFor = (user: Parameters<typeof canAccessOperations>[0]) => isSuperAdmin(user)
   ? 'SuperAdminDashboard'
-  : hasStaffRole(user, 'sales_reviewer') ? 'SalesDashboard' : 'FinanceDashboard';
+  : hasStaffRole(user, 'sales_reviewer') ? 'SalesDashboard'
+  : hasStaffRole(user, 'finance') ? 'FinanceDashboard' : 'LogisticsDashboard';
 
 export const OperationsLogin = () => {
   const auth = useAuth();
@@ -54,7 +55,7 @@ export const OperationsLogin = () => {
     <ScrollView testID="operations-login-scroll" style={styles.scroll} contentContainerStyle={styles.root} keyboardShouldPersistTaps="handled"><View style={styles.panel}>
       <ShieldCheck size={34} color={operationsColors.green} />
       <Text style={styles.title}>Operations access required</Text>
-      <Text style={styles.copy}>Your marketplace account is signed in, but no Sales Review or Finance assignment is active.</Text>
+      <Text style={styles.copy}>Your marketplace account is signed in, but no operations dashboard assignment is active.</Text>
       <Button fullWidth onPress={() => void auth.logout()}>Sign in with another account</Button>
       <Button fullWidth variant="outline" onPress={() => navigation.navigate('AppTabs')}>Return to marketplace</Button>
     </View></ScrollView>

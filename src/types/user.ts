@@ -5,7 +5,7 @@ export interface Stats {
 }
 
 export type UserRole = 'buyer' | 'seller' | 'both' | 'admin' | 'super_admin';
-export type StaffRole = 'sales_reviewer' | 'finance';
+export type StaffRole = 'sales_reviewer' | 'finance' | 'logistics';
 export type RegistrationRole = Extract<UserRole, 'buyer' | 'seller' | 'both'>;
 
 export interface User {

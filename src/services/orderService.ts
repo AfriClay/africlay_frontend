@@ -17,6 +17,11 @@ const fulfillmentSchema = z.object({
   shipping_cost: z.union([z.string(), z.number()]),
   chargeable_weight_kg: z.union([z.string(), z.number()]),
   settlement_status: z.enum(['pending', 'held', 'released', 'reversed']),
+  events: z.array(z.object({
+    id: z.string().uuid(), stage: z.string(),
+    source: z.enum(['system', 'seller', 'buyer', 'logistics']),
+    note: z.string(), created_at: z.string(),
+  })).optional(),
 }).passthrough();
 const orderSchema = z.object({
   id: z.string().uuid(), buyer_id: z.string().uuid(),
@@ -29,6 +34,13 @@ const orderSchema = z.object({
   amount_paid: z.union([z.string(), z.number()]),
   amount_due: z.union([z.string(), z.number()]),
   delivery_fee_paid: z.boolean(),
+  delivery_method: z.enum(['standard', 'pickup_point', 'doorstep']).optional(),
+  pickup_point: z.object({ id: z.string().uuid(), name: z.string(), city: z.string(), address: z.string(), postal_code: z.string() }).nullable().optional(),
+  home_delivery: z.object({
+    status: z.string(), pickup_address_snapshot: z.string(), destination_address: z.string(), destination_city: z.string(), delivery_instructions: z.string(),
+    distance_meters: z.union([z.string(), z.number()]), fee: z.union([z.string(), z.number()]),
+    events: z.array(z.object({ id: z.string().uuid(), stage: z.string(), note: z.string(), created_at: z.string() })),
+  }).nullable().optional(),
   shipping_address: z.string(), shipping_city: z.string(),
   shipping_postal_code: z.string(), shipping_country: z.string(),
   courier_name: z.string(), tracking_number: z.string(),
@@ -49,6 +61,20 @@ const toOrder = (raw: z.infer<typeof orderSchema>): Order => ({
   amountPaid: parseAmount(raw.amount_paid),
   amountDue: parseAmount(raw.amount_due),
   deliveryFeePaid: raw.delivery_fee_paid,
+  deliveryMethod: raw.delivery_method ?? 'standard',
+  pickupPoint: raw.pickup_point ?? undefined,
+  homeDelivery: raw.home_delivery ? {
+    status: raw.home_delivery.status,
+    pickupAddress: raw.home_delivery.pickup_address_snapshot,
+    destinationAddress: raw.home_delivery.destination_address,
+    destinationCity: raw.home_delivery.destination_city,
+    deliveryInstructions: raw.home_delivery.delivery_instructions,
+    distanceMeters: parseAmount(raw.home_delivery.distance_meters),
+    fee: parseAmount(raw.home_delivery.fee),
+    events: raw.home_delivery.events.map(event => ({
+      id: event.id, stage: event.stage, note: event.note, createdAt: event.created_at,
+    })),
+  } : undefined,
   courierName: raw.courier_name,
   trackingNumber: raw.tracking_number,
   shippingCost: parseAmount(raw.shipping_cost),
@@ -65,6 +91,10 @@ const toOrder = (raw: z.infer<typeof orderSchema>): Order => ({
     shippingCost: parseAmount(item.shipping_cost),
     chargeableWeightKg: parseAmount(item.chargeable_weight_kg),
     settlementStatus: item.settlement_status,
+    events: (item.events ?? []).map(event => ({
+      id: event.id, stage: event.stage, source: event.source,
+      note: event.note, createdAt: event.created_at,
+    })),
   })),
   commissionAmount: raw.commission_amount == null ? undefined : parseAmount(raw.commission_amount),
   sellerProceeds: raw.seller_proceeds == null ? undefined : parseAmount(raw.seller_proceeds),
@@ -72,14 +102,26 @@ const toOrder = (raw: z.infer<typeof orderSchema>): Order => ({
 });
 
 export type CheckoutPayload = {
-  shipping_address: string;
-  shipping_city: string;
-  shipping_postal_code: string;
-  shipping_country: string;
+  shipping_address?: string;
+  shipping_city?: string;
+  shipping_postal_code?: string;
+  shipping_country?: string;
+  delivery_method?: 'standard' | 'pickup_point' | 'doorstep';
+  pickup_point_id?: string;
+  home_location_token?: string;
+  home_delivery_instructions?: string;
   payment_method?: 'mpesa' | 'wallet';
   payment_option?: OrderPaymentOption;
   buy_now_product_id?: string;
   buy_now_quantity?: number;
+};
+
+export type ConfirmCheckoutPayload = CheckoutPayload & {
+  expected_item_subtotal: string;
+  expected_shipping_cost: string;
+  expected_total_amount: string;
+  expected_pickup_point_address?: string;
+  expected_doorstep_quote_token?: string;
 };
 
 const shippingQuoteSchema = z.object({
@@ -87,6 +129,11 @@ const shippingQuoteSchema = z.object({
   shipping_cost: z.union([z.string(), z.number()]),
   total_amount: z.union([z.string(), z.number()]),
   currency: z.string().length(3),
+  pickup_point_address: z.string().nullable().optional(),
+  pickup_delivery_cost: z.union([z.string(), z.number()]).optional(),
+  doorstep_delivery_cost: z.union([z.string(), z.number()]).optional(),
+  doorstep_distance_meters: z.union([z.string(), z.number()]).optional(),
+  expected_doorstep_quote_token: z.string().optional(),
   shipments: z.array(z.object({
     seller_id: z.string().uuid(), origin_city: z.string(), destination_city: z.string(),
     chargeable_weight_kg: z.union([z.string(), z.number()]),
@@ -100,6 +147,11 @@ export type ShippingQuote = {
   total: number;
   currency: string;
   shipmentCount: number;
+  pickupPointAddress?: string;
+  pickupDeliveryCost: number;
+  doorstepDeliveryCost: number;
+  doorstepDistanceMeters?: number;
+  doorstepQuoteToken?: string;
 };
 
 export type SellerOrderUpdate =
@@ -110,7 +162,7 @@ export const orderKeys = {
   buyer: (userId: string) => ['buyer-orders', userId] as const,
   detail: (userId: string, orderId: string) => ['buyer-order', userId, orderId] as const,
   seller: (userId: string) => ['seller-orders', userId] as const,
-  shippingQuote: (userId: string, city: string, cartSignature: string) => ['shipping-quote', userId, city, cartSignature] as const,
+  shippingQuote: (userId: string, destination: string, cartSignature: string) => ['shipping-quote', userId, destination, cartSignature] as const,
 };
 
 let checkoutPending = false;
@@ -123,9 +175,14 @@ export const orderService = {
     return {
       itemSubtotal: parseAmount(raw.item_subtotal), shippingCost: parseAmount(raw.shipping_cost),
       total: parseAmount(raw.total_amount), currency: raw.currency, shipmentCount: raw.shipments.length,
+      pickupPointAddress: raw.pickup_point_address ?? undefined,
+      pickupDeliveryCost: parseAmount(raw.pickup_delivery_cost ?? raw.shipping_cost),
+      doorstepDeliveryCost: parseAmount(raw.doorstep_delivery_cost ?? 0),
+      doorstepDistanceMeters: raw.doorstep_distance_meters == null ? undefined : parseAmount(raw.doorstep_distance_meters),
+      doorstepQuoteToken: raw.expected_doorstep_quote_token,
     };
   },
-  checkout: async (payload: CheckoutPayload): Promise<Order> => {
+  checkout: async (payload: ConfirmCheckoutPayload): Promise<Order> => {
     if (checkoutPending) throw new Error('Checkout is already in progress.');
     checkoutPending = true;
     try {

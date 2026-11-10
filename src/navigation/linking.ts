@@ -96,6 +96,7 @@ export const linking = {
       OperationsLogin: 'operations',
       SalesDashboard: 'operations/sales',
       FinanceDashboard: 'operations/finance',
+      LogisticsDashboard: 'operations/logistics',
       SuperAdminDashboard: 'operations/admin',
       Policies: 'policies/:policyId?',
     },

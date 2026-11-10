@@ -23,6 +23,26 @@ export interface OrderFulfillment {
   shippingCost: number;
   chargeableWeightKg: number;
   settlementStatus: SettlementStatus;
+  events: ShipmentEvent[];
+}
+
+export interface ShipmentEvent {
+  id: string;
+  stage: string;
+  source: 'system' | 'seller' | 'buyer' | 'logistics';
+  note: string;
+  createdAt: string;
+}
+
+export interface HomeDelivery {
+  status: string;
+  pickupAddress: string;
+  destinationAddress: string;
+  destinationCity: string;
+  deliveryInstructions: string;
+  distanceMeters: number;
+  fee: number;
+  events: { id: string; stage: string; note: string; createdAt: string }[];
 }
 
 export interface Order {
@@ -35,6 +55,9 @@ export interface Order {
   itemSubtotal: number;
   currency: string;
   deliveryAddress: string;
+  deliveryMethod: 'standard' | 'pickup_point' | 'doorstep';
+  pickupPoint?: { id: string; name: string; city: string; address: string; postal_code: string };
+  homeDelivery?: HomeDelivery;
   paymentMethod: OrderPaymentMethod;
   paymentStatus: OrderPaymentStatus;
   paymentOption: OrderPaymentOption;

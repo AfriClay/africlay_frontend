@@ -1,18 +1,16 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, AppState, FlatList, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { ActivityIndicator, AppState, FlatList, Linking, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { AlertTriangle, CircleCheckBig, Clock3, X } from 'lucide-react-native';
-import { AddressForm } from '../../components/domain/AddressForm';
 import { Button } from '../../components/ui/Button';
 import { GuestAuthSheet } from '../../components/ui/GuestAuthSheet';
 import { Input } from '../../components/ui/Input';
 import { useAuth } from '../../hooks/useAuth';
 import { useCart } from '../../hooks/useCart';
 import { RootStackParamList } from '../../navigation/RootNavigator';
-import { addressService, AddressInput } from '../../services/addressService';
 import { ApiError, getApiErrorMessage } from '../../services/api';
 import { orderKeys, orderService } from '../../services/orderService';
 import { isOrderPaymentPhone, paymentKeys, paymentService } from '../../services/paymentService';
@@ -20,9 +18,9 @@ import { theme } from '../../theme';
 import { Payment } from '../../types/payment';
 import { Order, OrderPaymentOption } from '../../types/order';
 import { formatCurrency } from '../../utils/formatCurrency';
-import { checkoutAddressSchema } from '../../validation/checkoutSchemas';
 import { catalogKeys } from '../../services/catalogQueries';
 import { productService } from '../../services/productService';
+import { HomeLocation, shippingService } from '../../services/shippingService';
 
 type CheckoutNavigation = NativeStackNavigationProp<RootStackParamList, 'Checkout'>;
 type CheckoutRoute = RouteProp<RootStackParamList, 'Checkout'>;
@@ -73,10 +71,13 @@ export const Checkout: React.FC = () => {
     buy_now_quantity: buyNowQuantity,
   } : {};
   const queryClient = useQueryClient();
-  const addressKey = ['addresses', userId] as const;
-  const addressesQuery = useQuery({ queryKey: addressKey, queryFn: addressService.list, enabled: Boolean(userId && cart.available) });
-  const [selectedId, setSelectedId] = useState<string>();
-  const [creating, setCreating] = useState(false);
+  const pickupPointsQuery = useQuery({ queryKey: ['pickup-points'], queryFn: shippingService.pickupPoints });
+  const [selectedPickupId, setSelectedPickupId] = useState<string>();
+  const [deliveryMethod, setDeliveryMethod] = useState<'pickup_point' | 'doorstep'>('pickup_point');
+  const [homeSearch, setHomeSearch] = useState('');
+  const [debouncedHomeSearch, setDebouncedHomeSearch] = useState('');
+  const [selectedHome, setSelectedHome] = useState<HomeLocation>();
+  const [homeInstructions, setHomeInstructions] = useState('');
   const [stage, setStage] = useState<CheckoutStage>('idle');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [phoneTouched, setPhoneTouched] = useState(false);
@@ -90,22 +91,36 @@ export const Checkout: React.FC = () => {
   const [payment, setPayment] = useState<Payment>();
   const inFlight = useRef(false);
   const statusRequest = useRef<AbortController | undefined>(undefined);
-  const addresses = addressesQuery.data ?? [];
-  const selected = addresses.find(address => address.id === selectedId) ?? addresses.find(address => address.is_default) ?? addresses[0];
-  const addressPayload = selected ? {
-    shipping_address: [selected.street_address, selected.apartment_suite].filter(Boolean).join(', '),
-    shipping_city: selected.city,
-    shipping_postal_code: selected.postal_code ?? '',
-    shipping_country: selected.country,
-  } : undefined;
-  const parsedAddress = addressPayload ? checkoutAddressSchema.safeParse(addressPayload) : undefined;
-  const validAddressPayload = parsedAddress?.success ? parsedAddress.data : undefined;
+  const pickupPoints = pickupPointsQuery.data ?? [];
+  const selectedPickup = pickupPoints.find(point => point.id === selectedPickupId) ?? pickupPoints[0];
+  const deliveryPayload = selectedPickup && (deliveryMethod === 'pickup_point' || selectedHome)
+    ? {
+      delivery_method: deliveryMethod,
+      pickup_point_id: selectedPickup.id,
+      ...(deliveryMethod === 'doorstep' ? { home_location_token: selectedHome!.token, home_delivery_instructions: homeInstructions.trim() } : {}),
+    } : undefined;
+  const homeLocationsQuery = useQuery({
+    queryKey: ['doorstep-locations', userId, selectedPickup?.id, debouncedHomeSearch],
+    queryFn: () => shippingService.homeLocations(selectedPickup!.id, debouncedHomeSearch),
+    enabled: deliveryMethod === 'doorstep' && Boolean(userId && selectedPickup?.doorstep_available && debouncedHomeSearch.length >= 5),
+    staleTime: 60_000,
+  });
   const cartSignature = checkoutItems.map(item => `${item.id}:${item.quantity}`).join('|');
   const quoteQuery = useQuery({
-    queryKey: orderKeys.shippingQuote(userId, selected?.city ?? '', cartSignature),
-    queryFn: () => orderService.shippingQuote({ ...validAddressPayload!, ...checkoutScope }),
-    enabled: Boolean(userId && cart.available && checkoutItemCount && validAddressPayload && !checkoutError),
+    queryKey: orderKeys.shippingQuote(userId, `${deliveryMethod}:${selectedPickup?.id ?? ''}:${selectedHome?.token ?? ''}`, cartSignature),
+    queryFn: () => orderService.shippingQuote({ ...deliveryPayload!, ...checkoutScope }),
+    enabled: Boolean(userId && cart.available && checkoutItemCount && deliveryPayload && !checkoutError),
   });
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedHomeSearch(homeSearch.trim()), 350);
+    return () => clearTimeout(timer);
+  }, [homeSearch]);
+
+  useEffect(() => {
+    setSelectedHome(undefined);
+    setHomeSearch('');
+  }, [selectedPickup?.id]);
 
   useEffect(() => {
     if (!auth.user) setAuthSheet(true);
@@ -113,9 +128,9 @@ export const Checkout: React.FC = () => {
 
   useEffect(() => {
     if (phoneTouched || phoneNumber) return;
-    const suggested = selected?.phone_number || auth.user?.phoneNumber;
+    const suggested = auth.user?.phoneNumber;
     if (suggested) setPhoneNumber(suggested);
-  }, [auth.user?.phoneNumber, phoneNumber, phoneTouched, selected?.phone_number]);
+  }, [auth.user?.phoneNumber, phoneNumber, phoneTouched]);
 
   const syncOrderState = useCallback(() => {
     void queryClient.invalidateQueries({ queryKey: orderKeys.buyer(userId) });
@@ -181,13 +196,6 @@ export const Checkout: React.FC = () => {
     return () => subscription.remove();
   }, [checkPaymentStatus, payment?.id, stage]);
 
-  const createAddress = async (input: AddressInput) => {
-    const saved = await addressService.create(input);
-    setSelectedId(saved.id);
-    await queryClient.invalidateQueries({ queryKey: addressKey });
-    setCreating(false);
-  };
-
   const requestPayment = useCallback(async (targetOrderId: string) => {
     if (inFlight.current) return;
     if (!isOrderPaymentPhone(phoneNumber)) {
@@ -211,24 +219,36 @@ export const Checkout: React.FC = () => {
   }, [applyPayment, phoneNumber]);
 
   const submit = async () => {
-    if (inFlight.current || checkoutError || !checkoutItemCount || !selected || !auth.user || !cart.available) return;
+    if (inFlight.current || checkoutError || !checkoutItemCount || !deliveryPayload || !auth.user || !cart.available || quoteQuery.isFetching) return;
     if (!isOrderPaymentPhone(phoneNumber)) {
       setPhoneTouched(true);
       setError('Enter a Kenyan M-Pesa number in 2547XXXXXXXX or 2541XXXXXXXX format.');
       return;
     }
-    const parsed = checkoutAddressSchema.safeParse(addressPayload);
-    if (!parsed.success) { setError(parsed.error.issues[0]?.message); return; }
     if (!quoteQuery.data) { setError('Wait for the delivery quote before placing the order.'); return; }
+    const reviewedQuote = quoteQuery.data;
+    if (!reviewedQuote.pickupPointAddress) {
+      setError('Pickup point quote is incomplete. Refresh the quote before placing the order.');
+      return;
+    }
+    if (deliveryMethod === 'doorstep' && !reviewedQuote.doorstepQuoteToken) {
+      setError('Doorstep quote is incomplete. Refresh the quote before paying.');
+      return;
+    }
     inFlight.current = true;
     setStage('creating-order');
     setError(undefined);
     setOrderCreationUncertain(false);
     try {
       const order = await orderService.checkout({
-        ...parsed.data,
+        ...deliveryPayload,
         payment_method: 'mpesa',
         payment_option: paymentOption,
+        expected_item_subtotal: reviewedQuote.itemSubtotal.toFixed(2),
+        expected_shipping_cost: reviewedQuote.shippingCost.toFixed(2),
+        expected_total_amount: reviewedQuote.total.toFixed(2),
+        expected_pickup_point_address: reviewedQuote.pickupPointAddress,
+        ...(deliveryMethod === 'doorstep' ? { expected_doorstep_quote_token: reviewedQuote.doorstepQuoteToken } : {}),
         ...checkoutScope,
       });
       setOrderId(order.id);
@@ -244,8 +264,21 @@ export const Checkout: React.FC = () => {
       setStage('idle');
       const uncertain = !(submitError instanceof ApiError) || submitError.status >= 500;
       setOrderCreationUncertain(uncertain);
+      const responseMessage = getApiErrorMessage(submitError, 'Unable to place your order.');
+      if (submitError instanceof ApiError && /location.*expired/i.test(responseMessage)) {
+        setSelectedHome(undefined);
+        setError('Your selected location expired. Search for your address and choose it again.');
+        return;
+      }
+      if (submitError instanceof ApiError && /(price|pickup point|quote).*(changed|expired)/i.test(responseMessage)) {
+        const refreshed = await quoteQuery.refetch();
+        setError(refreshed.isSuccess
+          ? 'Delivery was repriced. Review the updated total before placing the order again.'
+          : 'The delivery quote could not be refreshed. Try a new location or retry the quote.');
+        return;
+      }
       setError(submitError instanceof ApiError && submitError.status < 500
-        ? getApiErrorMessage(submitError, 'Unable to place your order.')
+        ? responseMessage
         : 'Order status could not be confirmed. Check My Orders before trying checkout again.');
     } finally {
       inFlight.current = false;
@@ -309,15 +342,39 @@ export const Checkout: React.FC = () => {
 
   const header = <>
     <View style={styles.header}><Text style={styles.title}>Checkout</Text><Button variant="icon" icon={<X color={theme.colors.ink} size={22} />} onPress={() => navigation.goBack()} accessibilityLabel="Close checkout" /></View>
-    <Text style={styles.sectionTitle}>Delivery Address</Text>
-    {addressesQuery.isLoading ? <Text style={styles.note}>Loading addresses...</Text> : addressesQuery.isError ?
-      <View><Text style={styles.error}>Unable to load addresses.</Text><Button variant="secondary" onPress={() => void addressesQuery.refetch()}>Retry</Button></View> :
-      addresses.map(address => <Pressable key={address.id} onPress={() => setSelectedId(address.id)} accessibilityRole="radio" accessibilityState={{ selected: selected?.id === address.id }} style={[styles.address, selected?.id === address.id && styles.selectedAddress]}>
-        <Text style={styles.addressName}>{address.recipient_name || address.street_address}{address.is_default ? ' (Default)' : ''}</Text>
-        <Text style={styles.note}>{[address.street_address, address.city, address.postal_code, address.country].filter(Boolean).join(', ')}</Text>
+    <Text style={styles.sectionTitle}>Delivery</Text>
+    <Pressable onPress={() => setDeliveryMethod('pickup_point')} accessibilityRole="radio" accessibilityState={{ selected: deliveryMethod === 'pickup_point' }} style={[styles.address, deliveryMethod === 'pickup_point' && styles.selectedAddress]}>
+      <Text style={styles.addressName}>Collect from an AfriClay pickup point</Text>
+      <Text style={styles.note}>The logistics company collects from each seller and delivers to your chosen point.</Text>
+    </Pressable>
+    <Pressable onPress={() => { if (selectedPickup?.doorstep_available) setDeliveryMethod('doorstep'); }} accessibilityRole="radio" accessibilityState={{ selected: deliveryMethod === 'doorstep', disabled: !selectedPickup?.doorstep_available }} style={[styles.address, deliveryMethod === 'doorstep' && styles.selectedAddress]}>
+      <Text style={styles.addressName}>Deliver to my doorstep</Text>
+      <Text style={styles.note}>{selectedPickup?.doorstep_available ? 'A rider brings the parcel from your chosen pickup point to your confirmed location. The extra road-distance fee appears before payment.' : 'Doorstep delivery is being prepared. Pickup-point collection is available now.'}</Text>
+    </Pressable>
+      <Text style={styles.sectionTitle}>Choose a pickup point</Text>
+      {pickupPointsQuery.isLoading ? <Text style={styles.note}>Loading pickup points...</Text> : null}
+      {pickupPointsQuery.isError ? <View><Text style={styles.error}>Pickup points could not be loaded.</Text><Button variant="secondary" onPress={() => void pickupPointsQuery.refetch()}>Retry</Button></View> : null}
+      {pickupPointsQuery.isSuccess && pickupPoints.length === 0 ? <Text style={styles.note}>No pickup points are available right now.</Text> : null}
+      {pickupPoints.map(point => <Pressable key={point.id} accessibilityRole="radio" accessibilityState={{ selected: selectedPickup?.id === point.id }} onPress={() => setSelectedPickupId(point.id)} style={[styles.address, selectedPickup?.id === point.id && styles.selectedAddress]}>
+        <Text style={styles.addressName}>{point.name}</Text>
+        <Text style={styles.note}>{[point.address, point.city, point.postal_code, 'Kenya'].filter(Boolean).join(', ')}</Text>
       </Pressable>)}
-    {creating ? <AddressForm onSave={createAddress} onCancel={() => setCreating(false)} /> :
-      <Button variant="secondary" onPress={() => setCreating(true)}>Add Address</Button>}
+    {deliveryMethod === 'doorstep' ? <View>
+      <Text style={styles.sectionTitle}>Confirm your delivery location</Text>
+      <Input label="Building or landmark" value={homeSearch} onChangeText={value => { setHomeSearch(value); setSelectedHome(undefined); }} placeholder="Search a building or landmark in the pickup city" autoComplete="street-address" />
+      {homeLocationsQuery.isFetching ? <Text style={styles.note}>Searching locations...</Text> : null}
+      {homeLocationsQuery.isError ? <View><Text style={styles.error}>Address search failed. Please try again.</Text><Button variant="secondary" onPress={() => void homeLocationsQuery.refetch()}>Retry address search</Button></View> : null}
+      {homeLocationsQuery.data?.map(location => <Pressable key={location.token} accessibilityRole="radio" accessibilityState={{ selected: selectedHome?.token === location.token }} onPress={() => { setSelectedHome(location); setHomeSearch(location.label); }} style={[styles.address, selectedHome?.token === location.token && styles.selectedAddress]}>
+        <Text style={styles.addressName}>{location.label}</Text>
+      </Pressable>)}
+      {debouncedHomeSearch.length >= 5 && homeLocationsQuery.isSuccess && !homeLocationsQuery.data?.length && !selectedHome ? <Text style={styles.note}>No precise location found in {selectedPickup?.city}. Try a nearby named building or choose pickup-point collection.</Text> : null}
+      {selectedHome ? <Text style={styles.note}>Confirmed destination: {selectedHome.label}</Text> : null}
+      <Input label="Floor, unit or delivery instructions" value={homeInstructions} onChangeText={setHomeInstructions} placeholder="Optional details for the rider" maxLength={255} />
+      <View style={styles.attribution}>
+        <Pressable accessibilityRole="link" onPress={() => void Linking.openURL('https://www.geoapify.com/')}><Text style={styles.attributionLink}>Powered by Geoapify</Text></Pressable>
+        <Pressable accessibilityRole="link" onPress={() => void Linking.openURL('https://www.openstreetmap.org/copyright')}><Text style={styles.attributionLink}>© OpenStreetMap contributors</Text></Pressable>
+      </View>
+    </View> : null}
     <Text style={styles.sectionTitle}>Payment option</Text>
     <View style={[styles.paymentOptions, compactPaymentOptions && styles.paymentOptionsCompact]}>
       <Pressable onPress={() => setPaymentOption('pay_now')} accessibilityRole="radio" accessibilityState={{ selected: paymentOption === 'pay_now' }} style={[styles.paymentOption, compactPaymentOptions && styles.paymentOptionCompact, paymentOption === 'pay_now' && styles.paymentOptionSelected]}>
@@ -345,19 +402,23 @@ export const Checkout: React.FC = () => {
   </>;
   const busy = stage === 'creating-order' || stage === 'requesting-payment';
   const quote = quoteQuery.data;
-  const quoteErrorMessage = quoteQuery.isError ? getApiErrorMessage(quoteQuery.error, 'Delivery could not be calculated for this address.') : undefined;
+  const pickupQuoteIncomplete = Boolean(quote) && (!quote?.pickupPointAddress || (deliveryMethod === 'doorstep' && !quote.doorstepQuoteToken));
+  const quoteErrorMessage = quoteQuery.isError ? getApiErrorMessage(quoteQuery.error, 'Delivery could not be calculated for this pickup point.') : undefined;
   const sellerDispatchError = quoteErrorMessage?.toLowerCase().includes('dispatch town');
   const dueNow = paymentOption === 'pay_on_delivery' ? quote?.shippingCost ?? 0 : quote?.total ?? 0;
   const footer = <View style={styles.footer}>
     {quoteQuery.isLoading ? <View style={styles.quoteState}><ActivityIndicator color={theme.colors.primary.DEFAULT} /><Text style={styles.note}>Calculating delivery...</Text></View> : null}
     {quoteQuery.isError ? <View style={styles.quoteError}>
       <Text style={styles.error}>{quoteErrorMessage}</Text>
-      {sellerDispatchError ? <Text style={styles.quoteHint}>Your delivery address is saved correctly. The seller needs to update their parcel pickup town.</Text> : null}
+      {sellerDispatchError ? <Text style={styles.quoteHint}>The seller needs to update their parcel pickup town.</Text> : null}
       <Button size="sm" variant="secondary" onPress={() => void quoteQuery.refetch()}>Retry Quote</Button>
     </View> : null}
+    {pickupQuoteIncomplete ? <View style={styles.quoteError}><Text style={styles.error}>Pickup point quote is incomplete.</Text><Button size="sm" variant="secondary" onPress={() => void quoteQuery.refetch()}>Retry Quote</Button></View> : null}
     {quote ? <>
       <View style={styles.totalRow}><Text style={styles.note}>Items</Text><Text style={styles.summaryAmount}>{formatCurrency(quote.itemSubtotal, quote.currency)}</Text></View>
-      <View style={styles.totalRow}><Text style={styles.note}>Delivery</Text><Text style={styles.summaryAmount}>{formatCurrency(quote.shippingCost, quote.currency)}</Text></View>
+      <View style={styles.totalRow}><Text style={styles.note}>Seller to pickup point</Text><Text style={styles.summaryAmount}>{formatCurrency(quote.pickupDeliveryCost, quote.currency)}</Text></View>
+      {deliveryMethod === 'doorstep' ? <View style={styles.totalRow}><Text style={styles.note}>Pickup point to home ({((quote.doorstepDistanceMeters ?? 0) / 1000).toFixed(2)} km)</Text><Text style={styles.summaryAmount}>{formatCurrency(quote.doorstepDeliveryCost, quote.currency)}</Text></View> : null}
+      <View style={styles.totalRow}><Text style={styles.note}>Total delivery</Text><Text style={styles.summaryAmount}>{formatCurrency(quote.shippingCost, quote.currency)}</Text></View>
       <View style={styles.totalRow}><Text style={styles.note}>{paymentOption === 'pay_on_delivery' ? 'Pay now' : 'Total due'}</Text><Text style={styles.total}>{formatCurrency(dueNow, quote.currency)}</Text></View>
       {paymentOption === 'pay_on_delivery' ? <View style={styles.totalRow}><Text style={styles.note}>Due at delivery</Text><Text style={styles.summaryAmount}>{formatCurrency(quote.itemSubtotal, quote.currency)}</Text></View> : null}
     </> : null}
@@ -370,7 +431,7 @@ export const Checkout: React.FC = () => {
         <Text style={styles.policyLink}>Shipping & Delivery Policy</Text>
       </Pressable>
     </View>
-    <Button onPress={() => void submit()} loading={busy} loadingLabel={stage === 'creating-order' ? 'Creating order' : 'Requesting payment'} disabled={busy || orderCreationUncertain || checkoutLoading || (!isBuyNow && cart.mutating) || !checkoutItemCount || !selected || !isOrderPaymentPhone(phoneNumber) || addressesQuery.isError || quoteQuery.isLoading || quoteQuery.isError || !quote || creating || Boolean(checkoutError)}>{paymentOption === 'pay_on_delivery' ? 'Pay Delivery Fee & Place Order' : 'Place Order & Pay'}</Button>
+    <Button onPress={() => void submit()} loading={busy} loadingLabel={stage === 'creating-order' ? 'Creating order' : 'Requesting payment'} disabled={busy || orderCreationUncertain || checkoutLoading || (!isBuyNow && cart.mutating) || !checkoutItemCount || !deliveryPayload || !isOrderPaymentPhone(phoneNumber) || pickupPointsQuery.isFetching || pickupPointsQuery.isError || quoteQuery.isFetching || quoteQuery.isError || !quote || pickupQuoteIncomplete || Boolean(checkoutError)}>{paymentOption === 'pay_on_delivery' ? 'Pay Delivery Fee & Place Order' : 'Place Order & Pay'}</Button>
   </View>;
   return <SafeAreaView style={styles.container}><FlatList testID="checkout-scroll" style={styles.scroll} data={checkoutItems} keyExtractor={item => item.id}
     renderItem={({ item }) => <View style={styles.itemRow}><Text style={styles.itemName}>{item.name} x {item.quantity}</Text><Text style={styles.itemPrice}>{formatCurrency(item.price * item.quantity)}</Text></View>}
@@ -413,6 +474,8 @@ const styles = StyleSheet.create({
   policyNoticeText: { color: theme.colors.muted, textAlign: 'center', fontSize: theme.typography.small.fontSize, lineHeight: theme.typography.small.lineHeight },
   policyLinkHit: { minHeight: 44, justifyContent: 'center', paddingHorizontal: theme.spacing.sm },
   policyLink: { color: theme.colors.primary.DEFAULT, fontWeight: '700', textDecorationLine: 'underline' },
+  attribution: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm, marginTop: theme.spacing.xs },
+  attributionLink: { color: theme.colors.primary.DEFAULT, textDecorationLine: 'underline', fontSize: theme.typography.small.fontSize },
   error: { color: theme.colors.error, textAlign: 'center' },
   confirmation: { flex: 1, minHeight: 0, backgroundColor: theme.colors.cream },
   confirmationContent: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', padding: theme.spacing.xl, paddingBottom: theme.spacing.xxl },

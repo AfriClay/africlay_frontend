@@ -7,6 +7,16 @@ const ts = require('typescript');
 
 const json = (data, status = 200) => new Response(JSON.stringify(data), { status });
 
+test('doorstep checkout requires server availability, a selected location, and a reviewed quote', () => {
+  const checkout = readFileSync(path.resolve(__dirname, '../src/screens/cart/Checkout.tsx'), 'utf8');
+  assert.match(checkout, /selectedPickup\?\.doorstep_available/);
+  assert.match(checkout, /selectedHome!\.token/);
+  assert.match(checkout, /expected_doorstep_quote_token/);
+  assert.match(checkout, /doorstepDeliveryCost/);
+  assert.doesNotMatch(checkout, /delivery_method: 'standard'/);
+  assert.doesNotMatch(checkout, /addressService\.list/);
+});
+
 function harness(responder) {
   const requests = [];
   const modules = new Map();
@@ -128,6 +138,80 @@ test('shipping quote and created order preserve their separate delivery amounts'
   assert.equal(quote.shippingCost, 220);
   assert.equal(created.shippingCost, 220);
   assert.equal(created.total, created.itemSubtotal + created.shippingCost);
+});
+
+test('pickup-point checkout sends the reviewed route and preserves its destination', async () => {
+  const id = '33333333-3333-4333-8333-333333333333';
+  const sellerId = '44444444-4444-4444-8444-444444444444';
+  const pointId = '55555555-5555-4555-8555-555555555555';
+  const point = { id: pointId, name: 'AfriClay Nairobi', city: 'Nairobi', address: 'Simara Mall, 3rd floor, Shop No. 41', postal_code: '' };
+  const { load, requests } = harness(route => route.pathname.endsWith('/pickup-points/')
+    ? json([point])
+    : route.pathname.endsWith('/shipping-quote/')
+      ? json({ item_subtotal: '1000.00', shipping_cost: '220.00', total_amount: '1220.00', currency: 'KES', pickup_point_address: point.address,
+        shipments: [{ seller_id: sellerId, origin_city: 'Nairobi', destination_city: 'Nairobi',
+          chargeable_weight_kg: '1.000', shipping_cost: '220.00', is_remote: false }] })
+      : json({ id, buyer_id: id, item_subtotal: '1000.00', shipping_cost: '220.00', total_amount: '1220.00',
+        currency: 'KES', status: 'pending', payment_method: 'mpesa', payment_status: 'pending',
+        payment_option: 'pay_now', amount_paid: '0.00', amount_due: '1220.00', delivery_fee_paid: false,
+        delivery_method: 'pickup_point', pickup_point: point, shipping_address: point.address,
+        shipping_city: point.city, shipping_postal_code: 'N/A', shipping_country: 'Kenya',
+        courier_name: '', tracking_number: '', shipped_at: null, items: [], fulfillments: [],
+        created_at: '2026-11-06T12:00:00Z' }, 201));
+  const points = await load('services/shippingService.ts').shippingService.pickupPoints();
+  assert.equal(points[0].id, pointId);
+  const service = load('services/orderService.ts').orderService;
+  const route = { delivery_method: 'pickup_point', pickup_point_id: pointId };
+  const quote = await service.shippingQuote(route);
+  const order = await service.checkout({ ...route, expected_item_subtotal: quote.itemSubtotal.toFixed(2),
+    expected_shipping_cost: quote.shippingCost.toFixed(2), expected_total_amount: quote.total.toFixed(2),
+    expected_pickup_point_address: quote.pickupPointAddress });
+  assert.equal(order.deliveryMethod, 'pickup_point');
+  assert.equal(order.pickupPoint.id, pointId);
+  assert.deepEqual(JSON.parse(requests[1].init.body), route);
+  assert.equal(JSON.parse(requests[2].init.body).expected_shipping_cost, '220.00');
+  assert.equal(JSON.parse(requests[2].init.body).expected_pickup_point_address, point.address);
+});
+
+test('doorstep checkout carries a selected location and server-signed quote through payment review', async () => {
+  const orderId = '33333333-3333-4333-8333-333333333333';
+  const pointId = '55555555-5555-4555-8555-555555555555';
+  const point = { id: pointId, name: 'AfriClay Nairobi', city: 'Nairobi', address: 'Simara Mall, Shop 41', postal_code: '', doorstep_available: true };
+  const { load, requests } = harness(route => route.pathname.endsWith('/doorstep/locations/')
+    ? json({ locations: [{ label: 'Test Building, Nairobi, Kenya', token: 'signed-location' }] })
+    : route.pathname.endsWith('/shipping-quote/')
+      ? json({ item_subtotal: '1000.00', pickup_delivery_cost: '220.00', doorstep_delivery_cost: '394.00',
+        doorstep_distance_meters: '8400.00', shipping_cost: '614.00', total_amount: '1614.00', currency: 'KES',
+        pickup_point_address: point.address, expected_doorstep_quote_token: 'signed-quote', shipments: [] })
+      : json({ id: orderId, buyer_id: orderId, item_subtotal: '1000.00', shipping_cost: '614.00', total_amount: '1614.00',
+        currency: 'KES', status: 'pending', payment_method: 'mpesa', payment_status: 'pending',
+        payment_option: 'pay_now', amount_paid: '0.00', amount_due: '1614.00', delivery_fee_paid: false,
+        delivery_method: 'doorstep', pickup_point: point, shipping_address: 'Test Building, Nairobi, Kenya',
+        shipping_city: 'Nairobi', shipping_postal_code: 'N/A', shipping_country: 'Kenya',
+        home_delivery: { status: 'waiting_for_parcels', pickup_address_snapshot: point.address,
+          destination_address: 'Test Building, Nairobi, Kenya', destination_city: 'Nairobi',
+          delivery_instructions: 'Third floor', distance_meters: '8400.00', fee: '394.00', events: [] },
+        courier_name: '', tracking_number: '', shipped_at: null, items: [], fulfillments: [],
+        created_at: '2026-11-09T12:00:00Z' }, 201));
+  const shipping = load('services/shippingService.ts').shippingService;
+  const locations = await shipping.homeLocations(pointId, 'Test Building');
+  assert.equal(locations[0].token, 'signed-location');
+  const service = load('services/orderService.ts').orderService;
+  const selection = { delivery_method: 'doorstep', pickup_point_id: pointId,
+    home_location_token: locations[0].token, home_delivery_instructions: 'Third floor' };
+  const quote = await service.shippingQuote(selection);
+  assert.equal(quote.pickupDeliveryCost, 220);
+  assert.equal(quote.doorstepDeliveryCost, 394);
+  assert.equal(quote.shippingCost, 614);
+  const order = await service.checkout({ ...selection, expected_item_subtotal: '1000.00',
+    expected_shipping_cost: '614.00', expected_total_amount: '1614.00',
+    expected_pickup_point_address: quote.pickupPointAddress,
+    expected_doorstep_quote_token: quote.doorstepQuoteToken });
+  assert.equal(order.homeDelivery.fee, 394);
+  assert.equal(order.homeDelivery.deliveryInstructions, 'Third floor');
+  assert.equal(JSON.parse(requests[0].init.body).query, 'Test Building');
+  assert.equal(JSON.parse(requests[2].init.body).expected_doorstep_quote_token, 'signed-quote');
+  assert.equal(JSON.parse(requests[2].init.body).home_location_token, 'signed-location');
 });
 
 test('wallet UI has no manual payout amount field', () => {

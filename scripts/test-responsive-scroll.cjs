@@ -51,6 +51,7 @@ test('every content screen has a vertical scrolling owner or an intentional exem
     'admin/AdminPortal.tsx',
     'admin/FinanceDashboard.tsx',
     'admin/FinanceInsights.tsx', // Embedded in FinanceDashboard's OperationsScaffold scroll view.
+    'admin/LogisticsDashboard.tsx', // Embedded in OperationsScaffold's scroll view.
     'admin/SalesDashboard.tsx',
     'admin/SuperAdminDashboard.tsx',
     'auth/Splash.tsx',

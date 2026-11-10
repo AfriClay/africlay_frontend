@@ -23,6 +23,7 @@ export type RootStackParamList = {
   Checkout: { orderId?: string; buyNowProductId?: string; buyNowProductSlug?: string; buyNowQuantity?: number } | undefined;
   SalesDashboard: undefined;
   FinanceDashboard: undefined;
+  LogisticsDashboard: undefined;
   SuperAdminDashboard: undefined;
   OperationsLogin: undefined;
   Policies: { policyId?: PolicyId; audience?: PolicyAudience } | undefined;
@@ -34,6 +35,7 @@ const Cart = lazyScreen(() => import('../screens/cart/Cart').then(module => ({ d
 const Checkout = lazyScreen(() => import('../screens/cart/Checkout').then(module => ({ default: module.Checkout })));
 const SalesDashboard = lazyScreen(() => import('../screens/admin/SalesDashboard').then(module => ({ default: module.SalesDashboard })));
 const FinanceDashboard = lazyScreen(() => import('../screens/admin/FinanceDashboard').then(module => ({ default: module.FinanceDashboard })));
+const LogisticsDashboard = lazyScreen(() => import('../screens/admin/LogisticsDashboard').then(module => ({ default: module.LogisticsDashboard })));
 const SuperAdminDashboard = lazyScreen(() => import('../screens/admin/SuperAdminDashboard').then(module => ({ default: module.SuperAdminDashboard })));
 const OperationsLogin = lazyScreen(() => import('../screens/admin/OperationsLogin').then(module => ({ default: module.OperationsLogin })));
 const Policies = lazyScreen(() => import('../screens/legal/Policies').then(module => ({ default: module.Policies })));
@@ -57,7 +59,8 @@ export const RootNavigator = () => {
 
   const operationsAccess = canAccessOperations(user);
   const initialOperationsRoute = isSuperAdmin(user) ? 'SuperAdminDashboard'
-    : hasStaffRole(user, 'sales_reviewer') ? 'SalesDashboard' : 'FinanceDashboard';
+    : hasStaffRole(user, 'sales_reviewer') ? 'SalesDashboard'
+    : hasStaffRole(user, 'finance') ? 'FinanceDashboard' : 'LogisticsDashboard';
 
   const leaveAuthAfterSignIn = useCallback(() => {
     if (!user || !navigationRef.isReady()) return;
@@ -84,6 +87,7 @@ export const RootNavigator = () => {
       <Stack.Screen name="OperationsLogin" component={OperationsLogin} />
       <Stack.Screen name="SalesDashboard" component={SalesDashboard} />
       <Stack.Screen name="FinanceDashboard" component={FinanceDashboard} />
+      <Stack.Screen name="LogisticsDashboard" component={LogisticsDashboard} />
       <Stack.Screen name="SuperAdminDashboard" component={SuperAdminDashboard} />
       <Stack.Screen name="Policies" component={Policies} options={{ headerShown: true, title: 'Terms & Policies' }} />
     </Stack.Navigator>
@@ -95,6 +99,7 @@ export const RootNavigator = () => {
       <Stack.Screen name="AuthStack" component={AuthStack} options={{ presentation: Platform.OS === 'web' ? 'card' : 'modal' }} />
       <Stack.Screen name="SalesDashboard" component={SalesDashboard} />
       <Stack.Screen name="FinanceDashboard" component={FinanceDashboard} />
+      <Stack.Screen name="LogisticsDashboard" component={LogisticsDashboard} />
       <Stack.Screen name="SuperAdminDashboard" component={SuperAdminDashboard} />
       <Stack.Screen name="OperationsLogin" component={OperationsLogin} />
       <Stack.Screen name="Policies" component={Policies} options={{ headerShown: true, title: 'Terms & Policies' }} />

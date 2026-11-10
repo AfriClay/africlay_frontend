@@ -11,7 +11,7 @@ interface OrderCardProps {
 }
 
 export const OrderCard: React.FC<OrderCardProps> = ({ order, onPress }) => (
-  <Pressable style={styles.root} onPress={onPress} accessibilityRole="button" accessibilityLabel={`View order ${order.id}`}>
+  <Pressable style={styles.root} onPress={onPress} accessibilityRole="button" accessibilityLabel={`Track order ${order.id} and view details`}>
     <View style={styles.header}>
       <Text style={styles.id}>#{order.id}</Text>
       <StatusPill status={order.status} />
@@ -19,6 +19,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order, onPress }) => (
     <Text style={styles.summary}>{`${order.items.length} item${order.items.length > 1 ? 's' : ''} · ${order.date}`}</Text>
     <Text style={styles.summary}>Delivery {formatCurrency(order.shippingCost, order.currency)}</Text>
     <Text style={styles.total}>Order total {formatCurrency(order.total, order.currency)}</Text>
+    <Text style={styles.track}>Track Order</Text>
   </Pressable>
 );
 
@@ -48,4 +49,5 @@ const styles = StyleSheet.create({
     color: theme.colors.secondary.DEFAULT,
     fontWeight: '700',
   },
+  track: { color: theme.colors.primary.DEFAULT, fontWeight: '800', marginTop: theme.spacing.sm },
 });

@@ -22,6 +22,20 @@ import { formatDate } from '../../utils/formatDate';
 import { Payment } from '../../types/payment';
 
 type OrderDetailsRoute = RouteProp<ProfileStackParamList, 'OrderDetails'>;
+const eventLabels: Record<string, string> = {
+  order_created: 'Order placed', payment_confirmed: 'Upfront payment confirmed',
+  awaiting_collection: 'Ready for logistics collection', collected_from_seller: 'Collected from seller',
+  in_transit: 'In transit to pickup point', arrived_at_pickup: 'Arrived at pickup point',
+  collected_by_buyer: 'Collected by buyer', shipped: 'Shipped', delivered: 'Delivered',
+  cancelled: 'Cancelled',
+};
+const homeEventLabels: Record<string, string> = {
+  waiting_for_parcels: 'Waiting for parcels at pickup point',
+  rider_assigned: 'Rider assigned', rider_accepted: 'Rider accepted delivery',
+  collected_from_pickup: 'Rider collected from pickup point',
+  rider_delivered: 'Rider reported doorstep delivery',
+  buyer_confirmed: 'Buyer confirmed receipt', cancelled: 'Home delivery cancelled',
+};
 
 export const OrderDetails: React.FC = () => {
   const { params } = useRoute<OrderDetailsRoute>();
@@ -61,11 +75,48 @@ export const OrderDetails: React.FC = () => {
   if (orderQuery.isLoading) return <SafeAreaView style={styles.container}><Text style={styles.loading}>Loading order...</Text></SafeAreaView>;
   if (orderQuery.isError) return <ErrorState message={getApiErrorMessage(orderQuery.error, 'Unable to load this order.')} onRetry={() => void orderQuery.refetch()} />;
   if (!order) return <EmptyState title="Order not found" description="This order is unavailable for your account." />;
+  const parcelsAtPickup = order.fulfillments.length > 0 && order.fulfillments.every(
+    fulfillment => fulfillment.status === 'cancelled' || fulfillment.events.some(event => event.stage === 'arrived_at_pickup'),
+  );
+  const pickupReady = order.deliveryMethod === 'pickup_point' ? parcelsAtPickup
+    : order.deliveryMethod === 'doorstep' ? parcelsAtPickup && order.homeDelivery?.status === 'rider_delivered' : true;
+  const journeyNote = order.deliveryMethod === 'doorstep' && order.status === 'shipped'
+    ? order.homeDelivery?.status === 'rider_delivered'
+      ? 'The rider reported delivery. Confirm receipt only after checking your parcel.'
+      : order.homeDelivery?.status === 'collected_from_pickup'
+        ? 'The rider has collected your parcel from the pickup point.'
+        : 'Your parcels are travelling to the pickup point. The rider will collect them after they arrive.'
+    : order.deliveryMethod === 'pickup_point' && order.status === 'shipped'
+      ? pickupReady ? 'Your parcel has been recorded at the pickup point. Confirm collection only after receiving it.' : 'Check the recorded shipment events below for each seller.'
+      : order.status === 'shipped' ? 'Your order is on its way. Confirm receipt only after it arrives.'
+      : order.status === 'processing' ? 'The required upfront payment is confirmed and the seller is preparing your order.'
+      : order.status === 'pending' ? 'Your order is waiting for payment confirmation.'
+      : order.status === 'delivered' ? 'Delivery is complete. You can now rate the product or store.' : '';
 
   return <SafeAreaView style={styles.container}><ScrollView contentContainerStyle={styles.content}>
     <View style={styles.header}><View style={styles.headerCopy}><Text style={styles.id}>Order #{order.id}</Text><Text style={styles.date}>{formatDate(order.date)}</Text></View><StatusPill status={order.status} /></View>
-    <OrderProgress status={order.status} />
-    <Text style={styles.statusNote}>{order.status === 'shipped' ? 'Your order is on its way. Confirm receipt only after it arrives.' : order.status === 'processing' ? 'Payment is confirmed and the seller is preparing your order.' : order.status === 'pending' ? 'Your order is waiting for payment confirmation.' : order.status === 'delivered' ? 'Delivery is complete. You can now rate the product or store.' : ''}</Text>
+    {order.deliveryMethod === 'standard' ? <OrderProgress status={order.status} /> : null}
+    <Text style={styles.statusNote}>{journeyNote}</Text>
+    <Text style={styles.sectionTitle}>Track Order</Text>
+    {order.fulfillments.map((fulfillment, index) => <View key={fulfillment.id} style={styles.trackingCard}>
+      <Text style={styles.infoTitle}>Parcel {index + 1} of {order.fulfillments.length}</Text>
+      {fulfillment.events.length ? fulfillment.events.map(event => <View key={event.id} style={styles.eventRow}>
+        <View style={styles.eventDot} />
+        <View style={styles.infoCopy}><Text style={styles.eventTitle}>{eventLabels[event.stage] ?? event.stage.replace(/_/g, ' ')}</Text><Text style={styles.date}>{new Date(event.createdAt).toLocaleString()}</Text>{event.note ? <Text style={styles.infoText}>{event.note}</Text> : null}</View>
+      </View>) : <Text style={styles.infoText}>No verified movement updates have been recorded for this parcel.</Text>}
+    </View>)}
+    {order.deliveryMethod === 'doorstep' ? <View style={styles.trackingCard}>
+      <Text style={styles.infoTitle}>Pickup point to your home</Text>
+      {order.homeDelivery?.deliveryInstructions ? <Text style={styles.infoText}>Rider instructions: {order.homeDelivery.deliveryInstructions}</Text> : null}
+      {order.homeDelivery?.events.length ? order.homeDelivery.events.map(event => <View key={event.id} style={styles.eventRow}>
+        <View style={styles.eventDot} /><View style={styles.infoCopy}>
+          <Text style={styles.eventTitle}>{homeEventLabels[event.stage] ?? event.stage.replace(/_/g, ' ')}</Text>
+          <Text style={styles.date}>{new Date(event.createdAt).toLocaleString()}</Text>
+          {event.note ? <Text style={styles.infoText}>{event.note}</Text> : null}
+        </View>
+      </View>) : <Text style={styles.infoText}>No home-delivery events have been recorded.</Text>}
+    </View> : null}
+    <Button variant="secondary" onPress={() => void orderQuery.refetch()} loading={orderQuery.isFetching}>Refresh tracking</Button>
     <View style={styles.infoCard}><CreditCard color={theme.colors.primary.DEFAULT} size={20} /><View style={styles.infoCopy}><Text style={styles.infoTitle}>Payment</Text><Text style={styles.infoText}>{order.paymentStatus === 'paid' ? 'Confirmed' : order.paymentStatus === 'refunded' ? 'Refunded' : order.paymentStatus === 'failed' ? 'Failed' : 'Pending confirmation'}{order.paymentMethod ? ` · ${order.paymentMethod === 'mpesa' ? 'M-Pesa' : order.paymentMethod}` : ''}</Text></View></View>
     {order.status === 'pending' && order.paymentStatus !== 'paid' ? <View style={styles.balanceBlock}>
       <Text style={styles.infoTitle}>Complete payment</Text>
@@ -86,13 +137,14 @@ export const OrderDetails: React.FC = () => {
       {requestOrderPayment.isError ? <Text style={styles.error}>{getApiErrorMessage(requestOrderPayment.error, 'Unable to request the balance payment.')}</Text> : null}
       {refreshPayment.isError ? <Text style={styles.error}>{getApiErrorMessage(refreshPayment.error, 'Unable to refresh payment status.')}</Text> : null}
     </View> : null}
-    {order.status === 'shipped' ? <View style={styles.confirmBlock}><Button loading={confirmDelivery.isPending} disabled={confirmDelivery.isPending || order.paymentStatus !== 'paid'} onPress={() => confirmDelivery.mutate()}>Confirm item received</Button>{confirmDelivery.isError ? <Text style={styles.error} accessibilityRole="alert">{getApiErrorMessage(confirmDelivery.error, 'Unable to confirm delivery.')}</Text> : null}</View> : null}
+    {order.status === 'shipped' ? <View style={styles.confirmBlock}><Button loading={confirmDelivery.isPending} disabled={confirmDelivery.isPending || order.paymentStatus !== 'paid' || !pickupReady} onPress={() => confirmDelivery.mutate()}>{order.deliveryMethod === 'pickup_point' ? 'Confirm collection' : 'Confirm item received'}</Button>{!pickupReady ? <Text style={styles.infoText}>{order.deliveryMethod === 'doorstep' ? 'Wait until all parcels reach the pickup point and the rider reports delivery to your home.' : 'All parcels must arrive at the pickup point before collection can be confirmed.'}</Text> : null}{confirmDelivery.isError ? <Text style={styles.error} accessibilityRole="alert">{getApiErrorMessage(confirmDelivery.error, 'Unable to confirm delivery.')}</Text> : null}</View> : null}
     <Text style={styles.sectionTitle}>Items</Text>
     {order.items.map(item => <View key={item.id} style={styles.itemRow}><View style={styles.itemCopy}><Text style={styles.itemName}>{item.name}</Text><Text style={styles.date}>Qty {item.quantity}</Text></View><Text style={styles.amount}>{formatCurrency(item.price * item.quantity, order.currency)}</Text></View>)}
-    <Text style={styles.sectionTitle}>Delivery Address</Text>
+    <Text style={styles.sectionTitle}>{order.deliveryMethod === 'pickup_point' ? 'Selected pickup point' : 'Delivery Address'}</Text>
     <View style={styles.addressCard}><MapPin color={theme.colors.primary.DEFAULT} size={20} /><Text style={styles.address}>{order.deliveryAddress}</Text></View>
     <View style={styles.totalRow}><Text style={styles.totalLabel}>Items</Text><Text style={styles.totalLine}>{formatCurrency(order.itemSubtotal, order.currency)}</Text></View>
-    <View style={styles.totalRow}><Text style={styles.totalLabel}>Delivery</Text><Text style={styles.totalLine}>{formatCurrency(order.shippingCost, order.currency)}</Text></View>
+    {order.homeDelivery ? <><View style={styles.totalRow}><Text style={styles.totalLabel}>Seller to pickup point</Text><Text style={styles.totalLine}>{formatCurrency(order.shippingCost - order.homeDelivery.fee, order.currency)}</Text></View><View style={styles.totalRow}><Text style={styles.totalLabel}>Pickup point to home</Text><Text style={styles.totalLine}>{formatCurrency(order.homeDelivery.fee, order.currency)}</Text></View></> : null}
+    <View style={styles.totalRow}><Text style={styles.totalLabel}>Total delivery</Text><Text style={styles.totalLine}>{formatCurrency(order.shippingCost, order.currency)}</Text></View>
     <View style={styles.totalRow}><Text style={styles.totalLabel}>Order total</Text><Text style={styles.total}>{formatCurrency(order.total, order.currency)}</Text></View>
   </ScrollView></SafeAreaView>;
 };
@@ -124,4 +176,8 @@ const styles = StyleSheet.create({
   infoCopy: { flex: 1, minWidth: 0 },
   infoTitle: { color: theme.colors.ink, fontWeight: '800' },
   infoText: { color: theme.colors.muted, marginTop: 2 },
+  trackingCard: { padding: theme.spacing.md, backgroundColor: theme.colors.white, borderRadius: theme.radii.md, marginBottom: theme.spacing.sm, gap: theme.spacing.sm },
+  eventRow: { flexDirection: 'row', alignItems: 'flex-start', gap: theme.spacing.sm, paddingTop: theme.spacing.sm },
+  eventDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: theme.colors.primary.DEFAULT, marginTop: 5 },
+  eventTitle: { color: theme.colors.ink, fontWeight: '700' },
 });

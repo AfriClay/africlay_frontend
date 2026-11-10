@@ -3,7 +3,7 @@ import { Platform, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions,
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { BadgeCheck, Landmark, LogOut, RefreshCw, ShieldCheck } from 'lucide-react-native';
+import { BadgeCheck, Landmark, LogOut, RefreshCw, ShieldCheck, Truck } from 'lucide-react-native';
 import { Button } from '../../components/ui/Button';
 import { useAuth } from '../../hooks/useAuth';
 import type { RootStackParamList } from '../../navigation/RootNavigator';
@@ -53,8 +53,9 @@ export const OperationsScaffold = ({ title, subtitle, children, scrollRef }: { t
   const links = [
     hasStaffRole(auth.user, 'sales_reviewer') && { label: 'Sales review', route: 'SalesDashboard' as const, icon: BadgeCheck },
     hasStaffRole(auth.user, 'finance') && { label: 'Finance', route: 'FinanceDashboard' as const, icon: Landmark },
+    hasStaffRole(auth.user, 'logistics') && { label: 'Logistics', route: 'LogisticsDashboard' as const, icon: Truck },
     isSuperAdmin(auth.user) && { label: 'Administration', route: 'SuperAdminDashboard' as const, icon: ShieldCheck },
-  ].filter(Boolean) as Array<{ label: string; route: 'SalesDashboard' | 'FinanceDashboard' | 'SuperAdminDashboard'; icon: typeof BadgeCheck }>;
+  ].filter(Boolean) as Array<{ label: string; route: 'SalesDashboard' | 'FinanceDashboard' | 'LogisticsDashboard' | 'SuperAdminDashboard'; icon: typeof BadgeCheck }>;
 
   const activeSection = links.find(link => link.route === route.name)?.label ?? 'Operations';
   const navigationLinks = <ScrollView horizontal style={compact ? styles.navViewportCompact : styles.navViewport} showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.navigation, compact && styles.navigationCompact]}>
