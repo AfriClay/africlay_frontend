@@ -26,6 +26,7 @@ export type RootStackParamList = {
   LogisticsDashboard: undefined;
   SuperAdminDashboard: undefined;
   OperationsLogin: undefined;
+  RiderApplication: undefined;
   Policies: { policyId?: PolicyId; audience?: PolicyAudience } | undefined;
 };
 
@@ -38,6 +39,7 @@ const FinanceDashboard = lazyScreen(() => import('../screens/admin/FinanceDashbo
 const LogisticsDashboard = lazyScreen(() => import('../screens/admin/LogisticsDashboard').then(module => ({ default: module.LogisticsDashboard })));
 const SuperAdminDashboard = lazyScreen(() => import('../screens/admin/SuperAdminDashboard').then(module => ({ default: module.SuperAdminDashboard })));
 const OperationsLogin = lazyScreen(() => import('../screens/admin/OperationsLogin').then(module => ({ default: module.OperationsLogin })));
+const RiderApplication = lazyScreen(() => import('../screens/admin/RiderApplication').then(module => ({ default: module.RiderApplication })));
 const Policies = lazyScreen(() => import('../screens/legal/Policies').then(module => ({ default: module.Policies })));
 
 export const RootNavigator = () => {
@@ -85,6 +87,7 @@ export const RootNavigator = () => {
   const navigator = operationsAccess ? (
     <Stack.Navigator key="operations" initialRouteName={initialOperationsRoute} screenOptions={{ ...stackOptions, headerShown: false }}>
       <Stack.Screen name="OperationsLogin" component={OperationsLogin} />
+      <Stack.Screen name="RiderApplication" component={RiderApplication} />
       <Stack.Screen name="SalesDashboard" component={SalesDashboard} />
       <Stack.Screen name="FinanceDashboard" component={FinanceDashboard} />
       <Stack.Screen name="LogisticsDashboard" component={LogisticsDashboard} />
@@ -102,6 +105,7 @@ export const RootNavigator = () => {
       <Stack.Screen name="LogisticsDashboard" component={LogisticsDashboard} />
       <Stack.Screen name="SuperAdminDashboard" component={SuperAdminDashboard} />
       <Stack.Screen name="OperationsLogin" component={OperationsLogin} />
+      <Stack.Screen name="RiderApplication" component={RiderApplication} />
       <Stack.Screen name="Policies" component={Policies} options={{ headerShown: true, title: 'Terms & Policies' }} />
     </Stack.Navigator>
   );
@@ -109,7 +113,7 @@ export const RootNavigator = () => {
   return (
     <>
     <NavigationContainer ref={navigationRef} linking={linking} onReady={() => { updateRoute(); leaveAuthAfterSignIn(); }} onStateChange={updateRoute}>
-      {operationsAccess || currentRoute.name === 'OperationsLogin' ? navigator : <MarketplaceShell route={currentRoute.name} category={currentRoute.category} navigate={destination => {
+      {operationsAccess || currentRoute.name === 'OperationsLogin' || currentRoute.name === 'RiderApplication' ? navigator : <MarketplaceShell route={currentRoute.name} category={currentRoute.category} navigate={destination => {
         if (!navigationRef.isReady()) return;
         if (destination.root === 'Policies') navigationRef.navigate('Policies', destination.params as RootStackParamList['Policies']);
         else if (destination.root === 'Cart') navigationRef.navigate('Cart');

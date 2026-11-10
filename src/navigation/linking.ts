@@ -94,6 +94,7 @@ export const linking = {
         parse: { buyNowQuantity: Number },
       },
       OperationsLogin: 'operations',
+      RiderApplication: 'riders/apply',
       SalesDashboard: 'operations/sales',
       FinanceDashboard: 'operations/finance',
       LogisticsDashboard: 'operations/logistics',

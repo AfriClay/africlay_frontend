@@ -66,6 +66,23 @@ test('operations login routes assigned accounts and rejects unassigned marketpla
   assert.doesNotMatch(login, /Create account/);
 });
 
+test('staff login and rider application have separate refreshable routes', () => {
+  const login = source('src/screens/admin/OperationsLogin.tsx');
+  const application = source('src/screens/admin/RiderApplication.tsx');
+  const navigator = source('src/navigation/RootNavigator.tsx');
+  const { linking } = transpile('src/navigation/linking.ts');
+  assert.doesNotMatch(login, /<RiderApplicationForm/);
+  assert.match(login, /navigation\.navigate\('RiderApplication'\)/);
+  assert.match(application, /<RiderApplicationForm userId=\{user\.id\}/);
+  assert.match(application, /!user \? <>/);
+  assert.match(application, /!user\.verified \? <>/);
+  assert.match(navigator, /name="RiderApplication" component=\{RiderApplication\}/);
+  assert.equal(getStateFromPath('/operations', linking.config).routes[0].name, 'OperationsLogin');
+  const directApplication = getStateFromPath('/riders/apply', linking.config);
+  assert.equal(directApplication.routes[0].name, 'RiderApplication');
+  assert.equal(getPathFromState(directApplication, linking.config), '/riders/apply');
+});
+
 test('operations password reset keeps its sign-in destination through a web refresh', () => {
   const { linking } = transpile('src/navigation/linking.ts');
   const state = getStateFromPath('/auth/forgot-password?returnToOperations=true', linking.config);

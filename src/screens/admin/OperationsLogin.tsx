@@ -12,7 +12,6 @@ import { authService, getAuthErrorMessage } from '../../services/authService';
 import { loginSchema } from '../../validation/authSchemas';
 import { canAccessOperations, hasStaffRole, isSuperAdmin } from '../../utils/roles';
 import { operationsColors } from './OperationsScaffold';
-import { RiderApplicationForm } from './RiderApplicationForm';
 
 type LoginForm = { email: string; password: string };
 
@@ -59,7 +58,7 @@ export const OperationsLogin = () => {
       <Text style={styles.copy}>Your marketplace account is signed in, but no operations dashboard assignment is active.</Text>
       <Button fullWidth onPress={() => void auth.logout()}>Sign in with another account</Button>
       <Button fullWidth variant="outline" onPress={() => navigation.navigate('AppTabs')}>Return to marketplace</Button>
-      {auth.user.verified ? <RiderApplicationForm userId={auth.user.id} /> : <Text style={styles.copy}>Verify your account email before applying to deliver.</Text>}
+      <Button fullWidth variant="outline" onPress={() => navigation.navigate('RiderApplication')}>Apply to deliver</Button>
     </View></ScrollView>
   </SafeAreaView>;
 
@@ -78,6 +77,7 @@ export const OperationsLogin = () => {
       })}>Forgot password?</Button>
       <View style={styles.notice}><ShieldCheck size={17} color={operationsColors.green} /><Text style={styles.noticeText}>Dashboard access is assigned and audited by a super administrator.</Text></View>
       <Button fullWidth variant="outline" onPress={() => navigation.navigate('AppTabs')}>Back to marketplace</Button>
+      <Button fullWidth variant="tertiary" onPress={() => navigation.navigate('RiderApplication')}>Apply to deliver instead</Button>
     </View></ScrollView>
   </SafeAreaView>;
 };
