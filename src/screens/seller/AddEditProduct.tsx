@@ -68,7 +68,7 @@ export const AddEditProduct: React.FC = () => {
   const [tagIds, setTagIds] = useState<string[]>([]);
   const [price, setPrice] = useState('');
   const [stock, setStock] = useState('0');
-  const [weightKg, setWeightKg] = useState('1');
+  const [weightKg, setWeightKg] = useState('');
   const [lengthCm, setLengthCm] = useState('');
   const [widthCm, setWidthCm] = useState('');
   const [heightCm, setHeightCm] = useState('');
@@ -87,7 +87,7 @@ export const AddEditProduct: React.FC = () => {
     setName(''); setSlug(''); setSku(''); setDescription(''); setCategoryId(undefined);
     setCategoryPickerOpen(false); setCategoryQuery(''); setCategoryCreatorOpen(false);
     setCategoryParentId(undefined); setCategoryParentName(''); setCategoryChildName(''); setCategoryCreateError(undefined);
-    setTagIds([]); setPrice(''); setStock('0'); setWeightKg('1'); setLengthCm(''); setWidthCm(''); setHeightCm(''); setExistingImages([]); setImages([]);
+    setTagIds([]); setPrice(''); setStock('0'); setWeightKg(''); setLengthCm(''); setWidthCm(''); setHeightCm(''); setExistingImages([]); setImages([]);
     setStatus('draft'); setError(undefined); setSubmitAttempted(false);
   }, [productId]);
 
@@ -102,7 +102,7 @@ export const AddEditProduct: React.FC = () => {
     setTagIds(product.tagIds ?? []);
     setPrice(String(product.price));
     setStock(String(product.availableQuantity));
-    setWeightKg(String(product.weightKg ?? 1));
+    setWeightKg(product.weightKg == null ? '' : String(product.weightKg));
     setLengthCm(product.lengthCm == null ? '' : String(product.lengthCm));
     setWidthCm(product.widthCm == null ? '' : String(product.widthCm));
     setHeightCm(product.heightCm == null ? '' : String(product.heightCm));
@@ -156,7 +156,8 @@ export const AddEditProduct: React.FC = () => {
     !normalizedCategoryQuery || pathForCategory(category.id).some(item => item.label.toLowerCase().includes(normalizedCategoryQuery)));
   const hasValidCategory = Boolean(categoryId && selectableCategoryIds.has(categoryId));
   const validWeight = Number.isFinite(numericWeight) && numericWeight > 0;
-  const validDimensions = [numericLength, numericWidth, numericHeight].every(value => Number.isFinite(value) && value > 0 && value < 100);
+  const hasDimensions = [lengthCm, widthCm, heightCm].some(value => Boolean(value.trim()));
+  const validDimensions = !hasDimensions || [numericLength, numericWidth, numericHeight].every(value => Number.isFinite(value) && value > 0 && value < 100);
   const baseDetailsValid = Boolean(name.trim() && name.length <= 180 && resolvedSlug && resolvedSku && numericPrice > 0 && Number.isFinite(numericPrice) && /^\d+$/.test(stock.trim()) && validWeight);
   const canSave = baseDetailsValid && (status !== 'published' || (hasValidCategory && validDimensions));
   const canCreateCategory = Boolean((categoryParentId || categoryParentName.trim()) && categoryChildName.trim());
@@ -169,11 +170,11 @@ export const AddEditProduct: React.FC = () => {
     status === 'published' && categoriesQuery.isError ? 'Categories could not be loaded. Retry before publishing.' :
     status === 'published' && categoryOptions.length === 0 ? 'Add a specific category before publishing.' :
     status === 'published' && !hasValidCategory ? 'Choose a specific category before publishing.' :
-    status === 'published' && !validDimensions ? 'Enter package length, width, and height below 100 cm.' : undefined;
+    status === 'published' && !validDimensions ? 'Enter all three package dimensions below 100 cm, or leave all three blank to quote delivery by weight.' : undefined;
 
   const scrollToMeasurements = () => scrollRef.current?.scrollTo({ y: Math.max(0, measurementsY.current - 16), animated: !reducedMotion });
-  const dimensionError = (value: number) => submitAttempted && status === 'published' && !(Number.isFinite(value) && value > 0 && value < 100)
-    ? 'Enter a value greater than 0 and below 100 cm to publish.' : undefined;
+  const dimensionError = (value: number) => submitAttempted && status === 'published' && hasDimensions && !(Number.isFinite(value) && value > 0 && value < 100)
+    ? 'Enter a value greater than 0 and below 100 cm, or clear all three dimensions.' : undefined;
 
   const createCategory = async () => {
     if (!canCreateCategory || categoryCreating) return;
@@ -333,21 +334,25 @@ export const AddEditProduct: React.FC = () => {
     </View>
     <View onLayout={event => { measurementsY.current = event.nativeEvent.layout.y; }}>
     <Text style={styles.label}>Package measurements</Text>
-    {status === 'published' && !validDimensions ? <Text style={styles.measurementHint} accessibilityLiveRegion="polite">Enter all three package dimensions to publish. Each side must be greater than 0 and below 100 cm.</Text> : null}
+    <Text style={styles.measurementHint}>Enter an estimated shipping weight. Dimensions are optional; if known, give all three measurements of the packed item. Without them, delivery is quoted by weight.</Text>
+    {status === 'published' && !validDimensions ? <Text style={styles.optionError} accessibilityLiveRegion="polite">Complete all three dimensions or clear all three fields.</Text> : null}
     <View style={styles.twoColumns}>
-      <View style={styles.column}><Input label="Weight (kg)" required value={weightKg} onChangeText={setWeightKg} keyboardType="decimal-pad" placeholder="1.0" accessibilityLabel="Packaged product weight in kilograms" /></View>
-      <View style={styles.column}><Input label="Length (cm)" required={status === 'published'} optional={status !== 'published'} error={dimensionError(numericLength)} value={lengthCm} onChangeText={setLengthCm} keyboardType="decimal-pad" placeholder="0" accessibilityLabel="Package length in centimetres" /></View>
+      <View style={styles.column}><Input label="Weight (kg)" required value={weightKg} onChangeText={setWeightKg} keyboardType="decimal-pad" placeholder="e.g. 0.5" accessibilityLabel="Estimated shipping weight in kilograms" /></View>
+      <View style={styles.column}><Input label="Length (cm)" optional error={dimensionError(numericLength)} value={lengthCm} onChangeText={setLengthCm} keyboardType="decimal-pad" placeholder="0" accessibilityLabel="Package length in centimetres" /></View>
     </View>
     <View style={styles.twoColumns}>
-      <View style={styles.column}><Input label="Width (cm)" required={status === 'published'} optional={status !== 'published'} error={dimensionError(numericWidth)} value={widthCm} onChangeText={setWidthCm} keyboardType="decimal-pad" placeholder="0" accessibilityLabel="Package width in centimetres" /></View>
-      <View style={styles.column}><Input label="Height (cm)" required={status === 'published'} optional={status !== 'published'} error={dimensionError(numericHeight)} value={heightCm} onChangeText={setHeightCm} keyboardType="decimal-pad" placeholder="0" accessibilityLabel="Package height in centimetres" /></View>
+      <View style={styles.column}><Input label="Width (cm)" optional error={dimensionError(numericWidth)} value={widthCm} onChangeText={setWidthCm} keyboardType="decimal-pad" placeholder="0" accessibilityLabel="Package width in centimetres" /></View>
+      <View style={styles.column}><Input label="Height (cm)" optional error={dimensionError(numericHeight)} value={heightCm} onChangeText={setHeightCm} keyboardType="decimal-pad" placeholder="0" accessibilityLabel="Package height in centimetres" /></View>
     </View>
     </View>
     <ChoiceGroup label="Listing status" required value={status} onChange={setStatus} disabled={saving}
       options={productStatuses.filter(option => option.value !== 'archived' || Boolean(productId)).map(option => ({ value: option.value, label: option.label, description: option.summary }))} />
+    {productId && product?.status === 'archived' && status === 'published' && !hasDimensions ? <View style={styles.restoreHint}>
+      <Text style={styles.restoreHintText}>You can republish without dimensions. Delivery will use the estimated shipping weight above.</Text>
+    </View> : null}
     {productId && product?.status === 'archived' && status === 'published' && !validDimensions ? <View style={styles.restoreHint}>
-      <Text style={styles.restoreHintText}>This archived listing needs package measurements before it can return to the marketplace.</Text>
-      <Button variant="tertiary" size="sm" onPress={scrollToMeasurements}>Add package measurements</Button>
+      <Text style={styles.restoreHintText}>The package dimensions are incomplete. Complete them or clear all three fields before republishing.</Text>
+      <Button variant="tertiary" size="sm" onPress={scrollToMeasurements}>Review package measurements</Button>
     </View> : null}
     <FormField label={`Images (${existingImages.length + images.length}/8)`} optional helperText="Add clear JPG or PNG images. The first image is used as the cover.">
       <View style={styles.imageGrid}>

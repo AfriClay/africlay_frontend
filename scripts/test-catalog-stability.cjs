@@ -337,6 +337,26 @@ test('legacy archived product measurements can be supplied when republishing', a
     ['published', '25.00', '20.00', '15.00']);
 });
 
+test('archived products can be republished with weight and no dimensions', async () => {
+  const archived = { ...product, status: 'archived', length_cm: null, width_cm: null, height_cm: null };
+  const { api, service, requests } = harness((route, init) => {
+    if (route.pathname.endsWith('/products/manage/product-id/') && init.method === 'PATCH') {
+      return json({ ...archived, status: 'published' });
+    }
+    return undefined;
+  });
+  await api.tokenManager.setTokens({ access: 'seller-access', refresh: 'seller-refresh' });
+  const restored = await service.updateSellerProduct(store.owner, product.id, {
+    ...draft, status: 'published', lengthCm: undefined, widthCm: undefined, heightCm: undefined,
+  });
+  assert.equal(restored.status, 'published');
+  assert.equal(restored.lengthCm, undefined);
+  const update = requests.find(item => item.path.endsWith('/products/manage/product-id/') && item.init.method === 'PATCH');
+  const body = JSON.parse(update.init.body);
+  assert.equal(body.weight_kg, '1.250');
+  assert.deepEqual([body.length_cm, body.width_cm, body.height_cm], [null, null, null]);
+});
+
 test('seller UI exposes listing status and makes current visibility explicit', () => {
   const editor = readFileSync(path.join(__dirname, '../src/screens/seller/AddEditProduct.tsx'), 'utf8');
   const management = readFileSync(path.join(__dirname, '../src/screens/seller/ProductManagement.tsx'), 'utf8');
