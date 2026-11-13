@@ -68,6 +68,7 @@ export const AddEditProduct: React.FC = () => {
   const [categoryCreateError, setCategoryCreateError] = useState<string>();
   const [tagIds, setTagIds] = useState<string[]>([]);
   const [price, setPrice] = useState('');
+  const [priceUnit, setPriceUnit] = useState('');
   const [stock, setStock] = useState('0');
   const [weightKg, setWeightKg] = useState('');
   const [lengthCm, setLengthCm] = useState('');
@@ -89,7 +90,7 @@ export const AddEditProduct: React.FC = () => {
     setName(''); setSlug(''); setSku(''); setDescription(''); setCategoryId(undefined);
     setCategoryPickerOpen(false); setCategoryQuery(''); setCategoryCreatorOpen(false);
     setCategoryParentId(undefined); setCategoryParentName(''); setCategoryChildName(''); setCategoryCreateError(undefined);
-    setTagIds([]); setPrice(''); setStock('0'); setWeightKg(''); setLengthCm(''); setWidthCm(''); setHeightCm(''); setExistingImages([]); setImages([]);
+    setTagIds([]); setPrice(''); setPriceUnit(''); setStock('0'); setWeightKg(''); setLengthCm(''); setWidthCm(''); setHeightCm(''); setExistingImages([]); setImages([]);
     setStatus('draft'); setError(undefined); setSubmitAttempted(false);
   }, [productId]);
 
@@ -103,6 +104,7 @@ export const AddEditProduct: React.FC = () => {
     setCategoryId(product.categoryId);
     setTagIds(product.tagIds ?? []);
     setPrice(String(product.price));
+    setPriceUnit(product.priceUnit ?? '');
     setStock(String(product.availableQuantity));
     setWeightKg(product.weightKg == null ? '' : String(product.weightKg));
     setLengthCm(product.lengthCm == null ? '' : String(product.lengthCm));
@@ -214,12 +216,13 @@ export const AddEditProduct: React.FC = () => {
   const validWeight = Number.isFinite(numericWeight) && numericWeight > 0;
   const hasDimensions = [lengthCm, widthCm, heightCm].some(value => Boolean(value.trim()));
   const validDimensions = !hasDimensions || [numericLength, numericWidth, numericHeight].every(value => Number.isFinite(value) && value > 0 && value < 100);
-  const baseDetailsValid = Boolean(name.trim() && name.length <= 180 && resolvedSlug && resolvedSku && numericPrice > 0 && Number.isFinite(numericPrice) && /^\d+$/.test(stock.trim()) && validWeight);
+  const baseDetailsValid = Boolean(name.trim() && name.length <= 180 && resolvedSlug && resolvedSku && numericPrice > 0 && Number.isFinite(numericPrice) && priceUnit.trim().length <= 32 && /^\d+$/.test(stock.trim()) && validWeight);
   const canSave = baseDetailsValid && (status !== 'published' || (hasValidCategory && validDimensions));
   const canCreateCategory = Boolean((categoryParentId || categoryParentName.trim()) && categoryChildName.trim());
   const validationMessage = !name.trim() ? 'Enter a product name to continue.' :
     name.length > 180 ? 'Keep the product name within 180 characters.' :
     !Number.isFinite(numericPrice) || numericPrice <= 0 ? 'Enter a price greater than zero.' :
+    priceUnit.trim().length > 32 ? 'Keep the sale unit within 32 characters.' :
     !/^\d+$/.test(stock.trim()) ? 'Stock count must be a whole number of zero or more.' :
     !validWeight ? 'Enter the packaged product weight in kilograms.' :
     status === 'published' && categoriesQuery.isLoading ? 'Loading product categories...' :
@@ -278,7 +281,7 @@ export const AddEditProduct: React.FC = () => {
     try {
       const draft: SellerProductDraft = {
         name: name.trim(), slug: resolvedSlug, sku: resolvedSku, description: description.trim(),
-        categoryId, tagIds, price: numericPrice, availableQuantity: Number(stock),
+        categoryId, tagIds, price: numericPrice, priceUnit: priceUnit.trim(), availableQuantity: Number(stock),
         weightKg: numericWeight,
         lengthCm: lengthCm.trim() ? numericLength : undefined,
         widthCm: widthCm.trim() ? numericWidth : undefined,
@@ -386,6 +389,9 @@ export const AddEditProduct: React.FC = () => {
     />
     <View style={styles.twoColumns}>
       <View style={styles.column}><Input label="Price (KSh)" required value={price} onChangeText={setPrice} keyboardType="decimal-pad" placeholder="0" accessibilityLabel="Product price" /></View>
+      <View style={styles.column}><Input label="Sold per" optional helperText="Use a unit such as piece, kg, bunch, or pack. Each cart quantity and stock count is one whole unit." value={priceUnit} onChangeText={setPriceUnit} placeholder="piece" accessibilityLabel="Product sale unit" error={submitAttempted && priceUnit.trim().length > 32 ? 'Use 32 characters or fewer.' : undefined} /></View>
+    </View>
+    <View style={styles.twoColumns}>
       <View style={styles.column}><Input label="Stock count" required value={stock} onChangeText={setStock} keyboardType="number-pad" placeholder="0" accessibilityLabel="Stock count" /></View>
     </View>
     <View onLayout={event => { measurementsY.current = event.nativeEvent.layout.y; }}>

@@ -147,13 +147,14 @@ test('guest cart persists valid items and supports add, update and remove', asyn
     if (name === '@react-native-async-storage/async-storage') return { __esModule: true, default: asyncStorage };
     throw new Error(`Unexpected runtime import: ${name}`);
   });
-  const product = { productId: 'p-1', productSlug: 'woven-basket', name: 'Woven basket', price: 1200 };
+  const product = { productId: 'p-1', productSlug: 'woven-basket', name: 'Woven basket', price: 1200, priceUnit: 'bunch' };
   let items = cart.addGuestCartItem([], product, 1);
   items = cart.addGuestCartItem(items, product, 2);
   assert.equal(items[0].quantity, 3);
   items = cart.updateGuestCartQuantity(items, 'guest:p-1', 4);
   await cart.guestCartStorage.save(items);
   assert.equal(JSON.stringify(await cart.guestCartStorage.load()), JSON.stringify(items));
+  assert.equal((await cart.guestCartStorage.load())[0].priceUnit, 'bunch');
   assert.equal(cart.removeGuestCartItem(items, 'guest:p-1').length, 0);
 
   memory.set(cart.GUEST_CART_STORAGE_KEY, JSON.stringify([...items, { id: 'bad', productId: 'p-2', name: 'Bad', price: -1, quantity: 0 }]));

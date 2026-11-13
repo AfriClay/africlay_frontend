@@ -45,7 +45,7 @@ export const Cart: React.FC = () => {
             <Pressable onPress={() => openProduct(item.productSlug)} disabled={!item.productSlug} accessibilityRole="link"
               accessibilityLabel={`View ${item.name}`} accessibilityState={{ disabled: !item.productSlug }}
               style={({ pressed }) => [styles.itemInfo, styles.productLink, pressed && styles.productLinkPressed]}>
-              <View style={styles.productCopy}><Text numberOfLines={2} style={styles.itemName}>{item.name}</Text><Text style={styles.itemPrice}>{formatCurrency(item.price)}</Text></View>
+              <View style={styles.productCopy}><Text numberOfLines={2} style={styles.itemName}>{item.name}</Text><Text style={styles.itemPrice}>{formatCurrency(item.price)}{item.priceUnit ? ` / ${item.priceUnit}` : ''}</Text></View>
               {item.productSlug && <ChevronRight color={theme.colors.primary.dark} size={20} />}
             </Pressable>
             <View style={styles.quantityRow}>

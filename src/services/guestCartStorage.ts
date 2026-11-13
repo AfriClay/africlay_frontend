@@ -8,6 +8,7 @@ export type GuestCartProduct = {
   productSlug?: string;
   name: string;
   price: number;
+  priceUnit?: string;
 };
 
 const validItem = (value: unknown): value is CartItem => {
@@ -18,6 +19,7 @@ const validItem = (value: unknown): value is CartItem => {
     && (item.productSlug === undefined || typeof item.productSlug === 'string')
     && typeof item.name === 'string'
     && typeof item.price === 'number'
+    && (item.priceUnit === undefined || typeof item.priceUnit === 'string')
     && Number.isFinite(item.price)
     && item.price >= 0
     && typeof item.quantity === 'number'

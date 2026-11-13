@@ -61,7 +61,7 @@ export const ProductDetails: React.FC = () => {
       setPendingAction('cart');
       setCartError(undefined);
       try {
-        await cart.addItem(product.id, 1, { productId: product.id, productSlug: product.slug, name: product.name, price: product.price });
+        await cart.addItem(product.id, 1, { productId: product.id, productSlug: product.slug, name: product.name, price: product.price, priceUnit: product.priceUnit });
       } catch (error) {
         setCartError(getApiErrorMessage(error, 'Unable to add this item.'));
         setPendingAction(undefined);
@@ -99,7 +99,7 @@ export const ProductDetails: React.FC = () => {
         </View>
         <View style={isExpanded && styles.desktopColumn}>
         <View style={styles.nameRow}><Text style={styles.name}>{product.name}</Text><WishlistToggle productId={product.id} onGuest={() => setAuthSheetVisible(true)} /></View>
-        <Text style={styles.price}>{formatCurrency(product.price, product.currency)}</Text>
+        <Text style={styles.price}>{formatCurrency(product.price, product.currency)}{product.priceUnit ? ` / ${product.priceUnit}` : ''}</Text>
         {product.reviewCount > 0 && <RatingBadge rating={product.rating} reviewCount={product.reviewCount} />}
         {sellerQuery.isError ? <ErrorState message="Unable to load seller details." onRetry={() => void sellerQuery.refetch()} /> : <Pressable disabled={!seller} accessibilityState={{ disabled: !seller }} style={styles.sellerCard} onPress={() => seller && (navigation as any).navigate('SellerStore', { sellerId: seller.id })} accessibilityRole="button">
           <View>

@@ -8,6 +8,7 @@ const orderItemSchema = z.object({
   product_name: z.string().nullish(), product_slug: z.string().nullish(),
   seller_id: z.string().uuid().nullish(), quantity: z.number().int().positive(),
   price_at_purchase: z.union([z.string(), z.number()]),
+  price_unit_at_purchase: z.string().optional().default(''),
   commission_amount: z.union([z.string(), z.number()]).optional(),
   seller_proceeds: z.union([z.string(), z.number()]).optional(),
 });
@@ -82,7 +83,7 @@ const toOrder = (raw: z.infer<typeof orderSchema>): Order => ({
   items: raw.items.map((item): OrderItem => ({
     id: item.id, productId: item.product_id ?? undefined, productSlug: item.product_slug ?? undefined,
     name: item.product_name ?? 'Unavailable product', quantity: item.quantity,
-    price: parseAmount(item.price_at_purchase), sellerId: item.seller_id ?? undefined,
+    price: parseAmount(item.price_at_purchase), priceUnit: item.price_unit_at_purchase, sellerId: item.seller_id ?? undefined,
     commissionAmount: item.commission_amount == null ? undefined : parseAmount(item.commission_amount),
     sellerProceeds: item.seller_proceeds == null ? undefined : parseAmount(item.seller_proceeds),
   })),

@@ -7,13 +7,14 @@ const cartItemSchema = z.object({
   id: z.string().uuid(), product: z.string().uuid(),
   product_name: z.string(), product_slug: z.string().nullish(),
   product_price: z.union([z.string(), z.number()]),
+  price_unit: z.string().optional().default(''),
   quantity: z.number().int().positive(),
 });
 const cartSchema = z.object({ id: z.string().uuid(), buyer: z.string().uuid(), items: z.array(cartItemSchema) });
 
 const toItem = (item: z.infer<typeof cartItemSchema>): CartItem => ({
   id: item.id, productId: item.product, productSlug: item.product_slug ?? undefined,
-  name: item.product_name, price: parseAmount(item.product_price), quantity: item.quantity,
+  name: item.product_name, price: parseAmount(item.product_price), priceUnit: item.price_unit, quantity: item.quantity,
 });
 
 export const cartService = {

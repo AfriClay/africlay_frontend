@@ -10,6 +10,7 @@ export interface Product {
   name: string;
   description: string;
   price: number;
+  priceUnit?: string;
   currency: string;
   rating: number;
   reviewCount: number;

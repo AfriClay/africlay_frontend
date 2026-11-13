@@ -54,6 +54,7 @@ export const Checkout: React.FC = () => {
       productSlug: buyNowProduct.slug,
       name: buyNowProduct.name,
       price: buyNowProduct.price,
+      priceUnit: buyNowProduct.priceUnit,
       quantity: buyNowQuantity,
     }] : []
     : cart.items;
@@ -476,7 +477,7 @@ export const Checkout: React.FC = () => {
     <Button onPress={() => void submit()} loading={busy} loadingLabel={stage === 'creating-order' ? 'Creating order' : 'Requesting payment'} disabled={busy || orderCreationUncertain || checkoutLoading || (!isBuyNow && cart.mutating) || !checkoutItemCount || !deliveryPayload || !isOrderPaymentPhone(phoneNumber) || pickupPointsQuery.isFetching || pickupPointsQuery.isError || quoteQuery.isFetching || quoteQuery.isError || !quote || pickupQuoteIncomplete || Boolean(checkoutError)}>{paymentOption === 'pay_on_delivery' ? 'Pay Delivery Fee & Place Order' : 'Place Order & Pay'}</Button>
   </View>;
   return <SafeAreaView style={styles.container}><FlatList testID="checkout-scroll" style={styles.scroll} data={checkoutItems} keyExtractor={item => item.id}
-    renderItem={({ item }) => <View style={styles.itemRow}><Text style={styles.itemName}>{item.name} x {item.quantity}</Text><Text style={styles.itemPrice}>{formatCurrency(item.price * item.quantity)}</Text></View>}
+    renderItem={({ item }) => <View style={styles.itemRow}><Text style={styles.itemName}>{item.name} x {item.quantity}{item.priceUnit ? ` ${item.priceUnit}` : ''}</Text><Text style={styles.itemPrice}>{formatCurrency(item.price * item.quantity)}</Text></View>}
     ListHeaderComponent={header} ListFooterComponent={footer}
     ListEmptyComponent={<Text style={styles.note}>{checkoutError ? 'Checkout selection unavailable. Go back and retry.' : checkoutLoading ? 'Loading your selection...' : 'Your cart is empty.'}</Text>} contentContainerStyle={styles.content} /></SafeAreaView>;
 };

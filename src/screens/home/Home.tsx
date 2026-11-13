@@ -257,14 +257,9 @@ export const Home: React.FC = () => {
             <ProductCard marketplace layout="grid" product={product} onPress={() => product.slug && navigation.navigate('ProductDetails', { productId: product.slug })} />
           </View>)}</View>
         ) : (
-          <FlatList
-            data={featured}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            keyExtractor={item => item.id}
-            renderItem={({ item }) => <ProductCard marketplace product={item} onPress={() => item.slug && navigation.navigate('ProductDetails', { productId: item.slug })} />}
-            contentContainerStyle={styles.horizontalList}
-          />
+          <View style={styles.mobileProductGrid}>{featured.map(product => <View key={product.id} style={[styles.mobileProductCell, width < 360 && styles.mobileProductCellNarrow]}>
+            <ProductCard marketplace layout="grid" product={product} onPress={() => product.slug && navigation.navigate('ProductDetails', { productId: product.slug })} />
+          </View>)}</View>
         )}
         {!productsLoading && products.length === 0 && <Text style={styles.sellText}>No products available yet.</Text>}
 
@@ -298,6 +293,9 @@ const styles = StyleSheet.create({
   desktopSellBanner: { width: '100%', maxWidth: 560, alignSelf: 'center', padding: theme.spacing.md, marginTop: theme.spacing.md },
   desktopSellCta: { alignSelf: 'flex-start', paddingHorizontal: theme.spacing.lg },
   desktopGrid: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: theme.spacing.lg },
+  mobileProductGrid: { flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: -theme.spacing.xs, marginBottom: theme.spacing.lg },
+  mobileProductCell: { width: '50%', padding: theme.spacing.xs },
+  mobileProductCellNarrow: { width: '100%' },
   container: { flex: 1, minHeight: 0, overflow: 'hidden', backgroundColor: theme.colors.cream },
   topArea: { position: 'relative', zIndex: 30, elevation: 6, flexShrink: 0, overflow: 'visible', backgroundColor: theme.colors.white, borderBottomWidth: 1, borderBottomColor: theme.colors.border },
   topRow: { minHeight: 56, paddingHorizontal: theme.spacing.md, flexDirection: 'row', alignItems: 'center' },

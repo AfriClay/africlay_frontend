@@ -14,6 +14,7 @@ const productSchema = z.object({
   tags: z.array(z.string()).default([]), images: z.array(imageSchema).default([]),
   name: z.string().min(1), slug: z.string().min(1), description: z.string().nullish(),
   sku: z.string().min(1), price: z.union([z.string(), z.number()]),
+  price_unit: z.string().max(32).optional().default(''),
   currency: z.string().length(3), stock_quantity: quantity,
   weight_kg: z.union([z.string(), z.number()]),
   length_cm: z.union([z.string(), z.number()]).nullable(),
@@ -51,6 +52,7 @@ export type SellerProductDraft = {
   categoryId?: string;
   tagIds: string[];
   price: number;
+  priceUnit: string;
   availableQuantity: number;
   weightKg: number;
   lengthCm?: number;
@@ -121,7 +123,7 @@ const toProduct = (raw: BackendProduct, categories: CatalogCategory[]): Product 
     .filter((item): item is { id: string | undefined; url: string; isPrimary: boolean } => Boolean(item.url));
   return {
     id: raw.id, slug: raw.slug, sku: raw.sku, status: raw.status,
-    name: raw.name, description: raw.description ?? '', price: asPrice(raw.price),
+    name: raw.name, description: raw.description ?? '', price: asPrice(raw.price), priceUnit: raw.price_unit,
     currency: raw.currency, category: category?.label ?? 'Uncategorized', categoryId: raw.category ?? undefined,
     tagIds: raw.tags, sellerId: raw.store, images: imageRecords.map(item => item.url), imageRecords,
     availableQuantity: raw.stock_quantity, rating: asPrice(raw.average_rating), reviewCount: raw.review_count, deliveryEstimate: '',
@@ -143,7 +145,7 @@ const toSeller = (raw: BackendStore): Seller => ({
 
 const productPayload = (draft: SellerProductDraft) => ({
   name: draft.name, slug: draft.slug, sku: draft.sku, description: draft.description,
-  category: draft.categoryId ?? null, tags: draft.tagIds, price: draft.price.toFixed(2),
+  category: draft.categoryId ?? null, tags: draft.tagIds, price: draft.price.toFixed(2), price_unit: draft.priceUnit.trim(),
   currency: 'KES', stock_quantity: draft.availableQuantity, status: draft.status,
   weight_kg: draft.weightKg.toFixed(3),
   length_cm: draft.lengthCm?.toFixed(2) ?? null,

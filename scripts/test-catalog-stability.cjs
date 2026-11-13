@@ -12,7 +12,7 @@ const category = { id: 'category-id', slug: 'handmade', name: 'Handmade', parent
 const tag = { id: 'tag-id', slug: 'woven', name: 'Woven' };
 const store = { id: 'store-id', owner: 'seller-id', slug: 'artisan-shop', name: 'Artisan Shop', description: 'Handmade goods', city: 'Nairobi', country: 'Kenya', logo: '/media/logo.png', banner: null, average_rating: '4.25', total_reviews: 4, total_products: 1, status: 'active' };
 const publicStore = Object.fromEntries(Object.entries(store).filter(([key]) => !['owner', 'city', 'country'].includes(key)));
-const product = { id: 'product-id', store: store.id, category: category.id, tags: [tag.id], images: [{ image: '/media/rug.png', is_primary: true, display_order: 1 }, { image: null, is_primary: false, display_order: 2 }], name: 'Sisal Rug', slug: 'sisal-rug', description: 'Handwoven', sku: 'RUG-001', price: '3200.50', currency: 'KES', stock_quantity: 5, weight_kg: '1.250', length_cm: '40.00', width_cm: '30.00', height_cm: '12.00', status: 'published', average_rating: 4.5, review_count: 12 };
+const product = { id: 'product-id', store: store.id, category: category.id, tags: [tag.id], images: [{ image: '/media/rug.png', is_primary: true, display_order: 1 }, { image: null, is_primary: false, display_order: 2 }], name: 'Sisal Rug', slug: 'sisal-rug', description: 'Handwoven', sku: 'RUG-001', price: '3200.50', price_unit: 'piece', currency: 'KES', stock_quantity: 5, weight_kg: '1.250', length_cm: '40.00', width_cm: '30.00', height_cm: '12.00', status: 'published', average_rating: 4.5, review_count: 12 };
 const childCategory = { id: 'child-category-id', slug: 'farm-tools', name: 'Farm Tools', parent: category.id };
 const json = (body, status = 200) => new Response(JSON.stringify(body), { status });
 
@@ -141,6 +141,7 @@ test('product list maps backend IDs, category, tags, decimal price, stock and im
   assert.equal(items[0].categoryId, category.id);
   assert.equal(items[0].tagIds[0], tag.id);
   assert.equal(items[0].price, 3200.5);
+  assert.equal(items[0].priceUnit, 'piece');
   assert.equal(items[0].currency, 'KES');
   assert.equal(items[0].availableQuantity, 5);
   assert.equal(items[0].rating, 4.5);
@@ -193,6 +194,10 @@ test('product cards clamp names and keep rating before price', () => {
   assert.ok(source.indexOf('<RatingBadge') < source.indexOf('formatCurrency(product.price'));
   assert.match(categoryCard, /desktopRoot: \{ width: 116, maxWidth: 116 \}/);
   assert.match(home, /desktopCategoryGrid: \{ justifyContent: 'flex-start', columnGap:/);
+  assert.match(source, /product\.priceUnit \? ` \/ \$\{product\.priceUnit\}`/);
+  assert.match(home, /styles\.mobileProductGrid/);
+  assert.match(home, /mobileProductGrid: \{ flexDirection: 'row', flexWrap: 'wrap'/);
+  assert.doesNotMatch(home, /data=\{featured\}\s+horizontal/);
 });
 
 test('desktop category menu keeps hierarchy and the listing exposes category filters on all sizes', () => {
@@ -299,7 +304,7 @@ test('seller product list and detail require bearer and use manage UUID routes',
   }
 });
 
-const draft = { name: 'Sisal Rug', slug: 'sisal-rug', sku: 'RUG-001', description: 'Handwoven', categoryId: category.id, tagIds: [tag.id], price: 3200.5, availableQuantity: 5, weightKg: 1.25, lengthCm: 40, widthCm: 30, heightCm: 12, status: 'draft' };
+const draft = { name: 'Sisal Rug', slug: 'sisal-rug', sku: 'RUG-001', description: 'Handwoven', categoryId: category.id, tagIds: [tag.id], price: 3200.5, priceUnit: 'piece', availableQuantity: 5, weightKg: 1.25, lengthCm: 40, widthCm: 30, heightCm: 12, status: 'draft' };
 
 test('create and update use backend fields, POST and PATCH, not local storage', async () => {
   const { api, service, requests, storage } = harness((route, init) => route.pathname.includes('/manage/') && ['POST', 'PATCH'].includes(init.method) ? json({ ...product, status: 'draft' }, init.method === 'POST' ? 201 : 200) : undefined);
@@ -308,7 +313,7 @@ test('create and update use backend fields, POST and PATCH, not local storage', 
   await service.updateSellerProduct(store.owner, product.id, { ...draft, status: 'published' });
   const mutations = requests.filter(item => item.init.method === 'POST' || item.init.method === 'PATCH');
   assert.deepEqual(mutations.map(item => [item.path, item.init.method]), [['/api/products/manage/', 'POST'], ['/api/products/manage/product-id/', 'PATCH']]);
-  assert.deepEqual(JSON.parse(mutations[0].init.body), { name: 'Sisal Rug', slug: 'sisal-rug', sku: 'RUG-001', description: 'Handwoven', category: category.id, tags: [tag.id], price: '3200.50', currency: 'KES', stock_quantity: 5, status: 'draft', weight_kg: '1.250', length_cm: '40.00', width_cm: '30.00', height_cm: '12.00' });
+  assert.deepEqual(JSON.parse(mutations[0].init.body), { name: 'Sisal Rug', slug: 'sisal-rug', sku: 'RUG-001', description: 'Handwoven', category: category.id, tags: [tag.id], price: '3200.50', price_unit: 'piece', currency: 'KES', stock_quantity: 5, status: 'draft', weight_kg: '1.250', length_cm: '40.00', width_cm: '30.00', height_cm: '12.00' });
   assert.equal(JSON.parse(mutations[1].init.body).status, 'published');
   assert.equal(mutations[0].init.headers.get('Authorization'), 'Bearer seller-access');
   assert.equal(storage.has('africlay-seller-catalog-v1'), false);
