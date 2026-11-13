@@ -214,7 +214,7 @@ export const Settings: React.FC = () => {
 
 const faqs = [
   { question: 'How do I place an order?', answer: 'Add a product to your cart, select an address, and choose a payment option at checkout.' },
-  { question: 'Can I track delivery?', answer: 'Live delivery tracking is not available yet. My Orders shows the status currently held by the backend.' },
+  { question: 'Can I track delivery?', answer: 'My Orders shows confirmed shipment milestones recorded by AfriClay. It does not show live GPS location or a guaranteed arrival time.' },
 ];
 export const SupportHelp: React.FC = () => {
   const [open, setOpen] = useState<number>();

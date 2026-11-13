@@ -3,7 +3,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { RouteProp, useRoute } from '@react-navigation/native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { CreditCard, MapPin, Truck } from 'lucide-react-native';
+import { CreditCard, MapPin } from 'lucide-react-native';
 import { StatusPill } from '../../components/ui/StatusPill';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
@@ -19,22 +19,16 @@ import { isOrderPaymentPhone, paymentService } from '../../services/paymentServi
 import { theme } from '../../theme';
 import { formatCurrency } from '../../utils/formatCurrency';
 import { formatDate } from '../../utils/formatDate';
+import { buyerMilestones, buyerTrackingStatus } from '../../utils/buyerTracking';
 import { Payment } from '../../types/payment';
 
 type OrderDetailsRoute = RouteProp<ProfileStackParamList, 'OrderDetails'>;
-const eventLabels: Record<string, string> = {
-  order_created: 'Order placed', payment_confirmed: 'Upfront payment confirmed',
-  awaiting_collection: 'Ready for logistics collection', collected_from_seller: 'Collected from seller',
-  in_transit: 'In transit to pickup point', arrived_at_pickup: 'Arrived at pickup point',
-  collected_by_buyer: 'Collected by buyer', shipped: 'Shipped', delivered: 'Delivered',
-  cancelled: 'Cancelled',
-};
 const homeEventLabels: Record<string, string> = {
-  waiting_for_parcels: 'Waiting for parcels at pickup point',
-  rider_assigned: 'Rider assigned', rider_accepted: 'Rider accepted delivery',
-  collected_from_pickup: 'Rider collected from pickup point',
-  rider_delivered: 'Rider reported doorstep delivery',
-  buyer_confirmed: 'Buyer confirmed receipt', cancelled: 'Home delivery cancelled',
+  waiting_for_parcels: 'Final delivery pending',
+  collected_from_pickup: 'Out for delivery',
+  rider_delivered: 'Delivery reported',
+  buyer_confirmed: 'Delivery confirmed',
+  cancelled: 'Delivery cancelled',
 };
 
 export const OrderDetails: React.FC = () => {
@@ -44,7 +38,7 @@ export const OrderDetails: React.FC = () => {
   const client = useQueryClient();
   const detailKey = orderKeys.detail(userId, params.orderId);
   const orderQuery = useQuery({ queryKey: detailKey,
-    queryFn: () => orderService.fetchOrderById(params.orderId), enabled: Boolean(userId && params.orderId) });
+    queryFn: () => orderService.fetchOrderById(params.orderId), enabled: Boolean(userId && params.orderId), refetchOnMount: 'always' });
   const confirmDelivery = useMutation({
     mutationFn: () => orderService.confirmDelivery(params.orderId),
     onSuccess: delivered => {
@@ -85,7 +79,7 @@ export const OrderDetails: React.FC = () => {
       ? 'The rider reported delivery. Confirm receipt only after checking your parcel.'
       : order.homeDelivery?.status === 'collected_from_pickup'
         ? 'The rider has collected your parcel from the pickup point.'
-        : 'Your parcels are travelling to the pickup point. The rider will collect them after they arrive.'
+        : 'Check the parcel updates below. Final delivery starts after all parcels reach the pickup point.'
     : order.deliveryMethod === 'pickup_point' && order.status === 'shipped'
       ? pickupReady ? 'Your parcel has been recorded at the pickup point. Confirm collection only after receiving it.' : 'Check the recorded shipment events below for each seller.'
       : order.status === 'shipped' ? 'Your order is on its way. Confirm receipt only after it arrives.'
@@ -94,25 +88,24 @@ export const OrderDetails: React.FC = () => {
       : order.status === 'delivered' ? 'Delivery is complete. You can now rate the product or store.' : '';
 
   return <SafeAreaView style={styles.container}><ScrollView contentContainerStyle={styles.content}>
-    <View style={styles.header}><View style={styles.headerCopy}><Text style={styles.id}>Order #{order.id}</Text><Text style={styles.date}>{formatDate(order.date)}</Text></View><StatusPill status={order.status} /></View>
+    <View style={styles.header}><View style={styles.headerCopy}><Text style={styles.id}>Order #{order.id.slice(0, 8)}</Text><Text style={styles.date}>{formatDate(order.date)}</Text></View><StatusPill status={order.status} /></View>
     {order.deliveryMethod === 'standard' ? <OrderProgress status={order.status} /> : null}
     <Text style={styles.statusNote}>{journeyNote}</Text>
-    <Text style={styles.sectionTitle}>Track Order</Text>
+    <Text style={styles.sectionTitle}>Track order</Text>
+    <View style={styles.trackingCard}><Text style={styles.infoTitle}>{buyerTrackingStatus(order)}</Text><Text style={styles.infoText}>Updates appear as each parcel reaches a confirmed milestone.</Text></View>
     {order.fulfillments.map((fulfillment, index) => <View key={fulfillment.id} style={styles.trackingCard}>
       <Text style={styles.infoTitle}>Parcel {index + 1} of {order.fulfillments.length}</Text>
-      {fulfillment.events.length ? fulfillment.events.map(event => <View key={event.id} style={styles.eventRow}>
+      {buyerMilestones(fulfillment.events).length ? buyerMilestones(fulfillment.events).map(event => <View key={`${fulfillment.id}:${event.label}`} style={styles.eventRow}>
         <View style={styles.eventDot} />
-        <View style={styles.infoCopy}><Text style={styles.eventTitle}>{eventLabels[event.stage] ?? event.stage.replace(/_/g, ' ')}</Text><Text style={styles.date}>{new Date(event.createdAt).toLocaleString()}</Text>{event.note ? <Text style={styles.infoText}>{event.note}</Text> : null}</View>
+        <View style={styles.infoCopy}><Text style={styles.eventTitle}>{event.label}</Text><Text style={styles.date}>{new Date(event.createdAt).toLocaleString()}</Text></View>
       </View>) : <Text style={styles.infoText}>No verified movement updates have been recorded for this parcel.</Text>}
     </View>)}
     {order.deliveryMethod === 'doorstep' ? <View style={styles.trackingCard}>
       <Text style={styles.infoTitle}>Pickup point to your home</Text>
-      {order.homeDelivery?.deliveryInstructions ? <Text style={styles.infoText}>Rider instructions: {order.homeDelivery.deliveryInstructions}</Text> : null}
-      {order.homeDelivery?.events.length ? order.homeDelivery.events.map(event => <View key={event.id} style={styles.eventRow}>
+      {order.homeDelivery?.events.some(event => homeEventLabels[event.stage]) ? order.homeDelivery.events.filter(event => homeEventLabels[event.stage]).map(event => <View key={event.id} style={styles.eventRow}>
         <View style={styles.eventDot} /><View style={styles.infoCopy}>
-          <Text style={styles.eventTitle}>{homeEventLabels[event.stage] ?? event.stage.replace(/_/g, ' ')}</Text>
+          <Text style={styles.eventTitle}>{homeEventLabels[event.stage]}</Text>
           <Text style={styles.date}>{new Date(event.createdAt).toLocaleString()}</Text>
-          {event.note ? <Text style={styles.infoText}>{event.note}</Text> : null}
         </View>
       </View>) : <Text style={styles.infoText}>No home-delivery events have been recorded.</Text>}
     </View> : null}
@@ -127,7 +120,6 @@ export const OrderDetails: React.FC = () => {
       {requestOrderPayment.isError ? <Text style={styles.error}>{getApiErrorMessage(requestOrderPayment.error, 'Unable to request payment for this order.')}</Text> : null}
       {refreshPayment.isError ? <Text style={styles.error}>{getApiErrorMessage(refreshPayment.error, 'Unable to refresh payment status.')}</Text> : null}
     </View> : null}
-    {order.status === 'shipped' && order.courierName ? <View style={styles.infoCard}><Truck color={theme.colors.primary.DEFAULT} size={20} /><View style={styles.infoCopy}><Text style={styles.infoTitle}>{order.courierName}</Text><Text style={styles.infoText}>Tracking {order.trackingNumber}</Text><Text style={styles.infoText}>Shipping {formatCurrency(order.shippingCost, order.currency)}</Text></View></View> : null}
     {order.status === 'shipped' && order.paymentOption === 'pay_on_delivery' && order.paymentStatus !== 'paid' ? <View style={styles.balanceBlock}>
       <Text style={styles.infoTitle}>Pay delivery balance</Text>
       <Text style={styles.infoText}>{formatCurrency(order.amountDue, order.currency)} is due before delivery can be confirmed.</Text>

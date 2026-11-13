@@ -23,16 +23,16 @@ export interface OrderFulfillment {
   sellerId: string;
   status: OrderStatus;
   shippingCost: number;
-  chargeableWeightKg: number;
-  settlementStatus: SettlementStatus;
+  chargeableWeightKg?: number;
+  settlementStatus?: SettlementStatus;
   events: ShipmentEvent[];
 }
 
 export interface ShipmentEvent {
   id: string;
   stage: string;
-  source: 'system' | 'seller' | 'buyer' | 'logistics';
-  note: string;
+  source?: 'system' | 'seller' | 'buyer' | 'logistics';
+  note?: string;
   createdAt: string;
 }
 
@@ -44,7 +44,7 @@ export interface HomeDelivery {
   deliveryInstructions: string;
   distanceMeters: number;
   fee: number;
-  events: { id: string; stage: string; note: string; createdAt: string }[];
+  events: { id: string; stage: string; note?: string; createdAt: string }[];
 }
 
 export interface Order {

@@ -2,8 +2,9 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { theme } from '../../theme';
 import { Order } from '../../types/order';
-import { StatusPill } from '../ui/StatusPill';
 import { formatCurrency } from '../../utils/formatCurrency';
+import { formatDate } from '../../utils/formatDate';
+import { buyerTrackingStatus } from '../../utils/buyerTracking';
 
 interface OrderCardProps {
   order: Order;
@@ -13,13 +14,14 @@ interface OrderCardProps {
 export const OrderCard: React.FC<OrderCardProps> = ({ order, onPress }) => (
   <Pressable style={styles.root} onPress={onPress} accessibilityRole="button" accessibilityLabel={`Track order ${order.id} and view details`}>
     <View style={styles.header}>
-      <Text style={styles.id}>#{order.id}</Text>
-      <StatusPill status={order.status} />
+      <Text style={styles.id}>Order #{order.id.slice(0, 8)}</Text>
+      <Text style={styles.currentStatus}>{buyerTrackingStatus(order)}</Text>
     </View>
-    <Text style={styles.summary}>{`${order.items.length} item${order.items.length > 1 ? 's' : ''} · ${order.date}`}</Text>
+    <Text style={styles.summary}>{formatDate(order.date)}</Text>
+    <Text style={styles.itemPreview} numberOfLines={2}>{order.items.slice(0, 2).map(item => `${item.name}${item.optionLabel ? ` · ${item.optionLabel}` : ''} × ${item.quantity}`).join(', ')}{order.items.length > 2 ? ` +${order.items.length - 2} more` : ''}</Text>
     <Text style={styles.summary}>Delivery {formatCurrency(order.shippingCost, order.currency)}</Text>
     <Text style={styles.total}>Order total {formatCurrency(order.total, order.currency)}</Text>
-    <Text style={styles.track}>Track Order</Text>
+    <Text style={styles.track}>Track order →</Text>
   </Pressable>
 );
 
@@ -40,7 +42,10 @@ const styles = StyleSheet.create({
   id: {
     color: theme.colors.ink,
     fontWeight: '700',
+    flex: 1,
   },
+  currentStatus: { color: theme.colors.primary.dark, fontWeight: '700', textAlign: 'right', flexShrink: 1 },
+  itemPreview: { color: theme.colors.ink, marginBottom: theme.spacing.sm },
   summary: {
     color: theme.colors.muted,
     marginBottom: theme.spacing.sm,

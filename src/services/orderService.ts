@@ -17,12 +17,12 @@ const fulfillmentSchema = z.object({
   id: z.string().uuid(), seller_id: z.string().uuid(),
   status: z.enum(['pending', 'processing', 'shipped', 'delivered', 'cancelled']),
   shipping_cost: z.union([z.string(), z.number()]),
-  chargeable_weight_kg: z.union([z.string(), z.number()]),
-  settlement_status: z.enum(['pending', 'held', 'released', 'reversed']),
+  chargeable_weight_kg: z.union([z.string(), z.number()]).optional(),
+  settlement_status: z.enum(['pending', 'held', 'released', 'reversed']).optional(),
   events: z.array(z.object({
     id: z.string().uuid(), stage: z.string(),
-    source: z.enum(['system', 'seller', 'buyer', 'logistics']),
-    note: z.string(), created_at: z.string(),
+    source: z.enum(['system', 'seller', 'buyer', 'logistics']).optional(),
+    note: z.string().optional(), created_at: z.string(),
   })).optional(),
 }).passthrough();
 const orderSchema = z.object({
@@ -41,7 +41,7 @@ const orderSchema = z.object({
   home_delivery: z.object({
     status: z.string(), pickup_address_snapshot: z.string(), destination_address: z.string(), destination_city: z.string(), delivery_instructions: z.string(),
     distance_meters: z.union([z.string(), z.number()]), fee: z.union([z.string(), z.number()]),
-    events: z.array(z.object({ id: z.string().uuid(), stage: z.string(), note: z.string(), created_at: z.string() })),
+    events: z.array(z.object({ id: z.string().uuid(), stage: z.string(), note: z.string().optional(), created_at: z.string() })),
   }).nullable().optional(),
   shipping_address: z.string(), shipping_city: z.string(),
   shipping_postal_code: z.string(), shipping_country: z.string(),
@@ -91,7 +91,7 @@ const toOrder = (raw: z.infer<typeof orderSchema>): Order => ({
   fulfillments: raw.fulfillments.map((item): OrderFulfillment => ({
     id: item.id, sellerId: item.seller_id, status: item.status,
     shippingCost: parseAmount(item.shipping_cost),
-    chargeableWeightKg: parseAmount(item.chargeable_weight_kg),
+    chargeableWeightKg: item.chargeable_weight_kg == null ? undefined : parseAmount(item.chargeable_weight_kg),
     settlementStatus: item.settlement_status,
     events: (item.events ?? []).map(event => ({
       id: event.id, stage: event.stage, source: event.source,
