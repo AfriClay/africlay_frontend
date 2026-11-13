@@ -14,6 +14,15 @@ const applicationSchema = z.object({
 export type RiderApplication = z.infer<typeof applicationSchema>;
 const applicationPageSchema = z.object({ count: z.number(), next: z.string().nullable(), results: z.array(applicationSchema) });
 
+export const normalizeRiderPhone = (value: string): string => {
+  const digits = value.replace(/\D/g, '');
+  if (/^0[17]\d{8}$/.test(digits)) return `254${digits.slice(1)}`;
+  if (/^[17]\d{8}$/.test(digits)) return `254${digits}`;
+  return digits;
+};
+
+export const isValidRiderPhone = (value: string): boolean => /^254[17]\d{8}$/.test(normalizeRiderPhone(value));
+
 const uploadPart = (asset: ImagePicker.ImagePickerAsset): Blob =>
   (asset.file ?? { uri: asset.uri, name: asset.fileName || 'document.jpg', type: asset.mimeType || 'image/jpeg' }) as Blob;
 
@@ -23,13 +32,14 @@ export const riderService = {
     return data ? applicationSchema.parse(data) : null;
   },
   submit: async (input: {
-    city: string; vehicleType: string; vehicleRegistration: string; licenceNumber: string;
+    phoneNumber: string; city: string; vehicleType: string; vehicleRegistration: string; licenceNumber: string;
     identity: ImagePicker.ImagePickerAsset; licence: ImagePicker.ImagePickerAsset; smsAlerts: boolean;
   }): Promise<RiderApplication> => {
     for (const asset of [input.identity, input.licence]) {
       if (asset.fileSize && asset.fileSize > 10 * 1024 * 1024) throw new Error('Each document must be 10 MB or smaller.');
     }
     const form = new FormData();
+    form.append('phone_number', normalizeRiderPhone(input.phoneNumber));
     form.append('city', input.city.trim());
     form.append('vehicle_type', input.vehicleType.trim());
     form.append('vehicle_registration', input.vehicleRegistration.trim());

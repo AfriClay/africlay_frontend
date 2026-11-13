@@ -83,6 +83,23 @@ test('staff login and rider application have separate refreshable routes', () =>
   assert.equal(getPathFromState(directApplication, linking.config), '/riders/apply');
 });
 
+test('rider application collects and submits a valid contact number', () => {
+  const form = source('src/screens/admin/RiderApplicationForm.tsx');
+  const service = source('src/services/riderService.ts');
+  const rider = transpile('src/services/riderService.ts', name => {
+    if (name === 'zod') return require('zod');
+    if (name === './api') return { apiClient: () => { throw new Error('Unexpected API request'); } };
+    throw new Error(`Unexpected import: ${name}`);
+  });
+  assert.match(form, /<Input label="Mobile number" required/);
+  assert.match(form, /riderService\.submit\(\{ phoneNumber,/);
+  assert.match(service, /form\.append\('phone_number', normalizeRiderPhone\(input\.phoneNumber\)\)/);
+  assert.equal(rider.normalizeRiderPhone('0712345678'), '254712345678');
+  assert.equal(rider.normalizeRiderPhone('+254 712 345 678'), '254712345678');
+  assert.equal(rider.isValidRiderPhone('0712345678'), true);
+  assert.equal(rider.isValidRiderPhone('12345'), false);
+});
+
 test('operations password reset keeps its sign-in destination through a web refresh', () => {
   const { linking } = transpile('src/navigation/linking.ts');
   const state = getStateFromPath('/auth/forgot-password?returnToOperations=true', linking.config);

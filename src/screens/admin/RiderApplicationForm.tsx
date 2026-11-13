@@ -5,16 +5,19 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { getApiErrorMessage } from '../../services/api';
-import { riderService } from '../../services/riderService';
+import { isValidRiderPhone, riderService } from '../../services/riderService';
 import { shippingService } from '../../services/shippingService';
+import { useAuth } from '../../hooks/useAuth';
 import { ChoiceGroup } from '../../components/ui/ChoiceGroup';
 import { operationsColors } from './OperationsScaffold';
 
 export const RiderApplicationForm = ({ userId }: { userId: string }) => {
   const client = useQueryClient();
+  const { user } = useAuth();
   const application = useQuery({ queryKey: ['rider-application', userId], queryFn: riderService.mine });
   const pickupPoints = useQuery({ queryKey: ['rider-pickup-cities'], queryFn: shippingService.pickupPoints });
   const [city, setCity] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState(user?.phoneNumber ?? '');
   const [vehicleType, setVehicleType] = useState('Motorcycle');
   const [vehicleRegistration, setVehicleRegistration] = useState('');
   const [licenceNumber, setLicenceNumber] = useState('');
@@ -31,12 +34,15 @@ export const RiderApplicationForm = ({ userId }: { userId: string }) => {
     if (!result.canceled) (kind === 'identity' ? setIdentity : setLicence)(result.assets[0]);
   };
   const submit = async () => {
+    if (!isValidRiderPhone(phoneNumber)) {
+      setError('Enter a valid Kenyan mobile number before applying.'); return;
+    }
     if (!identity || !licence || !city.trim() || !vehicleRegistration.trim() || !licenceNumber.trim()) {
       setError('Complete every field and select both document images.'); return;
     }
     setBusy(true); setError(undefined);
     try {
-      const result = await riderService.submit({ city, vehicleType, vehicleRegistration, licenceNumber, identity, licence, smsAlerts });
+      const result = await riderService.submit({ phoneNumber, city, vehicleType, vehicleRegistration, licenceNumber, identity, licence, smsAlerts });
       client.setQueryData(['rider-application', userId], result);
     } catch (cause) { setError(getApiErrorMessage(cause, 'Could not submit rider application.')); }
     finally { setBusy(false); }
@@ -51,6 +57,7 @@ export const RiderApplicationForm = ({ userId }: { userId: string }) => {
     <Text style={styles.title}>Apply to deliver for AfriClay</Text>
     {application.data?.status === 'rejected' ? <Text style={styles.error} accessibilityRole="alert">Changes requested: {application.data.review_reason}</Text> : null}
     <Text style={styles.copy}>Enter the city where you can collect parcels. A super administrator will verify your documents before any job is assigned.</Text>
+    <Input label="Mobile number" required value={phoneNumber} onChangeText={value => { setPhoneNumber(value); setError(undefined); }} keyboardType="phone-pad" autoComplete="tel" placeholder="0712345678" helperText="Used to contact you about deliveries. This will also become your account phone number." error={phoneNumber && !isValidRiderPhone(phoneNumber) ? 'Use a Kenyan mobile number such as 0712345678.' : undefined} />
     {pickupPoints.isError ? <Button variant="outline" onPress={() => void pickupPoints.refetch()}>Retry service cities</Button> : null}
     {pickupPoints.isLoading ? <Text style={styles.copy}>Loading service cities...</Text> : null}
     {pickupPoints.data ? <ChoiceGroup label="Service city" required value={city} onChange={setCity} options={[...new Set(pickupPoints.data.map(point => point.city))].map(value => ({ value, label: value }))} /> : null}
@@ -60,7 +67,7 @@ export const RiderApplicationForm = ({ userId }: { userId: string }) => {
     <Button variant="outline" onPress={() => void pick('identity')}>{identity ? 'Identity image selected' : 'Select identity image'}</Button>
     <Button variant="outline" onPress={() => void pick('licence')}>{licence ? 'Licence image selected' : 'Select driving licence image'}</Button>
     <Text style={styles.copy}>JPG or PNG, up to 10 MB each. Documents are private and available only to administrators reviewing your application.</Text>
-    <View style={styles.smsRow}><Switch value={smsAlerts} onValueChange={setSmsAlerts} accessibilityLabel="Send job assignment alerts by SMS" /><Text style={styles.copy}>Send generic job assignment alerts by SMS to my account number</Text></View>
+    <View style={styles.smsRow}><Switch value={smsAlerts} onValueChange={setSmsAlerts} accessibilityLabel="Send job assignment alerts by SMS" /><Text style={styles.copy}>Send generic job assignment alerts by SMS to this number</Text></View>
     {error ? <Text style={styles.error} accessibilityRole="alert">{error}</Text> : null}
     <Button loading={busy} disabled={busy} onPress={() => void submit()}>Submit rider application</Button>
   </View>;
