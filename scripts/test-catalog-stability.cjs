@@ -321,14 +321,16 @@ test('create and update use backend fields, POST and PATCH, not local storage', 
 
 test('named price choices round-trip through seller payload and public product detail', async () => {
   const optionId = '550e8400-e29b-41d4-a716-446655440000';
-  const choice = { id: optionId, label: 'Small cabbage', price: '80.00', stock_quantity: 3, weight_kg: '1.000', active: true };
+  const choice = { id: optionId, label: 'Small cabbage', price: '80.00', stock_quantity: 0, weight_kg: '1.000', active: true };
+  const large = { id: '550e8400-e29b-41d4-a716-446655440001', label: 'Large cabbage', price: '150.00', stock_quantity: 3, weight_kg: '2.000', active: true };
   const { api, service, requests } = harness((route, init) => {
-    if (route.pathname.endsWith('/products/sisal-rug/')) return json({ ...product, price: '80.00', price_options: [choice] });
+    if (route.pathname.endsWith('/products/sisal-rug/')) return json({ ...product, price: '80.00', price_options: [choice, large] });
     if (route.pathname.includes('/manage/') && init.method === 'POST') return json(product, 201);
     return undefined;
   });
   const detail = await service.fetchProductById('sisal-rug');
-  assert.deepEqual(detail.priceOptions.map(option => [option.id, option.label, option.price, option.stockQuantity]), [[optionId, 'Small cabbage', 80, 3]]);
+  assert.deepEqual(detail.priceOptions.map(option => [option.id, option.label, option.price, option.stockQuantity]), [[optionId, 'Small cabbage', 80, 0], [large.id, 'Large cabbage', 150, 3]]);
+  assert.equal(detail.price, 150);
   await api.tokenManager.setTokens({ access: 'seller-access', refresh: 'seller-refresh' });
   await service.addSellerProduct(store.owner, { ...draft, priceOptions: [{ label: 'Small cabbage', price: 80, stockQuantity: 3, weightKg: 1 }] });
   const payload = JSON.parse(requests.find(item => item.init.method === 'POST' && item.path.endsWith('/manage/')).init.body);

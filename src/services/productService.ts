@@ -121,13 +121,15 @@ const toCategory = (item: z.infer<typeof categorySchema>): CatalogCategory => ({
 
 const toProduct = (raw: BackendProduct, categories: CatalogCategory[]): Product => {
   const category = categories.find(item => item.id === raw.category);
+  const activePriceOptions: ProductPriceOption[] = raw.price_options.filter(option => option.active).map(option => ({ id: option.id, label: option.label, price: asPrice(option.price), stockQuantity: option.stock_quantity, weightKg: asPrice(option.weight_kg), active: option.active }));
+  const availablePriceOptions = activePriceOptions.filter(option => option.stockQuantity > 0);
   const orderedImages = [...raw.images].sort((a, b) => Number(Boolean(b.is_primary)) - Number(Boolean(a.is_primary)) || (a.display_order ?? 0) - (b.display_order ?? 0));
   const imageRecords = orderedImages.map(item => ({ id: item.id, url: imageUrl(item.image), isPrimary: Boolean(item.is_primary) }))
     .filter((item): item is { id: string | undefined; url: string; isPrimary: boolean } => Boolean(item.url));
   return {
     id: raw.id, slug: raw.slug, sku: raw.sku, status: raw.status,
-    name: raw.name, description: raw.description ?? '', price: asPrice(raw.price), priceUnit: raw.price_unit,
-    priceOptions: raw.price_options.filter(option => option.active).map(option => ({ id: option.id, label: option.label, price: asPrice(option.price), stockQuantity: option.stock_quantity, weightKg: asPrice(option.weight_kg), active: option.active })),
+    name: raw.name, description: raw.description ?? '', price: availablePriceOptions.length ? Math.min(...availablePriceOptions.map(option => option.price)) : asPrice(raw.price), priceUnit: raw.price_unit,
+    priceOptions: activePriceOptions,
     currency: raw.currency, category: category?.label ?? 'Uncategorized', categoryId: raw.category ?? undefined,
     tagIds: raw.tags, sellerId: raw.store, images: imageRecords.map(item => item.url), imageRecords,
     availableQuantity: raw.stock_quantity, rating: asPrice(raw.average_rating), reviewCount: raw.review_count, deliveryEstimate: '',
