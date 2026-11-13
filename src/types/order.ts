@@ -12,6 +12,7 @@ export interface OrderItem {
   quantity: number;
   price: number;
   priceUnit?: string;
+  optionLabel?: string;
   sellerId?: string;
   commissionAmount?: number;
   sellerProceeds?: number;

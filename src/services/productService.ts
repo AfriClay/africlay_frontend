@@ -1,6 +1,6 @@
 import type * as ImagePicker from 'expo-image-picker';
 import { z } from 'zod';
-import type { Product, Service } from '../types/product';
+import type { Product, Service, ProductPriceOption } from '../types/product';
 import type { Seller } from '../types/seller';
 import { API_ORIGIN, ApiError, apiClient } from './api';
 import { CatalogDataError, recordId } from './catalogContract';
@@ -9,12 +9,14 @@ import { serviceService } from './serviceService';
 const optionalText = z.string().nullish();
 const quantity = z.number().int().nonnegative();
 const imageSchema = z.object({ id: z.string().uuid().optional(), image: optionalText, is_primary: z.boolean().optional(), display_order: z.number().optional() });
+const priceOptionSchema = z.object({ id: z.string().uuid(), label: z.string(), price: z.union([z.string(), z.number()]), stock_quantity: quantity, weight_kg: z.union([z.string(), z.number()]), active: z.boolean().optional().default(true) });
 const productSchema = z.object({
   id: z.string().min(1), store: z.string().min(1), category: optionalText,
   tags: z.array(z.string()).default([]), images: z.array(imageSchema).default([]),
   name: z.string().min(1), slug: z.string().min(1), description: z.string().nullish(),
   sku: z.string().min(1), price: z.union([z.string(), z.number()]),
   price_unit: z.string().max(32).optional().default(''),
+  price_options: z.array(priceOptionSchema).optional().default([]),
   currency: z.string().length(3), stock_quantity: quantity,
   weight_kg: z.union([z.string(), z.number()]),
   length_cm: z.union([z.string(), z.number()]).nullable(),
@@ -53,6 +55,7 @@ export type SellerProductDraft = {
   tagIds: string[];
   price: number;
   priceUnit: string;
+  priceOptions?: Array<Omit<ProductPriceOption, 'id' | 'active'> & { id?: string }>;
   availableQuantity: number;
   weightKg: number;
   lengthCm?: number;
@@ -124,6 +127,7 @@ const toProduct = (raw: BackendProduct, categories: CatalogCategory[]): Product 
   return {
     id: raw.id, slug: raw.slug, sku: raw.sku, status: raw.status,
     name: raw.name, description: raw.description ?? '', price: asPrice(raw.price), priceUnit: raw.price_unit,
+    priceOptions: raw.price_options.filter(option => option.active).map(option => ({ id: option.id, label: option.label, price: asPrice(option.price), stockQuantity: option.stock_quantity, weightKg: asPrice(option.weight_kg), active: option.active })),
     currency: raw.currency, category: category?.label ?? 'Uncategorized', categoryId: raw.category ?? undefined,
     tagIds: raw.tags, sellerId: raw.store, images: imageRecords.map(item => item.url), imageRecords,
     availableQuantity: raw.stock_quantity, rating: asPrice(raw.average_rating), reviewCount: raw.review_count, deliveryEstimate: '',
@@ -146,6 +150,7 @@ const toSeller = (raw: BackendStore): Seller => ({
 const productPayload = (draft: SellerProductDraft) => ({
   name: draft.name, slug: draft.slug, sku: draft.sku, description: draft.description,
   category: draft.categoryId ?? null, tags: draft.tagIds, price: draft.price.toFixed(2), price_unit: draft.priceUnit.trim(),
+  price_options: (draft.priceOptions ?? []).map(option => ({ ...(option.id ? { id: option.id } : {}), label: option.label.trim(), price: option.price.toFixed(2), stock_quantity: option.stockQuantity, weight_kg: option.weightKg.toFixed(3) })),
   currency: 'KES', stock_quantity: draft.availableQuantity, status: draft.status,
   weight_kg: draft.weightKg.toFixed(3),
   length_cm: draft.lengthCm?.toFixed(2) ?? null,

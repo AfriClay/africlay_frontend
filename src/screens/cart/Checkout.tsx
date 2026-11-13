@@ -41,20 +41,23 @@ export const Checkout: React.FC = () => {
   const buyNowProductSlug = route.params?.buyNowProductSlug;
   const isBuyNow = Boolean(buyNowProductId || buyNowProductSlug);
   const buyNowQuantity = route.params?.buyNowQuantity ?? 1;
+  const buyNowOptionId = route.params?.buyNowOptionId;
   const buyNowQuery = useQuery({
     queryKey: catalogKeys.product(buyNowProductSlug ?? ''),
     queryFn: () => productService.fetchProductById(buyNowProductSlug!),
     enabled: Boolean(buyNowProductId && buyNowProductSlug),
   });
   const buyNowProduct = buyNowQuery.data?.id === buyNowProductId ? buyNowQuery.data : undefined;
+  const buyNowOption = buyNowProduct?.priceOptions?.find(option => option.id === buyNowOptionId);
   const checkoutItems = isBuyNow
     ? buyNowProduct ? [{
       id: `buy-now:${buyNowProduct.id}`,
       productId: buyNowProduct.id,
       productSlug: buyNowProduct.slug,
       name: buyNowProduct.name,
-      price: buyNowProduct.price,
+      price: buyNowOption?.price ?? buyNowProduct.price,
       priceUnit: buyNowProduct.priceUnit,
+      optionId: buyNowOption?.id, optionLabel: buyNowOption?.label,
       quantity: buyNowQuantity,
     }] : []
     : cart.items;
@@ -66,11 +69,14 @@ export const Checkout: React.FC = () => {
       : buyNowQuery.isError
       ? getApiErrorMessage(buyNowQuery.error, 'Unable to load this product for checkout.')
       : !buyNowQuery.isLoading && !buyNowQuery.data ? 'This product is no longer available.'
+      : buyNowProduct?.priceOptions?.length && !buyNowOption ? 'This price option is no longer available. Return to the product and choose again.'
       : buyNowQuery.data && !buyNowProduct ? 'This checkout selection has changed. Return to the product and tap Buy now again.' : undefined
-    : cart.error;
+    : cart.items.some(item => item.optionUnavailable) ? 'A price option in your cart is no longer available. Remove it before checkout.'
+    : cart.items.some(item => item.availableStock !== undefined && item.quantity > item.availableStock) ? 'An item in your cart exceeds available stock. Update its quantity before checkout.' : cart.error;
   const checkoutScope = isBuyNow ? {
     buy_now_product_id: buyNowProductId,
     buy_now_quantity: buyNowQuantity,
+    ...(buyNowOptionId ? { buy_now_option_id: buyNowOptionId } : {}),
   } : {};
   const queryClient = useQueryClient();
   const pickupPointsQuery = useQuery({
@@ -113,7 +119,7 @@ export const Checkout: React.FC = () => {
     enabled: deliveryMethod === 'doorstep' && Boolean(userId && selectedPickup?.doorstep_available && debouncedHomeSearch.length >= 5),
     staleTime: 60_000,
   });
-  const cartSignature = checkoutItems.map(item => `${item.id}:${item.quantity}`).join('|');
+  const cartSignature = checkoutItems.map(item => `${item.id}:${item.optionId ?? ''}:${item.quantity}`).join('|');
   const quoteQuery = useQuery({
     queryKey: orderKeys.shippingQuote(userId, `${deliveryMethod}:${selectedPickup?.id ?? ''}:${selectedHome?.token ?? ''}`, cartSignature),
     queryFn: () => orderService.shippingQuote({ ...deliveryPayload!, ...checkoutScope }),
@@ -477,7 +483,7 @@ export const Checkout: React.FC = () => {
     <Button onPress={() => void submit()} loading={busy} loadingLabel={stage === 'creating-order' ? 'Creating order' : 'Requesting payment'} disabled={busy || orderCreationUncertain || checkoutLoading || (!isBuyNow && cart.mutating) || !checkoutItemCount || !deliveryPayload || !isOrderPaymentPhone(phoneNumber) || pickupPointsQuery.isFetching || pickupPointsQuery.isError || quoteQuery.isFetching || quoteQuery.isError || !quote || pickupQuoteIncomplete || Boolean(checkoutError)}>{paymentOption === 'pay_on_delivery' ? 'Pay Delivery Fee & Place Order' : 'Place Order & Pay'}</Button>
   </View>;
   return <SafeAreaView style={styles.container}><FlatList testID="checkout-scroll" style={styles.scroll} data={checkoutItems} keyExtractor={item => item.id}
-    renderItem={({ item }) => <View style={styles.itemRow}><Text style={styles.itemName}>{item.name} x {item.quantity}{item.priceUnit ? ` ${item.priceUnit}` : ''}</Text><Text style={styles.itemPrice}>{formatCurrency(item.price * item.quantity)}</Text></View>}
+    renderItem={({ item }) => <View style={styles.itemRow}><Text style={styles.itemName}>{item.name}{item.optionLabel ? ` · ${item.optionLabel}` : ''} x {item.quantity}{item.priceUnit ? ` ${item.priceUnit}` : ''}</Text><Text style={styles.itemPrice}>{item.optionUnavailable ? 'Unavailable' : formatCurrency(item.price * item.quantity)}</Text></View>}
     ListHeaderComponent={header} ListFooterComponent={footer}
     ListEmptyComponent={<Text style={styles.note}>{checkoutError ? 'Checkout selection unavailable. Go back and retry.' : checkoutLoading ? 'Loading your selection...' : 'Your cart is empty.'}</Text>} contentContainerStyle={styles.content} /></SafeAreaView>;
 };

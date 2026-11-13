@@ -9,6 +9,8 @@ export type GuestCartProduct = {
   name: string;
   price: number;
   priceUnit?: string;
+  optionId?: string;
+  optionLabel?: string;
 };
 
 const validItem = (value: unknown): value is CartItem => {
@@ -20,6 +22,8 @@ const validItem = (value: unknown): value is CartItem => {
     && typeof item.name === 'string'
     && typeof item.price === 'number'
     && (item.priceUnit === undefined || typeof item.priceUnit === 'string')
+    && (item.optionId === undefined || typeof item.optionId === 'string')
+    && (item.optionLabel === undefined || typeof item.optionLabel === 'string')
     && Number.isFinite(item.price)
     && item.price >= 0
     && typeof item.quantity === 'number'
@@ -32,9 +36,10 @@ export const normalizeGuestCart = (value: unknown): CartItem[] => Array.isArray(
   : [];
 
 export const addGuestCartItem = (items: CartItem[], product: GuestCartProduct, quantity: number): CartItem[] => {
-  const existing = items.find(item => item.productId === product.productId);
-  if (existing) return items.map(item => item.productId === product.productId ? { ...item, quantity: item.quantity + quantity } : item);
-  return [...items, { id: `guest:${product.productId}`, ...product, quantity }];
+  const sameOption = (item: CartItem) => item.productId === product.productId && item.optionId === product.optionId;
+  const existing = items.find(sameOption);
+  if (existing) return items.map(item => sameOption(item) ? { ...item, quantity: item.quantity + quantity } : item);
+  return [...items, { id: product.optionId ? `guest:${product.productId}:${product.optionId}` : `guest:${product.productId}`, ...product, quantity }];
 };
 
 export const updateGuestCartQuantity = (items: CartItem[], itemId: string, quantity: number): CartItem[] =>

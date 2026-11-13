@@ -313,10 +313,26 @@ test('create and update use backend fields, POST and PATCH, not local storage', 
   await service.updateSellerProduct(store.owner, product.id, { ...draft, status: 'published' });
   const mutations = requests.filter(item => item.init.method === 'POST' || item.init.method === 'PATCH');
   assert.deepEqual(mutations.map(item => [item.path, item.init.method]), [['/api/products/manage/', 'POST'], ['/api/products/manage/product-id/', 'PATCH']]);
-  assert.deepEqual(JSON.parse(mutations[0].init.body), { name: 'Sisal Rug', slug: 'sisal-rug', sku: 'RUG-001', description: 'Handwoven', category: category.id, tags: [tag.id], price: '3200.50', price_unit: 'piece', currency: 'KES', stock_quantity: 5, status: 'draft', weight_kg: '1.250', length_cm: '40.00', width_cm: '30.00', height_cm: '12.00' });
+  assert.deepEqual(JSON.parse(mutations[0].init.body), { name: 'Sisal Rug', slug: 'sisal-rug', sku: 'RUG-001', description: 'Handwoven', category: category.id, tags: [tag.id], price: '3200.50', price_unit: 'piece', price_options: [], currency: 'KES', stock_quantity: 5, status: 'draft', weight_kg: '1.250', length_cm: '40.00', width_cm: '30.00', height_cm: '12.00' });
   assert.equal(JSON.parse(mutations[1].init.body).status, 'published');
   assert.equal(mutations[0].init.headers.get('Authorization'), 'Bearer seller-access');
   assert.equal(storage.has('africlay-seller-catalog-v1'), false);
+});
+
+test('named price choices round-trip through seller payload and public product detail', async () => {
+  const optionId = '550e8400-e29b-41d4-a716-446655440000';
+  const choice = { id: optionId, label: 'Small cabbage', price: '80.00', stock_quantity: 3, weight_kg: '1.000', active: true };
+  const { api, service, requests } = harness((route, init) => {
+    if (route.pathname.endsWith('/products/sisal-rug/')) return json({ ...product, price: '80.00', price_options: [choice] });
+    if (route.pathname.includes('/manage/') && init.method === 'POST') return json(product, 201);
+    return undefined;
+  });
+  const detail = await service.fetchProductById('sisal-rug');
+  assert.deepEqual(detail.priceOptions.map(option => [option.id, option.label, option.price, option.stockQuantity]), [[optionId, 'Small cabbage', 80, 3]]);
+  await api.tokenManager.setTokens({ access: 'seller-access', refresh: 'seller-refresh' });
+  await service.addSellerProduct(store.owner, { ...draft, priceOptions: [{ label: 'Small cabbage', price: 80, stockQuantity: 3, weightKg: 1 }] });
+  const payload = JSON.parse(requests.find(item => item.init.method === 'POST' && item.path.endsWith('/manage/')).init.body);
+  assert.deepEqual(payload.price_options, [{ label: 'Small cabbage', price: '80.00', stock_quantity: 3, weight_kg: '1.000' }]);
 });
 
 test('legacy archived product measurements can be supplied when republishing', async () => {

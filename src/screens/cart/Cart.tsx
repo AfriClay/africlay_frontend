@@ -45,13 +45,13 @@ export const Cart: React.FC = () => {
             <Pressable onPress={() => openProduct(item.productSlug)} disabled={!item.productSlug} accessibilityRole="link"
               accessibilityLabel={`View ${item.name}`} accessibilityState={{ disabled: !item.productSlug }}
               style={({ pressed }) => [styles.itemInfo, styles.productLink, pressed && styles.productLinkPressed]}>
-              <View style={styles.productCopy}><Text numberOfLines={2} style={styles.itemName}>{item.name}</Text><Text style={styles.itemPrice}>{formatCurrency(item.price)}{item.priceUnit ? ` / ${item.priceUnit}` : ''}</Text></View>
+                <View style={styles.productCopy}><Text numberOfLines={2} style={styles.itemName}>{item.name}{item.optionLabel ? ` · ${item.optionLabel}` : ''}</Text><Text style={styles.itemPrice}>{item.optionUnavailable ? 'Option unavailable — remove and choose again' : item.availableStock !== undefined && item.quantity > item.availableStock ? `Only ${item.availableStock} available — reduce quantity` : formatCurrency(item.price)}{!item.optionUnavailable && item.priceUnit ? ` / ${item.priceUnit}` : ''}</Text></View>
               {item.productSlug && <ChevronRight color={theme.colors.primary.dark} size={20} />}
             </Pressable>
             <View style={styles.quantityRow}>
               <Button variant="icon" size="sm" onPress={() => void cart.updateQuantity(item.id, item.quantity - 1).catch(() => {})} disabled={cart.mutating || item.quantity <= 1} style={styles.quantityButton} accessibilityLabel={`Decrease ${item.name} quantity`} icon={<Text style={styles.quantityLabel}>-</Text>} />
               <Text style={styles.quantityValue}>{item.quantity}</Text>
-              <Button variant="icon" size="sm" onPress={() => void cart.updateQuantity(item.id, item.quantity + 1).catch(() => {})} disabled={cart.mutating} style={styles.quantityButton} accessibilityLabel={`Increase ${item.name} quantity`} icon={<Text style={styles.quantityLabel}>+</Text>} />
+                <Button variant="icon" size="sm" onPress={() => void cart.updateQuantity(item.id, item.quantity + 1).catch(() => {})} disabled={cart.mutating || (item.availableStock !== undefined && item.quantity >= item.availableStock)} style={styles.quantityButton} accessibilityLabel={`Increase ${item.name} quantity`} icon={<Text style={styles.quantityLabel}>+</Text>} />
               <Button variant="icon" size="sm" icon={<Trash2 color={theme.colors.error} size={18} />} onPress={() => void cart.removeItem(item.id).catch(() => {})} disabled={cart.mutating} accessibilityLabel={`Remove ${item.name}`} />
             </View>
           </View>
@@ -60,9 +60,9 @@ export const Cart: React.FC = () => {
       <View style={[styles.footer, isExpanded && styles.desktopFooter]}>
         <View>
           <Text style={styles.summaryLabel}>{`${cart.itemCount} items`}</Text>
-          <Text style={styles.summaryValue}>{formatCurrency(cart.subtotal)}</Text>
+          <Text style={styles.summaryValue}>{cart.items.some(item => item.optionUnavailable) ? 'Review unavailable items' : formatCurrency(cart.subtotal)}</Text>
         </View>
-        <Button onPress={() => navigation.navigate('Checkout')} disabled={cart.itemCount === 0 || cart.loading || cart.mutating || Boolean(cart.error)} accessibilityLabel="Proceed to checkout">Proceed to Checkout</Button>
+        <Button onPress={() => navigation.navigate('Checkout')} disabled={cart.itemCount === 0 || cart.loading || cart.mutating || Boolean(cart.error) || cart.items.some(item => item.optionUnavailable || (item.availableStock !== undefined && item.quantity > item.availableStock))} accessibilityLabel="Proceed to checkout">Proceed to Checkout</Button>
       </View>
     </SafeAreaView>
   );

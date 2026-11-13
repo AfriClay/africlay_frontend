@@ -1,6 +1,7 @@
 export type ProductCategory = string;
 
 export type ProductImageRecord = { id?: string; url: string; isPrimary: boolean };
+export type ProductPriceOption = { id: string; label: string; price: number; stockQuantity: number; weightKg: number; active: boolean };
 
 export interface Product {
   id: string;
@@ -11,6 +12,7 @@ export interface Product {
   description: string;
   price: number;
   priceUnit?: string;
+  priceOptions?: ProductPriceOption[];
   currency: string;
   rating: number;
   reviewCount: number;

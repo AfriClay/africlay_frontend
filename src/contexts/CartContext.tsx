@@ -118,7 +118,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return runExclusive(() => saveGuestItems(addGuestCartItem(guestItems, guestProduct, quantity)));
     }
     if (!accountAvailable) return Promise.reject(new Error('Shopping is not available for this account.'));
-    return runExclusive(async () => { await cartService.addItem(productId, quantity); await cartQuery.refetch(); });
+    return runExclusive(async () => { await cartService.addItem(productId, quantity, guestProduct?.optionId); await cartQuery.refetch(); });
   }, [accountAvailable, cartQuery.refetch, guestItems, isGuestCart, runExclusive, saveGuestItems]);
 
   const updateQuantity = useCallback((itemId: string, quantity: number) => {
@@ -141,7 +141,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       let transferred = 0;
       for (const item of guestItems) {
         try {
-          await cartService.addItem(item.productId, item.quantity);
+          await cartService.addItem(item.productId, item.quantity, item.optionId);
           remaining = remaining.filter(candidate => candidate.id !== item.id);
           await guestCartStorage.save(remaining);
           setGuestItems(remaining);

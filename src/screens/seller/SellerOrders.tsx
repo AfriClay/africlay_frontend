@@ -82,7 +82,7 @@ export const SellerOrders: React.FC = () => {
       const showShippingForm = shippingOrderId === item.id;
       return <View style={styles.card}>
         <View style={styles.header}><View style={styles.headerCopy}><Text style={styles.orderId}>Order #{item.id.slice(0, 8)}</Text><Text style={styles.date}>{formatDate(item.date)}</Text></View><StatusPill status={item.status} /></View>
-        {item.items.map(orderItem => <View key={orderItem.id} style={styles.item}><Text style={styles.itemName}>{orderItem.name} x {orderItem.quantity}</Text><Text style={styles.amount}>{formatCurrency(orderItem.price * orderItem.quantity, item.currency)}</Text></View>)}
+        {item.items.map(orderItem => <View key={orderItem.id} style={styles.item}><Text style={styles.itemName}>{orderItem.name}{orderItem.optionLabel ? ` · ${orderItem.optionLabel}` : ''} x {orderItem.quantity}</Text><Text style={styles.amount}>{formatCurrency(orderItem.price * orderItem.quantity, item.currency)}</Text></View>)}
         {item.sellerProceeds != null ? <View style={styles.settlement}>
           <View style={styles.settlementRow}><Text style={styles.noticeText}>Commission</Text><Text style={styles.amount}>{formatCurrency(item.commissionAmount ?? 0, item.currency)}</Text></View>
           <View style={styles.settlementRow}><Text style={styles.noticeTitle}>Your proceeds</Text><Text style={styles.amount}>{formatCurrency(item.sellerProceeds, item.currency)}</Text></View>

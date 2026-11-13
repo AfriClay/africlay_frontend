@@ -52,16 +52,21 @@ export const ProductDetails: React.FC = () => {
   const auth = useAuth();
   const [authSheetVisible, setAuthSheetVisible] = useState(false);
   const [cartError, setCartError] = useState<string>();
+  const [selectedOptionId, setSelectedOptionId] = useState<string>();
+  useEffect(() => { setSelectedOptionId(undefined); }, [productId]);
   const [pendingAction, setPendingAction] = useState<'cart'>();
   const canBuy = !auth.user || canAccessBuyerTools(auth.user.role);
+  const chosenOption = product?.priceOptions?.find(option => option.id === selectedOptionId);
+  const needsChoice = Boolean(product?.priceOptions?.length && !chosenOption);
 
   const handleAddToCart = async () => {
+    if (needsChoice) { setCartError('Choose a price option first.'); return; }
     if (auth.user && !canAccessBuyerTools(auth.user.role)) { setCartError('Shopping is not available for this account.'); return; }
     if (product && !cart.mutating) {
       setPendingAction('cart');
       setCartError(undefined);
       try {
-        await cart.addItem(product.id, 1, { productId: product.id, productSlug: product.slug, name: product.name, price: product.price, priceUnit: product.priceUnit });
+        await cart.addItem(product.id, 1, { productId: product.id, productSlug: product.slug, name: product.name, price: chosenOption?.price ?? product.price, priceUnit: product.priceUnit, optionId: chosenOption?.id, optionLabel: chosenOption?.label });
       } catch (error) {
         setCartError(getApiErrorMessage(error, 'Unable to add this item.'));
         setPendingAction(undefined);
@@ -73,9 +78,10 @@ export const ProductDetails: React.FC = () => {
   };
 
   const buyNow = () => {
+    if (needsChoice) { setCartError('Choose a price option first.'); return; }
     if (auth.user && !canAccessBuyerTools(auth.user.role)) { setCartError('Shopping is not available for this account.'); return; }
     if (product) {
-      (navigation as any).navigate('Checkout', { buyNowProductId: product.id, buyNowProductSlug: product.slug, buyNowQuantity: 1 });
+      (navigation as any).navigate('Checkout', { buyNowProductId: product.id, buyNowProductSlug: product.slug, buyNowQuantity: 1, buyNowOptionId: chosenOption?.id });
     }
   };
 
@@ -85,8 +91,8 @@ export const ProductDetails: React.FC = () => {
 
   const actions = <View onLayout={event => setActionHeight(event.nativeEvent.layout.height)} style={[styles.actions, isExpanded && styles.desktopActions]}>
     {canBuy ? <View style={styles.buttonRow}>
-      <Button style={styles.actionButton} variant="secondary" icon={<ShoppingCart color={theme.colors.primary.DEFAULT} size={20} />} onPress={() => void handleAddToCart()} disabled={cart.mutating} loading={pendingAction === 'cart'} loadingLabel="Adding">Add to cart</Button>
-      <Button style={styles.actionButton} onPress={buyNow}>Buy now</Button>
+      <Button style={styles.actionButton} variant="secondary" icon={<ShoppingCart color={theme.colors.primary.DEFAULT} size={20} />} onPress={() => void handleAddToCart()} disabled={cart.mutating || needsChoice || Boolean(chosenOption && !chosenOption.stockQuantity)} loading={pendingAction === 'cart'} loadingLabel="Adding">Add to cart</Button>
+      <Button style={styles.actionButton} onPress={buyNow} disabled={needsChoice || Boolean(chosenOption && !chosenOption.stockQuantity)}>Buy now</Button>
     </View> : <Text style={styles.buyerOnly}>Switch to a buyer-enabled account to purchase products.</Text>}
   </View>;
 
@@ -99,7 +105,8 @@ export const ProductDetails: React.FC = () => {
         </View>
         <View style={isExpanded && styles.desktopColumn}>
         <View style={styles.nameRow}><Text style={styles.name}>{product.name}</Text><WishlistToggle productId={product.id} onGuest={() => setAuthSheetVisible(true)} /></View>
-        <Text style={styles.price}>{formatCurrency(product.price, product.currency)}{product.priceUnit ? ` / ${product.priceUnit}` : ''}</Text>
+        <Text style={styles.price}>{chosenOption ? formatCurrency(chosenOption.price, product.currency) : `${product.priceOptions?.length ? 'From ' : ''}${formatCurrency(product.price, product.currency)}`}{product.priceUnit ? ` / ${product.priceUnit}` : ''}</Text>
+        {Boolean(product.priceOptions?.length) && <View style={styles.choices}><Text style={styles.sectionTitle}>Choose a price option</Text>{product.priceOptions?.map(option => <Pressable key={option.id} accessibilityRole="radio" accessibilityState={{ selected: selectedOptionId === option.id, disabled: option.stockQuantity === 0 }} disabled={option.stockQuantity === 0} onPress={() => { setSelectedOptionId(option.id); setCartError(undefined); }} style={[styles.choice, selectedOptionId === option.id && styles.choiceSelected]}><Text style={styles.choiceText}>{option.label} · {formatCurrency(option.price, product.currency)}</Text><Text style={styles.choiceStock}>{option.stockQuantity ? `${option.stockQuantity} available` : 'Sold out'}</Text></Pressable>)}</View>}
         {product.reviewCount > 0 && <RatingBadge rating={product.rating} reviewCount={product.reviewCount} />}
         {sellerQuery.isError ? <ErrorState message="Unable to load seller details." onRetry={() => void sellerQuery.refetch()} /> : <Pressable disabled={!seller} accessibilityState={{ disabled: !seller }} style={styles.sellerCard} onPress={() => seller && (navigation as any).navigate('SellerStore', { sellerId: seller.id })} accessibilityRole="button">
           <View>
@@ -175,6 +182,11 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.lg,
     ...theme.shadows.sm,
   },
+  choices: { marginBottom: theme.spacing.md, gap: theme.spacing.sm },
+  choice: { minHeight: 56, padding: theme.spacing.sm, borderWidth: 1, borderColor: theme.colors.border, borderRadius: theme.radii.md, backgroundColor: theme.colors.white },
+  choiceSelected: { borderColor: theme.colors.primary.DEFAULT, backgroundColor: theme.colors.primary.tint },
+  choiceText: { color: theme.colors.ink, fontWeight: '700' },
+  choiceStock: { color: theme.colors.muted },
   sellerName: {
     color: theme.colors.ink,
     fontWeight: '700',

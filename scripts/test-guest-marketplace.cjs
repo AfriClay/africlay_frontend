@@ -98,7 +98,7 @@ test('buy now checks out only the selected product without mutating the normal c
   const checkout = source('src/screens/cart/Checkout.tsx');
   const orders = source('src/services/orderService.ts');
 
-  assert.match(product, /navigate\('Checkout', \{ buyNowProductId: product\.id, buyNowProductSlug: product\.slug, buyNowQuantity: 1 \}\)/);
+  assert.match(product, /navigate\('Checkout', \{ buyNowProductId: product\.id, buyNowProductSlug: product\.slug, buyNowQuantity: 1, buyNowOptionId: chosenOption\?\.id \}\)/);
   assert.doesNotMatch(product, /const buyNow[\s\S]*?cart\.addItem[\s\S]*?navigate\('Checkout'/);
   assert.match(checkout, /fetchProductById\(buyNowProductSlug!\)/);
   assert.match(checkout, /buyNowQuery\.data\?\.id === buyNowProductId/);
@@ -157,13 +157,21 @@ test('guest cart persists valid items and supports add, update and remove', asyn
   assert.equal((await cart.guestCartStorage.load())[0].priceUnit, 'bunch');
   assert.equal(cart.removeGuestCartItem(items, 'guest:p-1').length, 0);
 
+  const small = { ...product, optionId: 'small-option', optionLabel: 'Small', price: 80 };
+  const large = { ...product, optionId: 'large-option', optionLabel: 'Large', price: 150 };
+  const choices = cart.addGuestCartItem(cart.addGuestCartItem([], small, 1), large, 2);
+  assert.equal(choices.length, 2);
+  assert.equal(JSON.stringify(choices.map(item => [item.optionLabel, item.price, item.quantity])), JSON.stringify([['Small', 80, 1], ['Large', 150, 2]]));
+  await cart.guestCartStorage.save(choices);
+  assert.equal((await cart.guestCartStorage.load())[1].optionId, 'large-option');
+
   memory.set(cart.GUEST_CART_STORAGE_KEY, JSON.stringify([...items, { id: 'bad', productId: 'p-2', name: 'Bad', price: -1, quantity: 0 }]));
   assert.equal((await cart.guestCartStorage.load()).length, 1);
 });
 
 test('guest cart transfer only removes items after the existing cart API accepts them', () => {
   const context = source('src/contexts/CartContext.tsx');
-  const accepted = context.indexOf('await cartService.addItem(item.productId, item.quantity);');
+  const accepted = context.indexOf('await cartService.addItem(item.productId, item.quantity, item.optionId);');
   const removed = context.indexOf('remaining = remaining.filter', accepted);
   const persisted = context.indexOf('await guestCartStorage.save(remaining);', removed);
   assert.ok(accepted >= 0 && removed > accepted && persisted > removed);

@@ -26,6 +26,7 @@ import type { ProductImageRecord } from '../../types/product';
 type AddEditRoute = RouteProp<SellerDashboardStackParamList, 'AddEditProduct'>;
 type AddEditNavigation = NativeStackNavigationProp<SellerDashboardStackParamList, 'AddEditProduct'>;
 type ProductStatus = SellerProductDraft['status'];
+type EditableOption = { id?: string; label: string; price: string; stock: string; weightKg: string };
 
 const productStatuses: Array<{ value: ProductStatus; label: string; summary: string }> = [
   { value: 'draft', label: 'Draft', summary: 'Only visible to you' },
@@ -69,6 +70,7 @@ export const AddEditProduct: React.FC = () => {
   const [tagIds, setTagIds] = useState<string[]>([]);
   const [price, setPrice] = useState('');
   const [priceUnit, setPriceUnit] = useState('');
+  const [priceOptions, setPriceOptions] = useState<EditableOption[]>([]);
   const [stock, setStock] = useState('0');
   const [weightKg, setWeightKg] = useState('');
   const [lengthCm, setLengthCm] = useState('');
@@ -90,7 +92,7 @@ export const AddEditProduct: React.FC = () => {
     setName(''); setSlug(''); setSku(''); setDescription(''); setCategoryId(undefined);
     setCategoryPickerOpen(false); setCategoryQuery(''); setCategoryCreatorOpen(false);
     setCategoryParentId(undefined); setCategoryParentName(''); setCategoryChildName(''); setCategoryCreateError(undefined);
-    setTagIds([]); setPrice(''); setPriceUnit(''); setStock('0'); setWeightKg(''); setLengthCm(''); setWidthCm(''); setHeightCm(''); setExistingImages([]); setImages([]);
+    setTagIds([]); setPrice(''); setPriceUnit(''); setPriceOptions([]); setStock('0'); setWeightKg(''); setLengthCm(''); setWidthCm(''); setHeightCm(''); setExistingImages([]); setImages([]);
     setStatus('draft'); setError(undefined); setSubmitAttempted(false);
   }, [productId]);
 
@@ -105,6 +107,7 @@ export const AddEditProduct: React.FC = () => {
     setTagIds(product.tagIds ?? []);
     setPrice(String(product.price));
     setPriceUnit(product.priceUnit ?? '');
+    setPriceOptions((product.priceOptions ?? []).map(option => ({ id: option.id, label: option.label, price: String(option.price), stock: String(option.stockQuantity), weightKg: String(option.weightKg) })));
     setStock(String(product.availableQuantity));
     setWeightKg(product.weightKg == null ? '' : String(product.weightKg));
     setLengthCm(product.lengthCm == null ? '' : String(product.lengthCm));
@@ -183,8 +186,12 @@ export const AddEditProduct: React.FC = () => {
     }
   };
 
-  const numericPrice = Number(price.replace(/,/g, ''));
-  const numericWeight = Number(weightKg.replace(/,/g, ''));
+  const hasOptions = priceOptions.length > 0;
+  const optionValues = priceOptions.map(option => ({ ...option, priceValue: Number(option.price.replace(/,/g, '')), stockValue: Number(option.stock), weightValue: Number(option.weightKg.replace(/,/g, '')) }));
+  const validOptions = priceOptions.length <= 12 && new Set(priceOptions.map(option => option.label.trim().toLocaleLowerCase())).size === priceOptions.length && optionValues.every(option => option.label.trim().length > 0 && option.label.trim().length <= 60 && Number.isFinite(option.priceValue) && option.priceValue > 0 && /^\d+(\.\d{1,2})?$/.test(option.price.trim()) && /^\d+$/.test(option.stock.trim()) && Number.isFinite(option.weightValue) && option.weightValue > 0 && /^\d+(\.\d{1,3})?$/.test(option.weightKg.trim()));
+  const numericPrice = hasOptions ? Math.min(...optionValues.map(option => option.priceValue)) : Number(price.replace(/,/g, ''));
+  const numericWeight = hasOptions ? optionValues[0].weightValue : Number(weightKg.replace(/,/g, ''));
+  const numericStock = hasOptions ? optionValues.reduce((sum, option) => sum + option.stockValue, 0) : Number(stock);
   const numericLength = Number(lengthCm.replace(/,/g, ''));
   const numericWidth = Number(widthCm.replace(/,/g, ''));
   const numericHeight = Number(heightCm.replace(/,/g, ''));
@@ -214,13 +221,14 @@ export const AddEditProduct: React.FC = () => {
     !normalizedCategoryQuery || pathForCategory(category.id).some(item => item.label.toLowerCase().includes(normalizedCategoryQuery)));
   const hasValidCategory = Boolean(categoryId && selectableCategoryIds.has(categoryId));
   const validWeight = Number.isFinite(numericWeight) && numericWeight > 0;
-  const hasDimensions = [lengthCm, widthCm, heightCm].some(value => Boolean(value.trim()));
+  const hasDimensions = !hasOptions && [lengthCm, widthCm, heightCm].some(value => Boolean(value.trim()));
   const validDimensions = !hasDimensions || [numericLength, numericWidth, numericHeight].every(value => Number.isFinite(value) && value > 0 && value < 100);
-  const baseDetailsValid = Boolean(name.trim() && name.length <= 180 && resolvedSlug && resolvedSku && numericPrice > 0 && Number.isFinite(numericPrice) && priceUnit.trim().length <= 32 && /^\d+$/.test(stock.trim()) && validWeight);
+  const baseDetailsValid = Boolean(name.trim() && name.length <= 180 && resolvedSlug && resolvedSku && numericPrice > 0 && Number.isFinite(numericPrice) && priceUnit.trim().length <= 32 && (hasOptions ? validOptions : /^\d+$/.test(stock.trim())) && validWeight);
   const canSave = baseDetailsValid && (status !== 'published' || (hasValidCategory && validDimensions));
   const canCreateCategory = Boolean((categoryParentId || categoryParentName.trim()) && categoryChildName.trim());
   const validationMessage = !name.trim() ? 'Enter a product name to continue.' :
     name.length > 180 ? 'Keep the product name within 180 characters.' :
+    hasOptions && !validOptions ? 'Give each option a unique name, positive price, whole-number stock, and estimated shipping weight.' :
     !Number.isFinite(numericPrice) || numericPrice <= 0 ? 'Enter a price greater than zero.' :
     priceUnit.trim().length > 32 ? 'Keep the sale unit within 32 characters.' :
     !/^\d+$/.test(stock.trim()) ? 'Stock count must be a whole number of zero or more.' :
@@ -281,11 +289,12 @@ export const AddEditProduct: React.FC = () => {
     try {
       const draft: SellerProductDraft = {
         name: name.trim(), slug: resolvedSlug, sku: resolvedSku, description: description.trim(),
-        categoryId, tagIds, price: numericPrice, priceUnit: priceUnit.trim(), availableQuantity: Number(stock),
+        categoryId, tagIds, price: numericPrice, priceUnit: priceUnit.trim(), availableQuantity: numericStock,
+        priceOptions: optionValues.map(option => ({ id: option.id, label: option.label.trim(), price: option.priceValue, stockQuantity: option.stockValue, weightKg: option.weightValue })),
         weightKg: numericWeight,
-        lengthCm: lengthCm.trim() ? numericLength : undefined,
-        widthCm: widthCm.trim() ? numericWidth : undefined,
-        heightCm: heightCm.trim() ? numericHeight : undefined,
+        lengthCm: !hasOptions && lengthCm.trim() ? numericLength : undefined,
+        widthCm: !hasOptions && widthCm.trim() ? numericWidth : undefined,
+        heightCm: !hasOptions && heightCm.trim() ? numericHeight : undefined,
         status,
       };
       const hasPendingUploads = pendingUploads.current.length > 0 || images.length > 0;
@@ -297,6 +306,9 @@ export const AddEditProduct: React.FC = () => {
           ? await productService.updateSellerProduct(sellerId, productId, initialDraft)
           : await productService.addSellerProduct(sellerId, initialDraft);
       savedProductId.current = saved.id;
+      if (saved.priceOptions?.length) {
+        setPriceOptions(saved.priceOptions.map(option => ({ id: option.id, label: option.label, price: String(option.price), stock: String(option.stockQuantity), weightKg: String(option.weightKg) })));
+      }
       if (!pendingUploads.current.length) pendingUploads.current = [...images];
       while (pendingUploads.current.length) {
         const asset = pendingUploads.current[0];
@@ -305,7 +317,10 @@ export const AddEditProduct: React.FC = () => {
         setImages(current => current.filter(image => image.uri !== asset.uri));
       }
       if (deferPublishing) {
-        saved = await productService.updateSellerProduct(sellerId, saved.id, draft);
+        saved = await productService.updateSellerProduct(sellerId, saved.id, {
+          ...draft,
+          priceOptions: saved.priceOptions?.map(option => ({ id: option.id, label: option.label, price: option.price, stockQuantity: option.stockQuantity, weightKg: option.weightKg })) ?? draft.priceOptions,
+        });
       }
       await invalidateCatalog(queryClient, sellerId, saved.sellerId, saved.slug, saved.id);
       navigation.goBack();
@@ -387,25 +402,36 @@ export const AddEditProduct: React.FC = () => {
       onRetry={() => void tagsQuery.refetch()}
       disabled={saving}
     />
-    <View style={styles.twoColumns}>
+    <Text style={styles.label}>Price choices</Text>
+    <Text style={styles.measurementHint}>Optional. Use choices for items sold at different prices, such as small, medium and large cabbages. Each choice has its own stock and shipping weight.</Text>
+    {priceOptions.map((option, index) => <View key={option.id ?? `new-${index}`} style={styles.optionCard}>
+      <Input label={`Choice ${index + 1}`} required value={option.label} onChangeText={label => setPriceOptions(current => current.map((item, i) => i === index ? { ...item, label } : item))} placeholder="e.g. Small cabbage" />
+      <Input label="Price (KSh)" required value={option.price} onChangeText={value => setPriceOptions(current => current.map((item, i) => i === index ? { ...item, price: value } : item))} keyboardType="decimal-pad" placeholder="80" />
+      <Input label="Stock count" required value={option.stock} onChangeText={value => setPriceOptions(current => current.map((item, i) => i === index ? { ...item, stock: value } : item))} keyboardType="number-pad" placeholder="0" />
+      <Input label="Estimated packed weight (kg)" required value={option.weightKg} onChangeText={value => setPriceOptions(current => current.map((item, i) => i === index ? { ...item, weightKg: value } : item))} keyboardType="decimal-pad" placeholder="1.5" />
+      <Button size="sm" variant="tertiary" onPress={() => setPriceOptions(current => current.filter((_, i) => i !== index))}>Remove choice</Button>
+    </View>)}
+    {priceOptions.length < 12 && <Button size="sm" variant="tertiary" onPress={() => setPriceOptions(current => [...current, { label: '', price: '', stock: '0', weightKg: '' }])}>Add price choice</Button>}
+    {!hasOptions && <View style={styles.twoColumns}>
       <View style={styles.column}><Input label="Price (KSh)" required value={price} onChangeText={setPrice} keyboardType="decimal-pad" placeholder="0" accessibilityLabel="Product price" /></View>
       <View style={styles.column}><Input label="Sold per" optional helperText="Use a unit such as piece, kg, bunch, or pack. Each cart quantity and stock count is one whole unit." value={priceUnit} onChangeText={setPriceUnit} placeholder="piece" accessibilityLabel="Product sale unit" error={submitAttempted && priceUnit.trim().length > 32 ? 'Use 32 characters or fewer.' : undefined} /></View>
-    </View>
-    <View style={styles.twoColumns}>
+    </View>}
+    {hasOptions && <Input label="Sold per" optional helperText="Optional unit shared by all choices, such as piece or bunch." value={priceUnit} onChangeText={setPriceUnit} placeholder="piece" />}
+    {!hasOptions && <View style={styles.twoColumns}>
       <View style={styles.column}><Input label="Stock count" required value={stock} onChangeText={setStock} keyboardType="number-pad" placeholder="0" accessibilityLabel="Stock count" /></View>
-    </View>
+    </View>}
     <View onLayout={event => { measurementsY.current = event.nativeEvent.layout.y; }}>
     <Text style={styles.label}>Package measurements</Text>
-    <Text style={styles.measurementHint}>Enter an estimated shipping weight. Dimensions are optional; if known, give all three measurements of the packed item. Without them, delivery is quoted by weight.</Text>
+    <Text style={styles.measurementHint}>{hasOptions ? 'Delivery uses the packed weight entered for each price choice. Shared dimensions do not apply to different sizes.' : 'Enter an estimated shipping weight. Dimensions are optional; if known, give all three measurements of the packed item. Without them, delivery is quoted by weight.'}</Text>
     {status === 'published' && !validDimensions ? <Text style={styles.optionError} accessibilityLiveRegion="polite">Complete all three dimensions or clear all three fields.</Text> : null}
     <View style={styles.twoColumns}>
-      <View style={styles.column}><Input label="Weight (kg)" required value={weightKg} onChangeText={setWeightKg} keyboardType="decimal-pad" placeholder="e.g. 0.5" accessibilityLabel="Estimated shipping weight in kilograms" /></View>
-      <View style={styles.column}><Input label="Length (cm)" optional error={dimensionError(numericLength)} value={lengthCm} onChangeText={setLengthCm} keyboardType="decimal-pad" placeholder="0" accessibilityLabel="Package length in centimetres" /></View>
+      {!hasOptions && <View style={styles.column}><Input label="Weight (kg)" required value={weightKg} onChangeText={setWeightKg} keyboardType="decimal-pad" placeholder="e.g. 0.5" accessibilityLabel="Estimated shipping weight in kilograms" /></View>}
+      {!hasOptions && <View style={styles.column}><Input label="Length (cm)" optional error={dimensionError(numericLength)} value={lengthCm} onChangeText={setLengthCm} keyboardType="decimal-pad" placeholder="0" accessibilityLabel="Package length in centimetres" /></View>}
     </View>
-    <View style={styles.twoColumns}>
+    {!hasOptions && <View style={styles.twoColumns}>
       <View style={styles.column}><Input label="Width (cm)" optional error={dimensionError(numericWidth)} value={widthCm} onChangeText={setWidthCm} keyboardType="decimal-pad" placeholder="0" accessibilityLabel="Package width in centimetres" /></View>
       <View style={styles.column}><Input label="Height (cm)" optional error={dimensionError(numericHeight)} value={heightCm} onChangeText={setHeightCm} keyboardType="decimal-pad" placeholder="0" accessibilityLabel="Package height in centimetres" /></View>
-    </View>
+    </View>}
     </View>
     <ChoiceGroup label="Listing status" required value={status} onChange={setStatus} disabled={saving}
       options={productStatuses.filter(option => option.value !== 'archived' || Boolean(productId)).map(option => ({ value: option.value, label: option.label, description: option.summary }))} />
@@ -461,6 +487,7 @@ const styles = StyleSheet.create({
   parentOptionText: { color: theme.colors.ink, fontSize: theme.typography.small.fontSize },
   parentOptionTextActive: { color: theme.colors.primary.dark, fontWeight: '700' },
   twoColumns: { flexDirection: 'row', gap: theme.spacing.md },
+  optionCard: { padding: theme.spacing.md, marginBottom: theme.spacing.sm, borderWidth: 1, borderColor: theme.colors.border, borderRadius: theme.radii.md, backgroundColor: theme.colors.white },
   column: { flex: 1 },
   imageGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm, paddingBottom: theme.spacing.md },
   image: { width: 104, height: 104, borderRadius: theme.radii.md },

@@ -25,7 +25,7 @@ export const ProductCard: React.FC<ProductCardProps> = React.memo(({ product, on
     <View style={[styles.content, layout === 'grid' && styles.gridContent, layout === 'compact' ? styles.compactContent : null]}>
       <Text numberOfLines={2} ellipsizeMode="tail" style={[styles.name, marketplace && styles.marketplaceName]}>{product.name}</Text>
       {layout === 'grid' ? <View style={styles.ratingSlot}>{product.reviewCount > 0 && <RatingBadge rating={product.rating} reviewCount={product.reviewCount} />}</View> : product.reviewCount > 0 && <RatingBadge rating={product.rating} reviewCount={product.reviewCount} />}
-      <Text style={[styles.price, marketplace && styles.marketplacePrice]}>{formatCurrency(product.price, product.currency)}{product.priceUnit ? ` / ${product.priceUnit}` : ''}</Text>
+      <Text style={[styles.price, marketplace && styles.marketplacePrice]}>{product.priceOptions?.length ? 'From ' : ''}{formatCurrency(product.price, product.currency)}{product.priceUnit ? ` / ${product.priceUnit}` : ''}</Text>
     </View>
   </Pressable>
   </View>

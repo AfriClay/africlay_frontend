@@ -6,6 +6,10 @@ export interface CartItem {
   quantity: number;
   price: number;
   priceUnit?: string;
+  optionId?: string;
+  optionLabel?: string;
+  optionUnavailable?: boolean;
+  availableStock?: number;
 }
 
 export interface CartSnapshot {
