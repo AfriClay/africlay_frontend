@@ -6,7 +6,8 @@ import { Button } from '../../components/ui/Button';
 import { useAuth } from '../../hooks/useAuth';
 import { operationsColors } from './OperationsScaffold';
 import { RiderApplicationForm } from './RiderApplicationForm';
-import { canAccessOperations, hasStaffRole, isSuperAdmin } from '../../utils/roles';
+import { MarketplaceBrand } from '../../components/ui/MarketplaceBrand';
+import { canAccessOperations, hasStaffRole, isApprovedRider, isSuperAdmin } from '../../utils/roles';
 
 export const RiderApplication = () => {
   const navigation = useNavigation<any>();
@@ -15,6 +16,7 @@ export const RiderApplication = () => {
   return <SafeAreaView style={styles.safe}>
     <ScrollView testID="rider-application-scroll" style={styles.scroll} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       <View style={styles.panel}>
+        <MarketplaceBrand compact />
         <Text style={styles.heading}>Deliver with AfriClay</Text>
         {!user ? <>
           <Text style={styles.copy}>Sign in or create a marketplace account to apply as a rider. Your application and documents are reviewed before you can receive deliveries.</Text>
@@ -29,7 +31,8 @@ export const RiderApplication = () => {
           if (!canAccessOperations(user)) { navigation.navigate('AppTabs'); return; }
           navigation.navigate(isSuperAdmin(user) ? 'SuperAdminDashboard'
             : hasStaffRole(user, 'sales_reviewer') ? 'SalesDashboard'
-              : hasStaffRole(user, 'finance') ? 'FinanceDashboard' : 'LogisticsDashboard');
+              : hasStaffRole(user, 'finance') ? 'FinanceDashboard'
+                : isApprovedRider(user) ? 'RiderDashboard' : 'LogisticsDashboard');
         }}>Back</Button>
       </View>
     </ScrollView>

@@ -18,6 +18,7 @@ type BackendUser = {
   phone_number?: string | null;
   role?: BackendRole;
   staff_roles?: StaffRole[];
+  is_approved_rider?: boolean;
   is_verified?: boolean;
   full_name?: string;
   profile?: BackendProfile | null;
@@ -50,6 +51,7 @@ export const mapBackendUser = (backendUser: BackendUser): User => {
     onboardingCompleted: true,
     role: backendUser.role ?? 'buyer',
     staffRoles: backendUser.staff_roles ?? [],
+    approvedRider: backendUser.is_approved_rider === true,
     avatarUrl: profile?.avatar_url ?? undefined,
     notificationPreferences: {
       email_order_updates: profile?.notification_preferences?.email_order_updates !== false,

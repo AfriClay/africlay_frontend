@@ -5,10 +5,11 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { BadgeCheck, Landmark, LogOut, RefreshCw, ShieldCheck, Truck } from 'lucide-react-native';
 import { Button } from '../../components/ui/Button';
+import { MarketplaceBrand } from '../../components/ui/MarketplaceBrand';
 import { useAuth } from '../../hooks/useAuth';
 import type { RootStackParamList } from '../../navigation/RootNavigator';
 import { confirmLogout } from '../../utils/confirmLogout';
-import { hasStaffRole, isSuperAdmin } from '../../utils/roles';
+import { hasStaffRole, isApprovedRider, isSuperAdmin } from '../../utils/roles';
 
 export const operationsColors = {
   canvas: '#F4F6F5', panel: '#FFFFFF', ink: '#18211C', muted: '#66726B', border: '#DDE3DF',
@@ -53,9 +54,10 @@ export const OperationsScaffold = ({ title, subtitle, children, scrollRef }: { t
   const links = [
     hasStaffRole(auth.user, 'sales_reviewer') && { label: 'Sales review', route: 'SalesDashboard' as const, icon: BadgeCheck },
     hasStaffRole(auth.user, 'finance') && { label: 'Finance', route: 'FinanceDashboard' as const, icon: Landmark },
-    hasStaffRole(auth.user, 'logistics') && { label: 'Logistics', route: 'LogisticsDashboard' as const, icon: Truck },
+    hasStaffRole(auth.user, 'logistics') && !isApprovedRider(auth.user) && { label: 'Logistics', route: 'LogisticsDashboard' as const, icon: Truck },
+    isApprovedRider(auth.user) && { label: 'My deliveries', route: 'RiderDashboard' as const, icon: Truck },
     isSuperAdmin(auth.user) && { label: 'Administration', route: 'SuperAdminDashboard' as const, icon: ShieldCheck },
-  ].filter(Boolean) as Array<{ label: string; route: 'SalesDashboard' | 'FinanceDashboard' | 'LogisticsDashboard' | 'SuperAdminDashboard'; icon: typeof BadgeCheck }>;
+  ].filter(Boolean) as Array<{ label: string; route: 'SalesDashboard' | 'FinanceDashboard' | 'LogisticsDashboard' | 'RiderDashboard' | 'SuperAdminDashboard'; icon: typeof BadgeCheck }>;
 
   const activeSection = links.find(link => link.route === route.name)?.label ?? 'Operations';
   const navigationLinks = <ScrollView horizontal style={compact ? styles.navViewportCompact : styles.navViewport} showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.navigation, compact && styles.navigationCompact]}>
@@ -67,7 +69,7 @@ export const OperationsScaffold = ({ title, subtitle, children, scrollRef }: { t
   return <SafeAreaView style={[styles.root, webViewport]}>
     <View style={[styles.header, compact && styles.headerCompact]}>
       <View style={[styles.headerMain, compact && styles.headerMainCompact]}>
-        <View style={styles.brand}><Text style={styles.brandMark}>A</Text><View><Text style={styles.brandName}>AfriClay</Text><Text style={styles.brandSub}>Operations</Text></View></View>
+        <MarketplaceBrand compact />
         {!compact ? navigationLinks : null}
         <Button variant="icon" size="sm" accessibilityLabel="Log out" onPress={() => confirmLogout(() => void auth.logout())} icon={<LogOut size={19} color={operationsColors.red} />} />
       </View>
@@ -95,8 +97,6 @@ const styles = StyleSheet.create({
   headerCompact: { paddingBottom: 2 },
   headerMain: { minHeight: 66, flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 18 },
   headerMainCompact: { minHeight: 58, justifyContent: 'space-between', paddingHorizontal: 12 },
-  brand: { flexDirection: 'row', alignItems: 'center', gap: 9 }, brandMark: { width: 38, height: 38, textAlign: 'center', textAlignVertical: 'center', borderRadius: 10, overflow: 'hidden', backgroundColor: operationsColors.green, color: '#FFF', fontSize: 21, fontWeight: '800' },
-  brandName: { color: operationsColors.ink, fontSize: 15, fontWeight: '800' }, brandSub: { color: operationsColors.muted, fontSize: 10 },
   navViewport: { flex: 1, minWidth: 0 }, navViewportCompact: { flexGrow: 0, flexShrink: 0, width: '100%', height: 44 },
   navigation: { flexGrow: 1, justifyContent: 'center', alignItems: 'center', gap: 6 }, navigationCompact: { justifyContent: 'flex-start', paddingHorizontal: 8 }, navLink: { minHeight: 40, flexDirection: 'row', alignItems: 'center', gap: 7, paddingHorizontal: 13, borderRadius: 20 }, navLinkActive: { backgroundColor: operationsColors.greenSoft }, navText: { color: operationsColors.muted, fontSize: 12, fontWeight: '700' }, navTextActive: { color: operationsColors.green },
   scroll: { flex: 1, minHeight: 0 }, content: { flexGrow: 1, width: '100%', maxWidth: 1320, alignSelf: 'center', padding: 24, paddingBottom: 120 }, contentCompact: { padding: 14, paddingBottom: 144 }, heading: { marginBottom: 20 }, headingCompact: { marginBottom: 16 },

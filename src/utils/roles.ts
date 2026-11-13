@@ -12,3 +12,6 @@ export const hasStaffRole = (user: User | undefined, role: StaffRole): boolean =
 
 export const canAccessOperations = (user?: User): boolean =>
   isSuperAdmin(user) || Boolean(user?.staffRoles.length);
+
+export const isApprovedRider = (user?: User): boolean =>
+  !isSuperAdmin(user) && user?.approvedRider === true && hasStaffRole(user, 'logistics');

@@ -51,7 +51,7 @@ export const RiderApplicationForm = ({ userId }: { userId: string }) => {
   if (application.isLoading) return <Text style={styles.copy}>Loading rider application...</Text>;
   if (application.isError) return <View><Text style={styles.error}>Could not load rider application.</Text><Button onPress={() => void application.refetch()}>Retry</Button></View>;
   if (application.data?.status === 'pending') return <Text style={styles.copy}>Your rider application is awaiting review. You will be notified when it is reviewed.</Text>;
-  if (application.data?.status === 'approved') return <Text style={styles.copy}>Your rider application is approved. Sign in again to open Logistics.</Text>;
+  if (application.data?.status === 'approved') return <Text style={styles.copy}>Your rider application is approved. Sign in again to open My deliveries.</Text>;
 
   return <View style={styles.root}>
     <Text style={styles.title}>Apply to deliver for AfriClay</Text>

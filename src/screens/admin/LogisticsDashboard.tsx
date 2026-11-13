@@ -1,4 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Linking, StyleSheet, Text, View } from 'react-native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '../../components/ui/Button';
@@ -9,8 +11,8 @@ import { logisticsService, LogisticsShipment, LogisticsStage } from '../../servi
 import { homeDeliveryService, HomeDeliveryJob, HomeDeliveryRiderStage } from '../../services/homeDeliveryService';
 import { riderService } from '../../services/riderService';
 import { notificationService } from '../../services/notificationService';
-import { RiderApplicationForm } from './RiderApplicationForm';
-import { hasStaffRole, isSuperAdmin } from '../../utils/roles';
+import { hasStaffRole, isApprovedRider, isSuperAdmin } from '../../utils/roles';
+import type { RootStackParamList } from '../../navigation/RootNavigator';
 import { DataFreshness, formatOperationsDate, OperationsScaffold, operationsColors } from './OperationsScaffold';
 
 const nextStage = (shipment: LogisticsShipment): { value: LogisticsStage; label: string } | undefined => {
@@ -32,9 +34,14 @@ const nextHomeStage = (job: HomeDeliveryJob): { value: HomeDeliveryRiderStage; l
 
 export const LogisticsDashboard = () => {
   const auth = useAuth();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const client = useQueryClient();
-  const allowed = hasStaffRole(auth.user, 'logistics');
+  const approvedRider = isApprovedRider(auth.user);
+  const allowed = hasStaffRole(auth.user, 'logistics') && !approvedRider;
   const administrator = isSuperAdmin(auth.user);
+  useEffect(() => {
+    if (approvedRider) navigation.replace('RiderDashboard');
+  }, [approvedRider, navigation]);
   const [offset, setOffset] = useState(0);
   const [homeOffset, setHomeOffset] = useState(0);
   const [riderOffset, setRiderOffset] = useState(0);
@@ -93,6 +100,7 @@ export const LogisticsDashboard = () => {
     finally { setBusyId(undefined); }
   };
 
+  if (approvedRider) return null;
   return <OperationsScaffold title="Delivery logistics" subtitle="Seller collections, pickup points and assigned doorstep rides. Record milestones only after the physical handover has happened.">
     {!allowed ? <Text style={styles.error}>Logistics access required.</Text> : <>
       <Text style={styles.title}>Delivery alerts</Text>
@@ -100,7 +108,6 @@ export const LogisticsDashboard = () => {
       {notices.isError ? <Button variant="outline" onPress={() => void notices.refetch()}>Retry alerts</Button> : null}
       {notices.data?.filter(item => ['New delivery assigned', 'Delivery assignment changed', 'Seller collection assigned', 'Delivery declined'].includes(item.title)).slice(0, 5).map(item =>
         <View key={item.id} style={styles.card}><Text style={styles.title}>{item.title}</Text><Text style={styles.detail}>{item.message}</Text><Text style={styles.muted}>{formatOperationsDate(item.createdAt)}</Text></View>)}
-      {!administrator && auth.user?.verified ? <RiderApplicationForm userId={auth.user.id} /> : null}
       {administrator ? <><Text style={styles.title}>Rider applications</Text>
         {applications.isLoading ? <Text style={styles.muted}>Loading applications...</Text> : null}
         {applications.isError ? <Button variant="outline" onPress={() => void applications.refetch()}>Retry rider applications</Button> : null}

@@ -10,7 +10,7 @@ import { lazyScreen } from '../components/ui/LazyScreen';
 import { createAppStackNavigator, useAppStackScreenOptions } from './appStack';
 import { linking } from './linking';
 import type { AuthStackParamList } from './AuthStack';
-import { canAccessOperations, hasStaffRole, isSuperAdmin } from '../utils/roles';
+import { canAccessOperations, hasStaffRole, isApprovedRider, isSuperAdmin } from '../utils/roles';
 import { PolicyNotice } from '../components/legal/PolicyNotice';
 import { policyAudienceForRole, type PolicyAudience, type PolicyId } from '../content/policies';
 import { authRoutes } from '../contexts/ResponsiveLayoutContext';
@@ -24,6 +24,7 @@ export type RootStackParamList = {
   SalesDashboard: undefined;
   FinanceDashboard: undefined;
   LogisticsDashboard: undefined;
+  RiderDashboard: undefined;
   SuperAdminDashboard: undefined;
   OperationsLogin: undefined;
   RiderApplication: undefined;
@@ -37,6 +38,7 @@ const Checkout = lazyScreen(() => import('../screens/cart/Checkout').then(module
 const SalesDashboard = lazyScreen(() => import('../screens/admin/SalesDashboard').then(module => ({ default: module.SalesDashboard })));
 const FinanceDashboard = lazyScreen(() => import('../screens/admin/FinanceDashboard').then(module => ({ default: module.FinanceDashboard })));
 const LogisticsDashboard = lazyScreen(() => import('../screens/admin/LogisticsDashboard').then(module => ({ default: module.LogisticsDashboard })));
+const RiderDashboard = lazyScreen(() => import('../screens/admin/RiderDashboard').then(module => ({ default: module.RiderDashboard })));
 const SuperAdminDashboard = lazyScreen(() => import('../screens/admin/SuperAdminDashboard').then(module => ({ default: module.SuperAdminDashboard })));
 const OperationsLogin = lazyScreen(() => import('../screens/admin/OperationsLogin').then(module => ({ default: module.OperationsLogin })));
 const RiderApplication = lazyScreen(() => import('../screens/admin/RiderApplication').then(module => ({ default: module.RiderApplication })));
@@ -62,7 +64,8 @@ export const RootNavigator = () => {
   const operationsAccess = canAccessOperations(user);
   const initialOperationsRoute = isSuperAdmin(user) ? 'SuperAdminDashboard'
     : hasStaffRole(user, 'sales_reviewer') ? 'SalesDashboard'
-    : hasStaffRole(user, 'finance') ? 'FinanceDashboard' : 'LogisticsDashboard';
+    : hasStaffRole(user, 'finance') ? 'FinanceDashboard'
+      : isApprovedRider(user) ? 'RiderDashboard' : 'LogisticsDashboard';
 
   const leaveAuthAfterSignIn = useCallback(() => {
     if (!user || !navigationRef.isReady()) return;
@@ -91,6 +94,7 @@ export const RootNavigator = () => {
       <Stack.Screen name="SalesDashboard" component={SalesDashboard} />
       <Stack.Screen name="FinanceDashboard" component={FinanceDashboard} />
       <Stack.Screen name="LogisticsDashboard" component={LogisticsDashboard} />
+      <Stack.Screen name="RiderDashboard" component={RiderDashboard} />
       <Stack.Screen name="SuperAdminDashboard" component={SuperAdminDashboard} />
       <Stack.Screen name="Policies" component={Policies} options={{ headerShown: true, title: 'Terms & Policies' }} />
     </Stack.Navigator>
@@ -103,6 +107,7 @@ export const RootNavigator = () => {
       <Stack.Screen name="SalesDashboard" component={SalesDashboard} />
       <Stack.Screen name="FinanceDashboard" component={FinanceDashboard} />
       <Stack.Screen name="LogisticsDashboard" component={LogisticsDashboard} />
+      <Stack.Screen name="RiderDashboard" component={RiderDashboard} />
       <Stack.Screen name="SuperAdminDashboard" component={SuperAdminDashboard} />
       <Stack.Screen name="OperationsLogin" component={OperationsLogin} />
       <Stack.Screen name="RiderApplication" component={RiderApplication} />
@@ -113,7 +118,7 @@ export const RootNavigator = () => {
   return (
     <>
     <NavigationContainer ref={navigationRef} linking={linking} onReady={() => { updateRoute(); leaveAuthAfterSignIn(); }} onStateChange={updateRoute}>
-      {operationsAccess || currentRoute.name === 'OperationsLogin' || currentRoute.name === 'RiderApplication' ? navigator : <MarketplaceShell route={currentRoute.name} category={currentRoute.category} navigate={destination => {
+      {operationsAccess || currentRoute.name === 'OperationsLogin' || currentRoute.name === 'RiderApplication' || currentRoute.name === 'RiderDashboard' ? navigator : <MarketplaceShell route={currentRoute.name} category={currentRoute.category} navigate={destination => {
         if (!navigationRef.isReady()) return;
         if (destination.root === 'Policies') navigationRef.navigate('Policies', destination.params as RootStackParamList['Policies']);
         else if (destination.root === 'Cart') navigationRef.navigate('Cart');

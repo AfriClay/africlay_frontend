@@ -36,11 +36,38 @@ test('logistics staff use their own guarded dashboard and assigned shipment API'
   const dashboard = source('src/screens/admin/LogisticsDashboard.tsx');
   const service = source('src/services/logisticsService.ts');
   assert.match(navigator, /name="LogisticsDashboard" component=\{LogisticsDashboard\}/);
-  assert.match(login, /hasStaffRole\(user, 'finance'\) \? 'FinanceDashboard' : 'LogisticsDashboard'/);
+  assert.match(login, /isApprovedRider\(user\) \? 'RiderDashboard' : 'LogisticsDashboard'/);
   assert.match(dashboard, /hasStaffRole\(auth\.user, 'logistics'\)/);
   assert.match(service, /\/cart\/logistics\/fulfillments\/\?limit=30&offset=/);
   assert.match(service, /\/events\//);
   assert.match(service, /\/assign\//);
+});
+
+test('approved riders enter a separate self-service dashboard with no dispatch controls', () => {
+  const roles = transpile('src/utils/roles.ts', name => {
+    if (name === '../types/user') return {};
+    throw new Error(`Unexpected import: ${name}`);
+  });
+  const rider = { role: 'buyer', staffRoles: ['logistics'], approvedRider: true };
+  assert.equal(roles.isApprovedRider(rider), true);
+  assert.equal(roles.isApprovedRider({ ...rider, approvedRider: false }), false);
+  assert.equal(roles.isApprovedRider({ ...rider, staffRoles: [] }), false);
+  assert.equal(roles.isApprovedRider({ ...rider, role: 'super_admin' }), false);
+  const navigator = source('src/navigation/RootNavigator.tsx');
+  const login = source('src/screens/admin/OperationsLogin.tsx');
+  const logistics = source('src/screens/admin/LogisticsDashboard.tsx');
+  const riderScreen = source('src/screens/admin/RiderDashboard.tsx');
+  const scaffold = source('src/screens/admin/OperationsScaffold.tsx');
+  assert.match(navigator, /name="RiderDashboard" component=\{RiderDashboard\}/);
+  assert.match(navigator, /isApprovedRider\(user\) \? 'RiderDashboard'/);
+  assert.match(login, /isApprovedRider\(user\) \? 'RiderDashboard'/);
+  assert.match(logistics, /if \(approvedRider\) navigation\.replace\('RiderDashboard'\)/);
+  assert.match(riderScreen, /const allowed = isApprovedRider\(user\)/);
+  assert.match(riderScreen, /enabled: allowed/);
+  assert.doesNotMatch(riderScreen, /\.assign\(/);
+  assert.match(scaffold, /<MarketplaceBrand compact \/>/);
+  const { linking } = transpile('src/navigation/linking.ts');
+  assert.equal(getStateFromPath('/operations/rider', linking.config).routes[0].name, 'RiderDashboard');
 });
 
 test('root navigation exposes separate guarded dashboard routes', () => {

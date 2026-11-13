@@ -10,15 +10,17 @@ import { Input } from '../../components/ui/Input';
 import { useAuth } from '../../hooks/useAuth';
 import { authService, getAuthErrorMessage } from '../../services/authService';
 import { loginSchema } from '../../validation/authSchemas';
-import { canAccessOperations, hasStaffRole, isSuperAdmin } from '../../utils/roles';
+import { canAccessOperations, hasStaffRole, isApprovedRider, isSuperAdmin } from '../../utils/roles';
 import { operationsColors } from './OperationsScaffold';
+import { MarketplaceBrand } from '../../components/ui/MarketplaceBrand';
 
 type LoginForm = { email: string; password: string };
 
 const dashboardFor = (user: Parameters<typeof canAccessOperations>[0]) => isSuperAdmin(user)
   ? 'SuperAdminDashboard'
   : hasStaffRole(user, 'sales_reviewer') ? 'SalesDashboard'
-  : hasStaffRole(user, 'finance') ? 'FinanceDashboard' : 'LogisticsDashboard';
+  : hasStaffRole(user, 'finance') ? 'FinanceDashboard'
+    : isApprovedRider(user) ? 'RiderDashboard' : 'LogisticsDashboard';
 
 export const OperationsLogin = () => {
   const auth = useAuth();
@@ -64,7 +66,7 @@ export const OperationsLogin = () => {
 
   return <SafeAreaView style={styles.safe}>
     <ScrollView testID="operations-login-scroll" style={styles.scroll} contentContainerStyle={styles.root} keyboardShouldPersistTaps="handled"><View style={styles.panel}>
-      <View style={styles.brand}><Text style={styles.brandMark}>A</Text><View><Text style={styles.brandName}>AfriClay</Text><Text style={styles.brandSub}>Operations</Text></View></View>
+      <MarketplaceBrand compact />
       <Text style={styles.title}>Operations sign in</Text>
       <Text style={styles.copy}>Use your assigned staff account. Your credentials will open the dashboard roles granted to your account.</Text>
       <Controller control={control} name="email" render={({ field: { onChange, value }, fieldState }) => <Input label="Email" required value={value} onChangeText={onChange} keyboardType="email-address" autoCapitalize="none" autoComplete="email" autoCorrect={false} placeholder="name@company.com" error={fieldState.error?.message} accessibilityLabel="Operations email" />} />
@@ -87,10 +89,6 @@ const styles = StyleSheet.create({
   scroll: { flex: 1, minHeight: 0 },
   root: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', padding: 18, paddingBottom: 40 },
   panel: { width: '100%', maxWidth: 480, gap: 13, padding: 22, borderWidth: 1, borderColor: operationsColors.border, borderRadius: 7, backgroundColor: operationsColors.panel },
-  brand: { flexDirection: 'row', alignItems: 'center', gap: 9, marginBottom: 7 },
-  brandMark: { width: 38, height: 38, textAlign: 'center', textAlignVertical: 'center', borderRadius: 5, overflow: 'hidden', backgroundColor: operationsColors.green, color: '#FFF', fontSize: 22, fontWeight: '800' },
-  brandName: { color: operationsColors.ink, fontSize: 16, fontWeight: '800' },
-  brandSub: { color: operationsColors.muted, fontSize: 11 },
   title: { color: operationsColors.ink, fontSize: 25, fontWeight: '800' },
   copy: { color: operationsColors.muted, fontSize: 13, lineHeight: 20, marginBottom: 4 },
   error: { color: operationsColors.red, padding: 10, backgroundColor: operationsColors.redSoft },

@@ -20,6 +20,7 @@ export interface User {
   stats: Stats;
   role: UserRole;
   staffRoles: StaffRole[];
+  approvedRider?: boolean;
   avatarUrl?: string;
   notificationPreferences?: {
     email_order_updates: boolean;
