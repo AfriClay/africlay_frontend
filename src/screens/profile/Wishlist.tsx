@@ -3,7 +3,7 @@ import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from '
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Trash2 } from 'lucide-react-native';
 import { CatalogImage } from '../../components/ui/CatalogImage';
 import { EmptyState } from '../../components/ui/EmptyState';
@@ -12,17 +12,18 @@ import { Button } from '../../components/ui/Button';
 import { useAuth } from '../../hooks/useAuth';
 import { useWishlist } from '../../hooks/useWishlist';
 import { ProfileStackParamList } from '../../navigation/ProfileStack';
-import { catalogKeys } from '../../services/catalogQueries';
+import { catalogCategories, catalogKeys } from '../../services/catalogQueries';
 import { productService } from '../../services/productService';
 import { theme } from '../../theme';
 import { formatCurrency } from '../../utils/formatCurrency';
 
 export const Wishlist: React.FC = () => {
+  const queryClient = useQueryClient();
   const navigation = useNavigation<NativeStackNavigationProp<ProfileStackParamList, 'Wishlist'>>();
   const { user } = useAuth();
   const wishlist = useWishlist();
   const [removeError, setRemoveError] = useState<string>();
-  const products = useQuery({ queryKey: catalogKeys.products, queryFn: () => productService.fetchProducts({ limit: 100 }), enabled: Boolean(user && wishlist.items.length) });
+  const products = useQuery({ queryKey: catalogKeys.products, queryFn: () => productService.fetchProducts({ limit: 100 }, catalogCategories(queryClient)), enabled: Boolean(user && wishlist.items.length) });
   if (!user) return <EmptyState title="Sign in to view your wishlist" description="Saved products are linked to your account." />;
   if (wishlist.error) return <ErrorState message="Unable to load your wishlist." onRetry={() => void wishlist.refresh()} />;
   const productsById = new Map((products.data ?? []).map(product => [product.id, product]));

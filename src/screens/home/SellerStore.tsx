@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { FlatList, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { RouteProp, useRoute, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { productService } from '../../services/productService';
@@ -16,16 +16,18 @@ import { BadgeCheck } from 'lucide-react-native';
 import { ErrorState } from '../../components/ui/ErrorState';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { recordId } from '../../services/catalogContract';
-import { catalogKeys } from '../../services/catalogQueries';
+import { catalogCategories, catalogKeys } from '../../services/catalogQueries';
 import { serviceService } from '../../services/serviceService';
 import { ServiceCard } from '../../components/domain/ServiceCard';
 import { useResponsiveLayout } from '../../contexts/ResponsiveLayoutContext';
 import { ReviewSection } from '../../components/domain/ReviewSection';
+import { PageSkeleton } from '../../components/ui/PageSkeleton';
 
 const tabs = ['Shop', 'Services', 'Reviews', 'About'] as const;
 
 export const SellerStore: React.FC = () => {
   const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList, 'SellerStore'>>();
+  const queryClient = useQueryClient();
   const route = useRoute<RouteProp<HomeStackParamList, 'SellerStore'>>();
   const sellerId = recordId(route.params?.sellerId);
   const { isExpanded, productColumns } = useResponsiveLayout();
@@ -33,7 +35,7 @@ export const SellerStore: React.FC = () => {
   useEffect(() => setActiveTab('Shop'), [sellerId]);
   const sellerQuery = useQuery<Seller | null>({ queryKey: catalogKeys.seller(sellerId), queryFn: () => productService.fetchSeller(sellerId), enabled: Boolean(sellerId) });
   const { data: seller, isLoading: sellerLoading } = sellerQuery;
-  const productsQuery = useQuery<Product[]>({ queryKey: catalogKeys.storeProducts(sellerId), queryFn: () => productService.fetchProductsBySeller(sellerId), enabled: Boolean(seller) });
+  const productsQuery = useQuery<Product[]>({ queryKey: catalogKeys.storeProducts(sellerId), queryFn: () => productService.fetchProductsBySeller(sellerId, catalogCategories(queryClient)), enabled: Boolean(seller) });
   const { data: products = [], isLoading: productsLoading } = productsQuery;
   const servicesQuery = useQuery({
     queryKey: ['services', { store: sellerId }],
@@ -45,7 +47,7 @@ export const SellerStore: React.FC = () => {
   if (sellerQuery.isError) return <ErrorState message="Unable to load this seller." onRetry={() => void sellerQuery.refetch()} />;
 
   if (sellerLoading) {
-    return <View style={styles.loading}><Text>Loading seller...</Text></View>;
+    return <PageSkeleton variant="store" />;
   }
 
   if (!seller) {
@@ -101,7 +103,7 @@ export const SellerStore: React.FC = () => {
         renderItem={({ item }) => <View style={[styles.serviceWrapper, { width: `${100 / serviceColumns}%` }]}><ServiceCard service={item} onPress={() => navigation.navigate('ServiceDetails', { serviceId: item.slug ?? item.id })} /></View>}
         ListEmptyComponent={servicesQuery.isError
           ? <ErrorState message="Unable to load this store's services." onRetry={() => void servicesQuery.refetch()} />
-          : servicesQuery.isLoading ? <Text style={styles.loadingText}>Loading services...</Text>
+          : servicesQuery.isLoading ? <View style={styles.skeletonGrid}>{Array.from({ length: 2 }).map((_, index) => <View key={index} style={[styles.skeletonWrapper, { width: `${100 / serviceColumns}%` }]}><View style={styles.productSkeleton} /></View>)}</View>
             : <EmptyState title="No services listed" description="This store has no published services." />}
         contentContainerStyle={styles.page}
         columnWrapperStyle={serviceColumns > 1 ? styles.column : undefined}

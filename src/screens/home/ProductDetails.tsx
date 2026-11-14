@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { CompositeNavigationProp, RouteProp, useRoute, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { productService } from '../../services/productService';
@@ -22,12 +22,13 @@ import { useResponsiveLayout } from '../../contexts/ResponsiveLayoutContext';
 import { ErrorState } from '../../components/ui/ErrorState';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { recordId } from '../../services/catalogContract';
-import { catalogKeys } from '../../services/catalogQueries';
+import { catalogCategories, catalogKeys } from '../../services/catalogQueries';
 import { getApiErrorMessage } from '../../services/api';
 import { WishlistToggle } from '../../components/domain/WishlistToggle';
 import { ReviewSection } from '../../components/domain/ReviewSection';
 import { Button } from '../../components/ui/Button';
 import { canAccessBuyerTools } from '../../utils/roles';
+import { PageSkeleton } from '../../components/ui/PageSkeleton';
 
 type ProductDetailsRoute = RouteProp<HomeStackParamList, 'ProductDetails'>;
 type ProductDetailsNavigation = CompositeNavigationProp<
@@ -41,10 +42,11 @@ export const ProductDetails: React.FC = () => {
   const [actionHeight, setActionHeight] = useState(0);
   const isFocused = useIsFocused();
   const route = useRoute<ProductDetailsRoute>();
+  const queryClient = useQueryClient();
   const navigation = useNavigation<ProductDetailsNavigation>();
   const productId = recordId(route.params?.productId);
   useEffect(() => { setCartEvent(0); }, [productId, isFocused]);
-  const productQuery = useQuery({ queryKey: catalogKeys.product(productId), queryFn: () => productService.fetchProductById(productId), enabled: Boolean(productId) });
+  const productQuery = useQuery({ queryKey: catalogKeys.product(productId), queryFn: () => productService.fetchProductById(productId, catalogCategories(queryClient)), enabled: Boolean(productId) });
   const { data: product, isLoading } = productQuery;
   const sellerId = product?.sellerId ?? '';
   const sellerQuery = useQuery({ queryKey: catalogKeys.seller(sellerId), queryFn: () => productService.fetchSeller(sellerId), enabled: Boolean(sellerId) });
@@ -87,7 +89,7 @@ export const ProductDetails: React.FC = () => {
   };
 
   if (productQuery.isError) return <ErrorState message="Unable to load this product." onRetry={() => void productQuery.refetch()} />;
-  if (isLoading) return <View style={styles.container}><Text style={styles.loading}>Loading product...</Text></View>;
+  if (isLoading) return <PageSkeleton variant="detail" />;
   if (!product) return <EmptyState title="Product not found" description="This product is unavailable. Go back to browse other items." />;
 
   const actions = <View onLayout={event => setActionHeight(event.nativeEvent.layout.height)} style={[styles.actions, isExpanded && styles.desktopActions]}>

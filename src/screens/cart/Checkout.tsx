@@ -18,7 +18,7 @@ import { theme } from '../../theme';
 import { Payment } from '../../types/payment';
 import { Order, OrderPaymentOption } from '../../types/order';
 import { formatCurrency } from '../../utils/formatCurrency';
-import { catalogKeys } from '../../services/catalogQueries';
+import { catalogCategories, catalogKeys } from '../../services/catalogQueries';
 import { productService } from '../../services/productService';
 import { HomeLocation, shippingService } from '../../services/shippingService';
 import { getDeviceCoordinates } from '../../services/deviceLocation';
@@ -35,6 +35,7 @@ export const Checkout: React.FC = () => {
   const route = useRoute<CheckoutRoute>();
   const compactPaymentOptions = useWindowDimensions().width < 360;
   const cart = useCart();
+  const queryClient = useQueryClient();
   const auth = useAuth();
   const userId = auth.user?.id ?? '';
   const buyNowProductId = route.params?.buyNowProductId;
@@ -44,7 +45,7 @@ export const Checkout: React.FC = () => {
   const buyNowOptionId = route.params?.buyNowOptionId;
   const buyNowQuery = useQuery({
     queryKey: catalogKeys.product(buyNowProductSlug ?? ''),
-    queryFn: () => productService.fetchProductById(buyNowProductSlug!),
+    queryFn: () => productService.fetchProductById(buyNowProductSlug!, catalogCategories(queryClient)),
     enabled: Boolean(buyNowProductId && buyNowProductSlug),
   });
   const buyNowProduct = buyNowQuery.data?.id === buyNowProductId ? buyNowQuery.data : undefined;
@@ -78,7 +79,6 @@ export const Checkout: React.FC = () => {
     buy_now_quantity: buyNowQuantity,
     ...(buyNowOptionId ? { buy_now_option_id: buyNowOptionId } : {}),
   } : {};
-  const queryClient = useQueryClient();
   const pickupPointsQuery = useQuery({
     queryKey: ['pickup-points', userId], queryFn: shippingService.pickupPoints, enabled: Boolean(userId),
   });

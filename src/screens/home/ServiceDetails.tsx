@@ -19,6 +19,7 @@ import { ReviewSection } from '../../components/domain/ReviewSection';
 import { useAuth } from '../../hooks/useAuth';
 import { bookingKeys, bookingService } from '../../services/bookingService';
 import { getApiErrorMessage } from '../../services/api';
+import { PageSkeleton } from '../../components/ui/PageSkeleton';
 
 export const ServiceDetails: React.FC = () => {
   const { user } = useAuth();
@@ -34,7 +35,7 @@ export const ServiceDetails: React.FC = () => {
   const query = useQuery({ queryKey: ['service', slug], queryFn: () => serviceService.detail(slug), enabled: Boolean(slug) });
   const booking = useMutation({ mutationFn: ({ serviceId, scheduledAt }: { serviceId: string; scheduledAt: string }) => bookingService.create(serviceId, scheduledAt, notes.trim()) });
   if (query.isError) return <ErrorState message="Unable to load this service." onRetry={() => void query.refetch()} />;
-  if (query.isLoading) return <SafeAreaView style={styles.container}><Text style={styles.loading}>Loading service...</Text></SafeAreaView>;
+  if (query.isLoading) return <PageSkeleton variant="detail" />;
   if (!query.data) return <EmptyState title="Service not found" description="This service is unavailable. Go back to browse other services." />;
   const service = query.data;
   const book = async () => {

@@ -18,6 +18,7 @@ import { MarketplaceBrand } from '../ui/MarketplaceBrand';
 import { paymentKeys, paymentService } from '../../services/paymentService';
 import { formatCurrency } from '../../utils/formatCurrency';
 import { policyAudienceForRole } from '../../content/policies';
+import { SupportContactStrip } from '../ui/SupportContactStrip';
 
 type Destination = { tab?: 'Home' | 'Search' | 'Sell' | 'Profile'; screen?: string; params?: object; root?: 'Cart' | 'Policies' };
 type Props = PropsWithChildren<{ route: string; category?: string; navigate: (destination: Destination) => void }>;
@@ -64,7 +65,7 @@ export const MarketplaceShell = ({ children, route, category, navigate }: Props)
   const focused = authRoutes.has(route);
   const search = () => navigate({ tab: 'Search', screen: 'SearchLanding', params: { query } });
   return <View style={styles.mobile}>
-    {isExpanded && !focused && <View style={styles.desktopChrome}><View style={styles.header}>
+    {isExpanded && !focused && <View style={styles.desktopChrome}>{route === 'HomeFeed' && <SupportContactStrip />}<View style={styles.header}>
       <Action label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'} icon={collapsed ? PanelLeftOpen : PanelLeftClose} expanded={!collapsed} onPress={() => setCollapsed(value => !value)} iconOnly />
       <Pressable accessibilityRole="button" accessibilityLabel="AfriClay home" onPress={() => navigate({ tab: 'Home', screen: 'HomeFeed' })} style={styles.brand}>
         <MarketplaceBrand accessible={false} />

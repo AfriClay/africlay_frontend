@@ -72,7 +72,7 @@ export const Services: React.FC = () => {
       />}
       <Text style={styles.sectionTitle}>Recommended for you</Text>
       {isLoading ? (
-        <View style={styles.skeleton} />
+        <View style={styles.serviceSkeletonGrid} accessibilityLabel="Loading services">{Array.from({ length: isExpanded ? 4 : 2 }).map((_, index) => <View key={index} style={[styles.skeleton, { width: isExpanded ? '23%' : '48%' }]} />)}</View>
       ) : isExpanded ? (
         filteredServices.length ? <View style={[styles.services, styles.serviceGrid]}>{filteredServices.map(item =>
           <View key={item.id} style={{ width: `${100 / columns}%`, maxWidth: 320, padding: theme.spacing.sm }}>
@@ -120,5 +120,6 @@ const styles = StyleSheet.create({
   categoryIcon: { width: 52, height: 52, borderRadius: theme.radii.md, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.white, ...theme.shadows.sm },
   categoryLabel: { marginTop: theme.spacing.sm, color: theme.colors.ink, textAlign: 'center', fontSize: 11, lineHeight: 15 },
   services: { paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xl },
-  skeleton: { height: 210, marginHorizontal: theme.spacing.lg, borderRadius: theme.radii.lg, backgroundColor: theme.colors.border },
+  serviceSkeletonGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: theme.spacing.sm, paddingHorizontal: theme.spacing.lg },
+  skeleton: { height: 210, borderRadius: theme.radii.lg, backgroundColor: theme.colors.primary.tint },
 });

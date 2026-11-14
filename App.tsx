@@ -71,7 +71,8 @@ export default function App() {
     }
   }, [fontsLoaded]);
 
-  if (!fontsLoaded) return null;
+  // Web can render with fallback fonts while Inter finishes loading.
+  if (!fontsLoaded && Platform.OS !== 'web') return null;
 
   return (
     <SafeAreaProvider>

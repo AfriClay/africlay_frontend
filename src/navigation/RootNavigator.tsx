@@ -14,6 +14,7 @@ import { canAccessOperations, hasStaffRole, isApprovedRider, isSuperAdmin } from
 import { PolicyNotice } from '../components/legal/PolicyNotice';
 import { policyAudienceForRole, type PolicyAudience, type PolicyId } from '../content/policies';
 import { authRoutes } from '../contexts/ResponsiveLayoutContext';
+import { PageSkeleton } from '../components/ui/PageSkeleton';
 
 
 export type RootStackParamList = {
@@ -83,7 +84,7 @@ export const RootNavigator = () => {
   useEffect(() => { leaveAuthAfterSignIn(); }, [leaveAuthAfterSignIn]);
 
   if (!initialized || !minimumSplashElapsed) {
-    if (Platform.OS === 'web') return null;
+    if (Platform.OS === 'web') return <PageSkeleton variant="marketplace" />;
     return <><Splash /><StatusBar style="light" /></>;
   }
 

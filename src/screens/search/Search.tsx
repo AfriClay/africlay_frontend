@@ -15,7 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Clock3, PackageSearch, Store, Trash2 } from 'lucide-react-native';
 import { CatalogImage } from '../../components/ui/CatalogImage';
 import { Button } from '../../components/ui/Button';
@@ -25,7 +25,7 @@ import { SearchField } from '../../components/ui/SearchField';
 import { useAppTheme } from '../../contexts/ThemeContext';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { SearchStackParamList } from '../../navigation/SearchStack';
-import { catalogKeys } from '../../services/catalogQueries';
+import { catalogCategories, catalogKeys } from '../../services/catalogQueries';
 import { productService } from '../../services/productService';
 import { theme } from '../../theme';
 import { formatCurrency } from '../../utils/formatCurrency';
@@ -57,6 +57,7 @@ const Match = ({ text, query, color, highlight }: { text: string; query: string;
 };
 
 export const Search: React.FC<SearchProps> = ({ presentation = 'screen', focusRequest = 0, onDismiss, onOpenProduct, onOpenSeller }) => {
+  const queryClient = useQueryClient();
   const { width, height } = useWindowDimensions();
   const compact = width < 600;
   const expanded = width >= 840;
@@ -87,7 +88,7 @@ export const Search: React.FC<SearchProps> = ({ presentation = 'screen', focusRe
 
   const productsQuery = useInfiniteQuery({
     queryKey: ['products', 'search', debouncedQuery],
-    queryFn: ({ pageParam }) => productService.fetchProductPage({ search: debouncedQuery, limit: 24, offset: pageParam }),
+    queryFn: ({ pageParam }) => productService.fetchProductPage({ search: debouncedQuery, limit: 24, offset: pageParam }, catalogCategories(queryClient)),
     initialPageParam: 0,
     getNextPageParam: lastPage => lastPage.nextOffset,
     enabled: Boolean(debouncedQuery),

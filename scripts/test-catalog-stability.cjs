@@ -174,6 +174,17 @@ test('categories and tags use the backend list routes', async () => {
   assert.equal((await service.fetchTags())[0].slug, 'woven');
 });
 
+test('product reads reuse the cached category request', async () => {
+  const { service, queries, requests } = harness();
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  await Promise.all([queries.catalogCategories(client), queries.catalogCategories(client)]);
+  await service.fetchProducts({ limit: 4 }, queries.catalogCategories(client));
+  await service.fetchProductById('sisal-rug', queries.catalogCategories(client));
+  assert.equal(requests.filter(item => item.path === '/api/products/categories/').length, 1);
+  assert.equal(requests.filter(item => item.path.startsWith('/api/products/') && !item.path.includes('categories')).length, 2);
+  client.clear();
+});
+
 test('category hierarchy orders main, subcategory and detail levels safely', () => {
   const { categoryTree } = harness();
   const main = { id: 'main', slug: 'home', label: 'Home', icon: 'Tag' };

@@ -1,10 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, BackHandler, FlatList, Keyboard, Linking, Platform, Pressable, StyleSheet, Text, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
+import { Animated, BackHandler, FlatList, Keyboard, Platform, Pressable, StyleSheet, Text, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CompositeNavigationProp, NavigationProp, useNavigation } from '@react-navigation/native';
-import { useQuery } from '@tanstack/react-query';
-import { Bell, Phone, Plus, Search as SearchIcon, ShoppingCart } from 'lucide-react-native';
-import { MotiView } from 'moti';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { Bell, Plus, Search as SearchIcon, ShoppingCart } from 'lucide-react-native';
 import { PromotionalCarousel } from '../../components/domain/PromotionalCarousel';
 import { CategoryCard } from '../../components/domain/CategoryCard';
 import { ProductCard } from '../../components/domain/ProductCard';
@@ -16,7 +15,7 @@ import { productService } from '../../services/productService';
 import { theme } from '../../theme';
 import { useResponsiveLayout } from '../../contexts/ResponsiveLayoutContext';
 import { ErrorState } from '../../components/ui/ErrorState';
-import { catalogKeys } from '../../services/catalogQueries';
+import { catalogCategories, catalogKeys } from '../../services/catalogQueries';
 import { useAuth } from '../../hooks/useAuth';
 import { canAccessBuyerTools, canAccessSellerTools } from '../../utils/roles';
 import { categoryBranchIds, rootCategories } from '../../utils/categoryTree';
@@ -25,7 +24,7 @@ import { notificationKeys, notificationService } from '../../services/notificati
 import { Button } from '../../components/ui/Button';
 import { MarketplaceBrand } from '../../components/ui/MarketplaceBrand';
 import { Search } from '../search/Search';
-import { SUPPORT_EMAIL_URL, SUPPORT_PHONE_DISPLAY, SUPPORT_PHONE_URL } from '../../constants/support';
+import { SupportContactStrip } from '../../components/ui/SupportContactStrip';
 
 type HomeNavigation = CompositeNavigationProp<
   NavigationProp<HomeStackParamList, 'HomeFeed'>,
@@ -39,6 +38,7 @@ const CountBadge = ({ count }: { count: number }) => count > 0 ? (
 export const Home: React.FC = () => {
   const { width, isCompact, isExpanded, isWeb, productColumns } = useResponsiveLayout();
   const navigation = useNavigation<HomeNavigation>();
+  const queryClient = useQueryClient();
   const { user } = useAuth();
   const cart = useCart();
   const canSell = canAccessSellerTools(user?.role);
@@ -55,7 +55,7 @@ export const Home: React.FC = () => {
   const productLimit = isExpanded ? 12 : 4;
   const productsQuery = useQuery({
     queryKey: catalogKeys.featuredProducts(productLimit),
-    queryFn: () => productService.fetchProducts({ limit: productLimit }),
+    queryFn: () => productService.fetchProducts({ limit: productLimit }, catalogCategories(queryClient)),
   });
   const { data: products = [], isLoading: productsLoading } = productsQuery;
   const serviceQuery = useQuery({
@@ -169,6 +169,7 @@ export const Home: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
+      {isCompact && <SupportContactStrip />}
       {isCompact && <Animated.View style={styles.topArea}>
         <View style={styles.topRow}>
           <Animated.View style={[styles.mobileBrand, { width: brandWidth, marginRight: brandSpacing, opacity: brandOpacity, transform: [{ translateX: brandOffset }] }]}>
@@ -225,12 +226,7 @@ export const Home: React.FC = () => {
           <Text style={styles.sectionTitle}>Explore categories</Text>
           <Button variant="tertiary" size="sm" onPress={() => navigation.navigate('ProductListing')}>See all</Button>
         </View>
-        <MotiView
-          from={reduceMotion ? undefined : { opacity: 0, translateY: 10 }}
-          animate={{ opacity: 1, translateY: 0 }}
-          transition={{ type: 'timing', duration: reduceMotion ? 0 : 350, delay: reduceMotion ? 0 : 90 }}
-          style={isExpanded ? [styles.categoryGrid, styles.desktopCategoryGrid] : styles.categoryRailShell}
-        >
+        <View style={isExpanded ? [styles.categoryGrid, styles.desktopCategoryGrid] : styles.categoryRailShell}>
           {categoriesLoading
             ? isExpanded
               ? Array.from({ length: 8 }).map((_, index) => <View key={index} style={[styles.categorySkeleton, styles.desktopCategorySkeleton]} />)
@@ -247,13 +243,13 @@ export const Home: React.FC = () => {
                   renderItem={({ item: category }) => <CategoryCard label={category.label} icon={category.icon} imageUri={products.find(product => product.categoryId && categoryBranchIds(categories, category.id).has(product.categoryId))?.images[0]} onPress={() => openCategory(category.slug)} />}
                   contentContainerStyle={styles.categoryRail}
                 />}
-        </MotiView>
+        </View>
 
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Picked for your everyday</Text>
           <Button variant="tertiary" size="sm" onPress={() => navigation.navigate('ProductListing')}>See all</Button>
         </View>
-        {productsLoading ? <View style={styles.productSkeleton} /> : isExpanded ? (
+        {productsLoading ? <View style={isExpanded ? styles.desktopGrid : styles.mobileProductGrid} accessibilityLabel="Loading products">{Array.from({ length: 4 }).map((_, index) => <View key={index} style={isExpanded ? { width: `${100 / productColumns}%`, padding: theme.spacing.sm } : [styles.mobileProductCell, width < 360 && styles.mobileProductCellNarrow]}><View style={styles.productSkeleton} /></View>)}</View> : isExpanded ? (
           <View style={styles.desktopGrid}>{products.slice(0, 12).map(product => <View key={product.id} style={{ width: `${100 / productColumns}%`, padding: theme.spacing.sm }}>
             <ProductCard marketplace layout="grid" product={product} onPress={() => product.slug && navigation.navigate('ProductDetails', { productId: product.slug })} />
           </View>)}</View>
@@ -269,7 +265,7 @@ export const Home: React.FC = () => {
           <Button variant="tertiary" size="sm" onPress={() => navigation.navigate('Services')}>See all</Button>
         </View>
         {serviceQuery.isError ? <View><Text style={styles.sellText}>Unable to load services.</Text><Button variant="tertiary" size="sm" onPress={() => void serviceQuery.refetch()}>Retry</Button></View> :
-        serviceQuery.isLoading ? <Text style={styles.sellText}>Loading services...</Text> :
+        serviceQuery.isLoading ? <View style={styles.servicesSkeleton} accessibilityLabel="Loading services" /> :
         recommendedServices.length === 0 ? <Text style={styles.sellText}>No services available yet.</Text> :
         isExpanded ? <View style={styles.desktopGrid}>{recommendedServices.map(service => <ServiceCard key={service.id} marketplace service={service} onPress={() => navigation.navigate('ServiceDetails', { serviceId: service.slug ?? service.id })} />)}</View> : <FlatList
           data={recommendedServices}
@@ -285,14 +281,6 @@ export const Home: React.FC = () => {
           <Text style={styles.sellText}>Bring your products and services to the AfriClay community.</Text>
           <Button icon={<Plus color={theme.colors.white} size={18} />} style={[styles.sellCta, isExpanded && styles.desktopSellCta]} onPress={() => navigation.getParent()?.navigate('Sell')}>Start Selling</Button>
         </View>}
-        <View style={styles.supportCard}>
-          <Text style={styles.supportTitle}>Need help?</Text>
-          <Text style={styles.supportCopy}>Questions about an order or your account? Contact AfriClay support.</Text>
-          <View style={styles.supportActions}>
-            <Button variant="outline" size="sm" icon={<Phone color={theme.colors.primary.dark} size={18} />} onPress={() => void Linking.openURL(SUPPORT_PHONE_URL)} accessibilityLabel={`Call AfriClay support on ${SUPPORT_PHONE_DISPLAY}`}>Call {SUPPORT_PHONE_DISPLAY}</Button>
-            <Button variant="tertiary" size="sm" onPress={() => void Linking.openURL(SUPPORT_EMAIL_URL)}>Email support</Button>
-          </View>
-        </View>
       </Animated.ScrollView>
     </SafeAreaView>
   );
@@ -334,13 +322,10 @@ const styles = StyleSheet.create({
   categorySkeleton: { width: 72, height: 94, borderRadius: theme.radii.lg, backgroundColor: theme.colors.border },
   desktopCategorySkeleton: { width: 116, height: 158 },
   horizontalList: { paddingBottom: theme.spacing.xl },
-  productSkeleton: { width: 180, height: 230, borderRadius: theme.radii.lg, backgroundColor: theme.colors.border, marginBottom: theme.spacing.xl },
+  productSkeleton: { width: '100%', height: 230, borderRadius: theme.radii.lg, backgroundColor: theme.colors.primary.tint, marginBottom: theme.spacing.xl },
+  servicesSkeleton: { width: '100%', height: 230, borderRadius: theme.radii.lg, backgroundColor: theme.colors.primary.tint, marginBottom: theme.spacing.xl },
   sellBanner: { marginTop: theme.spacing.xl, padding: theme.spacing.lg, borderRadius: theme.radii.lg, backgroundColor: theme.colors.secondary.tint, borderWidth: 1, borderColor: theme.colors.secondary.DEFAULT },
   sellTitle: { color: theme.colors.ink, ...theme.typography.marketplace.heading },
   sellText: { color: theme.colors.muted, marginTop: theme.spacing.xs, marginBottom: theme.spacing.md },
   sellCta: { alignSelf: 'flex-start' },
-  supportCard: { marginTop: theme.spacing.lg, padding: theme.spacing.md, borderRadius: theme.radii.lg, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.white },
-  supportTitle: { color: theme.colors.ink, fontSize: theme.typography.body.fontSize, fontWeight: '700' },
-  supportCopy: { color: theme.colors.muted, marginTop: theme.spacing.xs, marginBottom: theme.spacing.sm },
-  supportActions: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: theme.spacing.sm },
 });

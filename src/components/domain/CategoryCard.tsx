@@ -31,7 +31,7 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({ label, icon, imageUr
     <Pressable style={({ pressed }) => [styles.root, isExpanded && styles.desktopRoot, pressed && styles.pressed]} onPress={onPress} accessibilityRole="button" accessibilityLabel={`Browse ${label}`}>
       <View style={[styles.visual, isExpanded && styles.desktopVisual]}>
         {imageUri && imageUri !== failedUri ? (
-          <Image source={{ uri: imageUri }} style={StyleSheet.absoluteFill} contentFit="cover" contentPosition="center" onError={() => setFailedUri(imageUri)} />
+          <Image source={{ uri: imageUri }} style={StyleSheet.absoluteFill} contentFit="cover" contentPosition="center" cachePolicy="memory-disk" onError={() => setFailedUri(imageUri)} />
         ) : <>
           <View style={styles.arc} />
           <Icon color={theme.colors.primary.dark} size={34} strokeWidth={1.4} />

@@ -100,7 +100,7 @@ test('buy now checks out only the selected product without mutating the normal c
 
   assert.match(product, /navigate\('Checkout', \{ buyNowProductId: product\.id, buyNowProductSlug: product\.slug, buyNowQuantity: 1, buyNowOptionId: chosenOption\?\.id \}\)/);
   assert.doesNotMatch(product, /const buyNow[\s\S]*?cart\.addItem[\s\S]*?navigate\('Checkout'/);
-  assert.match(checkout, /fetchProductById\(buyNowProductSlug!\)/);
+  assert.match(checkout, /fetchProductById\(buyNowProductSlug!, catalogCategories\(queryClient\)\)/);
   assert.match(checkout, /buyNowQuery\.data\?\.id === buyNowProductId/);
   assert.match(checkout, /buy_now_product_id: buyNowProductId/);
   assert.match(checkout, /data=\{checkoutItems\}/);

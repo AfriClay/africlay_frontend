@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useResponsiveLayout } from '../../contexts/ResponsiveLayoutContext';
 import { FlatList, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query';
 import { productService } from '../../services/productService';
 import { ProductCard } from '../../components/domain/ProductCard';
 import { theme } from '../../theme';
@@ -10,7 +10,7 @@ import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { HomeStackParamList } from '../../navigation/HomeStack';
 import { ErrorState } from '../../components/ui/ErrorState';
-import { catalogKeys } from '../../services/catalogQueries';
+import { catalogCategories, catalogKeys } from '../../services/catalogQueries';
 import { rootCategories } from '../../utils/categoryTree';
 import { SearchField } from '../../components/ui/SearchField';
 import { Button } from '../../components/ui/Button';
@@ -19,6 +19,7 @@ import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 export const ProductListing: React.FC = () => {
   const { isExpanded, productColumns } = useResponsiveLayout();
   const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList, 'ProductListing'>>();
+  const queryClient = useQueryClient();
   const route = useRoute<RouteProp<HomeStackParamList, 'ProductListing'>>();
   const [query, setQuery] = useState('');
   const search = useDebouncedValue(query.trim(), 250);
@@ -35,7 +36,7 @@ export const ProductListing: React.FC = () => {
       search,
       limit: 24,
       offset: pageParam,
-    }),
+    }, catalogCategories(queryClient)),
     initialPageParam: 0,
     getNextPageParam: lastPage => lastPage.nextOffset,
   });
