@@ -205,6 +205,7 @@ test('seller accounts retain both buyer and seller access while protected roles 
 test('Vercel keeps the SPA fallback required by direct public links', () => {
   const vercel = JSON.parse(source('vercel.json'));
   assert.ok(vercel.rewrites.some(rule => rule.source === '/:path*' && rule.destination === '/'));
+  assert.equal(vercel.trailingSlash, false, 'Trailing slash URLs must redirect before the SPA rewrite');
   const standardHeaders = vercel.headers.find(rule => rule.source === '/:path*')?.headers ?? [];
   assert.ok(standardHeaders.some(header => header.key === 'X-Content-Type-Options' && header.value === 'nosniff'));
   assert.ok(standardHeaders.some(header => header.key === 'X-Frame-Options' && header.value === 'DENY'));
