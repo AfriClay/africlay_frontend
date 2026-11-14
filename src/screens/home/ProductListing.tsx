@@ -1,6 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useResponsiveLayout } from '../../contexts/ResponsiveLayoutContext';
-import { FlatList, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Animated, FlatList, Pressable, ScrollView, StyleSheet, Text, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query';
 import { productService } from '../../services/productService';
 import { ProductCard } from '../../components/domain/ProductCard';
@@ -15,6 +15,10 @@ import { rootCategories } from '../../utils/categoryTree';
 import { SearchField } from '../../components/ui/SearchField';
 import { Button } from '../../components/ui/Button';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
+import { useReducedMotionSafe } from '../../hooks/useReducedMotionSafe';
+import type { Product } from '../../types/product';
+
+const FILTER_HEIGHT = 104;
 
 export const ProductListing: React.FC = () => {
   const { isExpanded, productColumns } = useResponsiveLayout();
@@ -25,7 +29,70 @@ export const ProductListing: React.FC = () => {
   const search = useDebouncedValue(query.trim(), 250);
   const [activeCategory, setActiveCategory] = useState<string | undefined>(route.params?.categoryId);
   const [activeTag, setActiveTag] = useState<string>();
-  useEffect(() => { setActiveCategory(route.params?.categoryId); setActiveTag(undefined); }, [route.params?.categoryId]);
+  const reduceMotion = useReducedMotionSafe();
+  const listRef = useRef<FlatList<Product>>(null);
+  const lastScrollY = useRef(0);
+  const scrollTravel = useRef(0);
+  const lastDirection = useRef<'up' | 'down' | undefined>(undefined);
+  const filterProgress = useRef(new Animated.Value(1)).current;
+  const [filtersVisible, setFiltersVisible] = useState(true);
+  const [filtersMounted, setFiltersMounted] = useState(true);
+  useEffect(() => {
+    setActiveCategory(route.params?.categoryId);
+    setActiveTag(undefined);
+    setFiltersVisible(true);
+    lastScrollY.current = 0;
+    listRef.current?.scrollToOffset({ offset: 0, animated: false });
+  }, [route.params?.categoryId]);
+  useEffect(() => {
+    if (filtersVisible) setFiltersMounted(true);
+    const animation = Animated.timing(filterProgress, {
+      toValue: filtersVisible ? 1 : 0,
+      duration: reduceMotion ? 0 : filtersVisible ? 190 : 160,
+      useNativeDriver: false,
+    });
+    animation.start(({ finished }) => {
+      if (finished && !filtersVisible) setFiltersMounted(false);
+    });
+    return () => animation.stop();
+  }, [filterProgress, filtersVisible, reduceMotion]);
+  const resetList = () => {
+    lastScrollY.current = 0;
+    scrollTravel.current = 0;
+    setFiltersVisible(true);
+    listRef.current?.scrollToOffset({ offset: 0, animated: false });
+  };
+  const chooseCategory = (slug?: string) => {
+    setActiveCategory(slug);
+    setActiveTag(undefined);
+    resetList();
+  };
+  const chooseTag = (slug?: string) => {
+    setActiveTag(slug);
+    resetList();
+  };
+  const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const y = Math.max(0, event.nativeEvent.contentOffset.y);
+    const delta = y - lastScrollY.current;
+    lastScrollY.current = y;
+    if (y <= 12) {
+      scrollTravel.current = 0;
+      setFiltersVisible(true);
+      return;
+    }
+    if (Math.abs(delta) < 2) return;
+    const direction = delta > 0 ? 'down' : 'up';
+    if (direction !== lastDirection.current) scrollTravel.current = 0;
+    lastDirection.current = direction;
+    scrollTravel.current += Math.abs(delta);
+    if (direction === 'down' && y > 64 && scrollTravel.current > 24) {
+      scrollTravel.current = 0;
+      setFiltersVisible(false);
+    } else if (direction === 'up' && scrollTravel.current > 18) {
+      scrollTravel.current = 0;
+      setFiltersVisible(true);
+    }
+  };
   const categoriesQuery = useQuery({ queryKey: catalogKeys.categories, queryFn: productService.fetchCategories });
   const tagsQuery = useQuery({ queryKey: catalogKeys.tags, queryFn: productService.fetchTags });
   const productsQuery = useInfiniteQuery({
@@ -49,11 +116,16 @@ export const ProductListing: React.FC = () => {
     const categories = categoriesQuery.data ?? [];
     const roots = rootCategories(categories);
     const selected = categories.find(category => category.slug === activeCategory);
-    return selected && !roots.some(category => category.id === selected.id) ? [selected, ...roots] : roots;
+    return selected ? [selected, ...roots.filter(category => category.id !== selected.id)] : roots;
   }, [activeCategory, categoriesQuery.data]);
+  const tagOptions = useMemo(() => {
+    const tags = tagsQuery.data ?? [];
+    const selected = tags.find(tag => tag.slug === activeTag);
+    return selected ? [selected, ...tags.filter(tag => tag.slug !== selected.slug)] : tags;
+  }, [activeTag, tagsQuery.data]);
 
-  const tagButtons = [{ slug: '', label: 'All tags' }, ...(tagsQuery.data ?? [])].map(tag => (
-    <Pressable key={tag.slug} onPress={() => setActiveTag(tag.slug || undefined)} style={[styles.filterChip, activeTag === (tag.slug || undefined) ? styles.filterActive : null]} accessibilityRole="button" accessibilityLabel={tag.label}>
+  const tagButtons = [{ slug: '', label: 'All tags' }, ...tagOptions].map(tag => (
+    <Pressable key={tag.slug} onPress={() => chooseTag(tag.slug || undefined)} style={[styles.filterChip, activeTag === (tag.slug || undefined) ? styles.filterActive : null]} accessibilityRole="radio" accessibilityLabel={tag.label} accessibilityState={{ selected: activeTag === (tag.slug || undefined) }}>
       <Text style={[styles.filterText, activeTag === (tag.slug || undefined) ? styles.filterTextActive : null]}>{tag.label}</Text>
     </Pressable>
   ));
@@ -63,19 +135,28 @@ export const ProductListing: React.FC = () => {
   return (
     <View style={styles.container}>
       {isExpanded ? <Text style={styles.title}>Products</Text> : null}
-      <SearchField value={query} onChangeText={setQuery} placeholder="Search products" accessibilityLabel="Search products" containerStyle={styles.search} />
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroller} contentContainerStyle={styles.categoryFilters} accessibilityRole="radiogroup">
-        <Pressable onPress={() => { setActiveCategory(undefined); setActiveTag(undefined); }} style={[styles.filterChip, !activeCategory ? styles.filterActive : null]} accessibilityRole="radio" accessibilityState={{ selected: !activeCategory }} accessibilityLabel="All categories">
-          <Text style={[styles.filterText, !activeCategory ? styles.filterTextActive : null]}>All products</Text>
-        </Pressable>
-        {categoryOptions.map(category => (
-          <Pressable key={category.id} onPress={() => { setActiveCategory(category.slug); setActiveTag(undefined); }} style={[styles.filterChip, activeCategory === category.slug && styles.filterActive]}
-            accessibilityRole="radio" accessibilityState={{ selected: activeCategory === category.slug }} accessibilityLabel={`Browse ${category.label}`}>
-            <Text numberOfLines={1} style={[styles.filterText, activeCategory === category.slug && styles.filterTextActive]}>{category.label}</Text>
-          </Pressable>
-        ))}
-      </ScrollView>
-      {isExpanded ? <View style={styles.filters}>{tagButtons}</View> : <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroller} contentContainerStyle={styles.mobileFilters}>{tagButtons}</ScrollView>}
+      <SearchField value={query} onChangeText={value => { setQuery(value); resetList(); }} placeholder="Search products" accessibilityLabel="Search products" containerStyle={styles.search} />
+      <Animated.View
+        accessibilityElementsHidden={!filtersVisible}
+        importantForAccessibility={filtersVisible ? 'auto' : 'no-hide-descendants'}
+        aria-hidden={!filtersVisible}
+        style={[styles.filterPanel, { height: Animated.multiply(filterProgress, FILTER_HEIGHT), opacity: filterProgress, pointerEvents: filtersVisible ? 'auto' : 'none' }]}
+      >
+        {filtersMounted ? <>
+          <ScrollView horizontal showsHorizontalScrollIndicator={isExpanded} style={styles.filterScroller} contentContainerStyle={styles.railContent} accessibilityRole="radiogroup" accessibilityLabel="Product categories">
+            <Pressable onPress={() => chooseCategory()} style={[styles.filterChip, !activeCategory ? styles.filterActive : null]} accessibilityRole="radio" accessibilityState={{ selected: !activeCategory }} accessibilityLabel="All categories">
+              <Text style={[styles.filterText, !activeCategory ? styles.filterTextActive : null]}>All products</Text>
+            </Pressable>
+            {categoryOptions.map(category => (
+              <Pressable key={category.id} onPress={() => chooseCategory(category.slug)} style={[styles.filterChip, activeCategory === category.slug && styles.filterActive]}
+                accessibilityRole="radio" accessibilityState={{ selected: activeCategory === category.slug }} accessibilityLabel={`Browse ${category.label}`}>
+                <Text numberOfLines={1} style={[styles.filterText, activeCategory === category.slug && styles.filterTextActive]}>{category.label}</Text>
+              </Pressable>
+            ))}
+          </ScrollView>
+          <ScrollView horizontal showsHorizontalScrollIndicator={isExpanded} style={styles.filterScroller} contentContainerStyle={styles.railContent} accessibilityRole="radiogroup" accessibilityLabel="Product tags">{tagButtons}</ScrollView>
+        </> : null}
+      </Animated.View>
       {isLoading || categoriesQuery.isLoading || tagsQuery.isLoading ? (
         <View style={styles.skeletonGrid}>
           {Array.from({ length: 6 }).map((_, i) => (
@@ -84,6 +165,7 @@ export const ProductListing: React.FC = () => {
         </View>
       ) : (
         <FlatList
+          ref={listRef}
           data={products}
           key={productColumns}
           numColumns={productColumns}
@@ -108,6 +190,8 @@ export const ProductListing: React.FC = () => {
             }
           }}
           onEndReachedThreshold={0.4}
+          onScroll={handleScroll}
+          scrollEventThrottle={16}
           contentContainerStyle={products.length === 0 ? styles.emptyList : styles.list}
           columnWrapperStyle={styles.column}
         />
@@ -129,14 +213,9 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.md,
   },
   search: { marginBottom: theme.spacing.md },
-  filters: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginBottom: theme.spacing.md,
-  },
+  filterPanel: { overflow: 'hidden', flexShrink: 0 },
   filterScroller: { flexGrow: 0, flexShrink: 0, height: 44, marginBottom: theme.spacing.sm },
-  mobileFilters: { paddingRight: theme.spacing.md, alignItems: 'center' },
-  categoryFilters: { paddingRight: theme.spacing.md, alignItems: 'center' },
+  railContent: { paddingRight: theme.spacing.md, alignItems: 'center' },
   filterChip: {
     backgroundColor: theme.colors.white,
     borderRadius: theme.radii.pill,

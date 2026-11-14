@@ -239,7 +239,7 @@ test('desktop category menu keeps hierarchy and the listing exposes category fil
   assert.match(source, /Animated\.timing\(reveal/);
   assert.match(source, /Shop all/);
   assert.doesNotMatch(shell, /Shop by category/);
-  assert.match(listing, /<ScrollView horizontal[^>]*contentContainerStyle=\{styles\.categoryFilters\}/);
+  assert.match(listing, /<ScrollView horizontal[^>]*contentContainerStyle=\{styles\.railContent\} accessibilityRole="radiogroup" accessibilityLabel="Product categories"/);
   assert.match(listing, /rootCategories\(categories\)/);
   assert.doesNotMatch(listing, /flattenCategoryTree/);
   assert.match(sideMenu, /rootCategories\(categoriesQuery\.data \?\? \[\]\)/);
