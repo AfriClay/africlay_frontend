@@ -194,10 +194,18 @@ test('product cards clamp names and keep rating before price', () => {
   assert.ok(source.indexOf('<RatingBadge') < source.indexOf('formatCurrency(product.price'));
   assert.match(categoryCard, /desktopRoot: \{ width: 116, maxWidth: 116 \}/);
   assert.match(home, /desktopCategoryGrid: \{ justifyContent: 'flex-start', columnGap:/);
-  assert.match(source, /product\.priceUnit \? ` \/ \$\{product\.priceUnit\}`/);
+  assert.match(source, /priceUnitSuffix\(product\.priceUnit\)/);
   assert.match(home, /styles\.mobileProductGrid/);
   assert.match(home, /mobileProductGrid: \{ flexDirection: 'row', flexWrap: 'wrap'/);
   assert.doesNotMatch(home, /data=\{featured\}\s+horizontal/);
+});
+
+test('written sale units render as price per item without duplicating per', () => {
+  const { priceUnitSuffix } = loadTypeScriptExports(path.join(__dirname, '../src/utils/priceUnit.ts'));
+  assert.equal(priceUnitSuffix('mango'), ' per mango');
+  assert.equal(priceUnitSuffix('kg'), ' per kg');
+  assert.equal(priceUnitSuffix('per bunch'), ' per bunch');
+  assert.equal(priceUnitSuffix(''), '');
 });
 
 test('desktop category menu keeps hierarchy and the listing exposes category filters on all sizes', () => {

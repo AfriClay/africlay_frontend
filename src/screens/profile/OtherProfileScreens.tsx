@@ -15,6 +15,7 @@ import { getApiErrorMessage } from '../../services/api';
 import { notificationKeys, notificationService } from '../../services/notificationService';
 import { isOrderPaymentPhone } from '../../services/paymentService';
 import { theme } from '../../theme';
+import { SUPPORT_EMAIL_URL, SUPPORT_PHONE_DISPLAY, SUPPORT_PHONE_URL } from '../../constants/support';
 
 export const MyAddresses: React.FC = () => {
   const userId = useAuth().user?.id ?? '';
@@ -224,7 +225,8 @@ export const SupportHelp: React.FC = () => {
       <View><Text style={styles.name}>{faq.question}</Text>{open === index && <Text style={styles.note}>{faq.answer}</Text>}</View>
     </Pressable>)}
     <Text style={styles.note}>Need help with an account, order, payment, or email update?</Text>
-    <Button variant="outline" onPress={() => void Linking.openURL('mailto:support@africlaymarket.com')}>Email AfriClay support</Button>
+    <Button variant="outline" onPress={() => void Linking.openURL(SUPPORT_PHONE_URL)} accessibilityLabel={`Call AfriClay support on ${SUPPORT_PHONE_DISPLAY}`}>Call {SUPPORT_PHONE_DISPLAY}</Button>
+    <Button variant="outline" onPress={() => void Linking.openURL(SUPPORT_EMAIL_URL)}>Email AfriClay support</Button>
   </ScrollView></SafeAreaView>;
 };
 

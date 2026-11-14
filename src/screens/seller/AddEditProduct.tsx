@@ -21,6 +21,8 @@ import { ChoiceGroup } from '../../components/ui/ChoiceGroup';
 import { FormField } from '../../components/ui/FormField';
 import { SearchField } from '../../components/ui/SearchField';
 import { useReducedMotionSafe } from '../../hooks/useReducedMotionSafe';
+import { formatCurrency } from '../../utils/formatCurrency';
+import { priceUnitSuffix } from '../../utils/priceUnit';
 import type { ProductImageRecord } from '../../types/product';
 
 type AddEditRoute = RouteProp<SellerDashboardStackParamList, 'AddEditProduct'>;
@@ -414,9 +416,10 @@ export const AddEditProduct: React.FC = () => {
     {priceOptions.length < 12 && <Button size="sm" variant="tertiary" onPress={() => setPriceOptions(current => [...current, { label: '', price: '', stock: '0', weightKg: '' }])}>Add price choice</Button>}
     {!hasOptions && <View style={styles.twoColumns}>
       <View style={styles.column}><Input label="Price (KSh)" required value={price} onChangeText={setPrice} keyboardType="decimal-pad" placeholder="0" accessibilityLabel="Product price" /></View>
-      <View style={styles.column}><Input label="Sold per" optional helperText="Use a unit such as piece, kg, bunch, or pack. Each cart quantity and stock count is one whole unit." value={priceUnit} onChangeText={setPriceUnit} placeholder="piece" accessibilityLabel="Product sale unit" error={submitAttempted && priceUnit.trim().length > 32 ? 'Use 32 characters or fewer.' : undefined} /></View>
+      <View style={styles.column}><Input label="Price per" optional helperText="Enter the item or unit after 'per', such as mango, cabbage, bunch, or kg. One stock count is one unit." value={priceUnit} onChangeText={setPriceUnit} placeholder="mango" accessibilityLabel="Product price per unit" error={submitAttempted && priceUnit.trim().length > 32 ? 'Use 32 characters or fewer.' : undefined} /></View>
     </View>}
-    {hasOptions && <Input label="Sold per" optional helperText="Optional unit shared by all choices, such as piece or bunch." value={priceUnit} onChangeText={setPriceUnit} placeholder="piece" />}
+    {hasOptions && <Input label="Price per" optional helperText="Optional unit shared by every choice, such as cabbage or bunch. Enter the word after 'per'." value={priceUnit} onChangeText={setPriceUnit} placeholder="cabbage" />}
+    {Number.isFinite(numericPrice) && numericPrice > 0 && <Text style={styles.measurementHint}>Buyers will see: {hasOptions ? 'From ' : ''}{formatCurrency(numericPrice)}{priceUnitSuffix(priceUnit)}</Text>}
     {!hasOptions && <View style={styles.twoColumns}>
       <View style={styles.column}><Input label="Stock count" required value={stock} onChangeText={setStock} keyboardType="number-pad" placeholder="0" accessibilityLabel="Stock count" /></View>
     </View>}

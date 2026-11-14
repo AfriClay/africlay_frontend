@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, BackHandler, FlatList, Keyboard, Platform, Pressable, StyleSheet, Text, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
+import { Animated, BackHandler, FlatList, Keyboard, Linking, Platform, Pressable, StyleSheet, Text, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CompositeNavigationProp, NavigationProp, useNavigation } from '@react-navigation/native';
 import { useQuery } from '@tanstack/react-query';
-import { Bell, Plus, Search as SearchIcon, ShoppingCart } from 'lucide-react-native';
+import { Bell, Phone, Plus, Search as SearchIcon, ShoppingCart } from 'lucide-react-native';
 import { MotiView } from 'moti';
 import { PromotionalCarousel } from '../../components/domain/PromotionalCarousel';
 import { CategoryCard } from '../../components/domain/CategoryCard';
@@ -25,6 +25,7 @@ import { notificationKeys, notificationService } from '../../services/notificati
 import { Button } from '../../components/ui/Button';
 import { MarketplaceBrand } from '../../components/ui/MarketplaceBrand';
 import { Search } from '../search/Search';
+import { SUPPORT_EMAIL_URL, SUPPORT_PHONE_DISPLAY, SUPPORT_PHONE_URL } from '../../constants/support';
 
 type HomeNavigation = CompositeNavigationProp<
   NavigationProp<HomeStackParamList, 'HomeFeed'>,
@@ -284,6 +285,14 @@ export const Home: React.FC = () => {
           <Text style={styles.sellText}>Bring your products and services to the AfriClay community.</Text>
           <Button icon={<Plus color={theme.colors.white} size={18} />} style={[styles.sellCta, isExpanded && styles.desktopSellCta]} onPress={() => navigation.getParent()?.navigate('Sell')}>Start Selling</Button>
         </View>}
+        <View style={styles.supportCard}>
+          <Text style={styles.supportTitle}>Need help?</Text>
+          <Text style={styles.supportCopy}>Questions about an order or your account? Contact AfriClay support.</Text>
+          <View style={styles.supportActions}>
+            <Button variant="outline" size="sm" icon={<Phone color={theme.colors.primary.dark} size={18} />} onPress={() => void Linking.openURL(SUPPORT_PHONE_URL)} accessibilityLabel={`Call AfriClay support on ${SUPPORT_PHONE_DISPLAY}`}>Call {SUPPORT_PHONE_DISPLAY}</Button>
+            <Button variant="tertiary" size="sm" onPress={() => void Linking.openURL(SUPPORT_EMAIL_URL)}>Email support</Button>
+          </View>
+        </View>
       </Animated.ScrollView>
     </SafeAreaView>
   );
@@ -330,4 +339,8 @@ const styles = StyleSheet.create({
   sellTitle: { color: theme.colors.ink, ...theme.typography.marketplace.heading },
   sellText: { color: theme.colors.muted, marginTop: theme.spacing.xs, marginBottom: theme.spacing.md },
   sellCta: { alignSelf: 'flex-start' },
+  supportCard: { marginTop: theme.spacing.lg, padding: theme.spacing.md, borderRadius: theme.radii.lg, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.white },
+  supportTitle: { color: theme.colors.ink, fontSize: theme.typography.body.fontSize, fontWeight: '700' },
+  supportCopy: { color: theme.colors.muted, marginTop: theme.spacing.xs, marginBottom: theme.spacing.sm },
+  supportActions: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: theme.spacing.sm },
 });

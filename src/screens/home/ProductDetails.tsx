@@ -7,6 +7,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { productService } from '../../services/productService';
 import { theme } from '../../theme';
 import { formatCurrency } from '../../utils/formatCurrency';
+import { priceUnitSuffix } from '../../utils/priceUnit';
 import { RatingBadge } from '../../components/ui/RatingBadge';
 import { useCart } from '../../hooks/useCart';
 import { useAuth } from '../../hooks/useAuth';
@@ -105,7 +106,7 @@ export const ProductDetails: React.FC = () => {
         </View>
         <View style={isExpanded && styles.desktopColumn}>
         <View style={styles.nameRow}><Text style={styles.name}>{product.name}</Text><WishlistToggle productId={product.id} onGuest={() => setAuthSheetVisible(true)} /></View>
-        <Text style={styles.price}>{chosenOption ? formatCurrency(chosenOption.price, product.currency) : `${product.priceOptions?.length ? 'From ' : ''}${formatCurrency(product.price, product.currency)}`}{product.priceUnit ? ` / ${product.priceUnit}` : ''}</Text>
+        <Text style={styles.price}>{chosenOption ? formatCurrency(chosenOption.price, product.currency) : `${product.priceOptions?.length ? 'From ' : ''}${formatCurrency(product.price, product.currency)}`}{priceUnitSuffix(product.priceUnit)}</Text>
         {Boolean(product.priceOptions?.length) && <View style={styles.choices}><Text style={styles.sectionTitle}>Choose a price option</Text>{product.priceOptions?.map(option => <Pressable key={option.id} accessibilityRole="radio" accessibilityState={{ selected: selectedOptionId === option.id, disabled: option.stockQuantity === 0 }} disabled={option.stockQuantity === 0} onPress={() => { setSelectedOptionId(option.id); setCartError(undefined); }} style={[styles.choice, selectedOptionId === option.id && styles.choiceSelected]}><Text style={styles.choiceText}>{option.label} · {formatCurrency(option.price, product.currency)}</Text><Text style={styles.choiceStock}>{option.stockQuantity ? `${option.stockQuantity} available` : 'Sold out'}</Text></Pressable>)}</View>}
         {product.reviewCount > 0 && <RatingBadge rating={product.rating} reviewCount={product.reviewCount} />}
         {sellerQuery.isError ? <ErrorState message="Unable to load seller details." onRetry={() => void sellerQuery.refetch()} /> : <Pressable disabled={!seller} accessibilityState={{ disabled: !seller }} style={styles.sellerCard} onPress={() => seller && (navigation as any).navigate('SellerStore', { sellerId: seller.id })} accessibilityRole="button">

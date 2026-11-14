@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useCart } from '../../hooks/useCart';
 import { theme } from '../../theme';
 import { formatCurrency } from '../../utils/formatCurrency';
+import { priceUnitSuffix } from '../../utils/priceUnit';
 import { Button } from '../../components/ui/Button';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -45,7 +46,7 @@ export const Cart: React.FC = () => {
             <Pressable onPress={() => openProduct(item.productSlug)} disabled={!item.productSlug} accessibilityRole="link"
               accessibilityLabel={`View ${item.name}`} accessibilityState={{ disabled: !item.productSlug }}
               style={({ pressed }) => [styles.itemInfo, styles.productLink, pressed && styles.productLinkPressed]}>
-                <View style={styles.productCopy}><Text numberOfLines={2} style={styles.itemName}>{item.name}{item.optionLabel ? ` · ${item.optionLabel}` : ''}</Text><Text style={styles.itemPrice}>{item.optionUnavailable ? 'Option unavailable — remove and choose again' : item.availableStock !== undefined && item.quantity > item.availableStock ? `Only ${item.availableStock} available — reduce quantity` : formatCurrency(item.price)}{!item.optionUnavailable && item.priceUnit ? ` / ${item.priceUnit}` : ''}</Text></View>
+                <View style={styles.productCopy}><Text numberOfLines={2} style={styles.itemName}>{item.name}{item.optionLabel ? ` · ${item.optionLabel}` : ''}</Text><Text style={styles.itemPrice}>{item.optionUnavailable ? 'Option unavailable — remove and choose again' : item.availableStock !== undefined && item.quantity > item.availableStock ? `Only ${item.availableStock} available — reduce quantity` : formatCurrency(item.price)}{!item.optionUnavailable ? priceUnitSuffix(item.priceUnit) : ''}</Text></View>
               {item.productSlug && <ChevronRight color={theme.colors.primary.dark} size={20} />}
             </Pressable>
             <View style={styles.quantityRow}>
