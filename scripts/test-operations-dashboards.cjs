@@ -181,7 +181,7 @@ test('super admin reviews access requests with an audited reason', () => {
   assert.match(request, /requestDashboardAccess\(role, reason\)/);
   assert.match(request, /super administrator reviews every request/i);
   assert.match(screen, /assignStaffRoleByEmail\(pending\.email, pending\.role, pending\.action, reason\)/);
-  assert.match(screen, /invalidates existing sessions/i);
+  assert.match(screen, /Changes revoke sessions and are audited/i);
 });
 
 test('finance reconciliation stays super-admin-only in the UI', () => {

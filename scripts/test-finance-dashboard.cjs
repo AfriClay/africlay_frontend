@@ -48,7 +48,7 @@ test('finance cards drill into matching records and only settled provider moveme
   assert.match(service, /orderMpesaReceipts: parseAmount\(raw\.order_mpesa_receipts\)/);
   assert.match(service, /walletTopupsReceived: parseAmount\(raw\.wallet_topups_received\)/);
   assert.match(service, /\/payments\/admin\/topups\//);
-  assert.match(insight, /Activity, not a cash balance/);
+  assert.match(insight, /not a cash balance/);
   assert.match(insight, /compact && styles\.insightGridCompact/);
   assert.match(insight, /reducedMotion \? 0 : 260/);
 });

@@ -56,6 +56,7 @@ export const LogisticsDashboard = () => {
   const homeJobs = useQuery({ queryKey: ['operations', 'home-deliveries', auth.user?.id, homeOffset], queryFn: () => homeDeliveryService.list(homeOffset), enabled: allowed, refetchInterval: 30_000 });
   const applications = useQuery({ queryKey: ['operations', 'rider-applications', auth.user?.id, riderOffset], queryFn: () => riderService.pending(riderOffset), enabled: administrator });
   const notices = useQuery({ queryKey: ['operations', 'delivery-notices', auth.user?.id], queryFn: () => notificationService.list(), enabled: allowed, refetchInterval: 30_000 });
+  const deliveryNotices = notices.data?.filter(item => ['New delivery assigned', 'Delivery assignment changed', 'Seller collection assigned', 'Delivery declined'].includes(item.title)).slice(0, 5) ?? [];
   const refresh = async () => { await Promise.all([
     client.invalidateQueries({ queryKey: ['operations', 'logistics'] }),
     client.invalidateQueries({ queryKey: ['operations', 'home-deliveries'] }),
@@ -103,10 +104,10 @@ export const LogisticsDashboard = () => {
   if (approvedRider) return null;
   return <OperationsScaffold title="Delivery logistics" subtitle="Record milestones after each physical handover.">
     {!allowed ? <Text style={styles.error}>Logistics access required.</Text> : <>
-      <Text style={styles.title}>Delivery alerts</Text>
+      {notices.isLoading || notices.isError || deliveryNotices.length ? <Text style={styles.title}>Delivery alerts</Text> : null}
       {notices.isLoading ? <Text style={styles.muted}>Loading alerts...</Text> : null}
       {notices.isError ? <Button variant="outline" onPress={() => void notices.refetch()}>Retry alerts</Button> : null}
-      {notices.data?.filter(item => ['New delivery assigned', 'Delivery assignment changed', 'Seller collection assigned', 'Delivery declined'].includes(item.title)).slice(0, 5).map(item =>
+      {deliveryNotices.map(item =>
         <View key={item.id} style={styles.card}><Text style={styles.title}>{item.title}</Text><Text style={styles.detail}>{item.message}</Text><Text style={styles.muted}>{formatOperationsDate(item.createdAt)}</Text></View>)}
       {administrator ? <><Text style={styles.title}>Rider applications</Text>
         {applications.isLoading ? <Text style={styles.muted}>Loading applications...</Text> : null}

@@ -19,8 +19,8 @@ export const FinanceTrendChart = ({ summary }: { summary: AdminFinanceSummary })
   const hasActivity = maximum > 0;
   const range = `${summary.trendPeriod.dateFrom} to ${summary.trendPeriod.dateTo}`;
   return <MotiView from={{ opacity: reducedMotion ? 1 : 0, translateY: reducedMotion ? 0 : 8 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: reducedMotion ? 0 : 260 }} style={[styles.panel, styles.chartPanel]}>
-    <View style={styles.panelHeading}><View><Text style={styles.title}>Confirmed M-Pesa movement</Text><Text style={styles.caption}>Daily completed provider records · {range}</Text></View><Text style={styles.badge}>KES</Text></View>
-    <Text style={styles.caption}>Confirmed receipts, top-ups and B2C payouts. Activity, not a cash balance.</Text>
+    <View style={styles.panelHeading}><View><Text style={styles.title}>Confirmed M-Pesa movement</Text></View><Text style={styles.badge}>KES</Text></View>
+    <Text style={styles.caption}>Confirmed receipts, top-ups and B2C payouts; not a cash balance.</Text>
     {hasActivity ? <View accessible accessibilityRole="image" accessibilityLabel={`Daily M-Pesa activity from ${range}. ${totals.map(item => `${item.label}: ${formatCurrency(item.total)}`).join('. ')}`} style={styles.chartWrap}>
       <Text style={styles.axisLabel}>{formatCurrency(maximum)}</Text>
       <Svg width="100%" height={chartHeight + 16} viewBox={`0 0 ${chartWidth} ${chartHeight + 16}`} preserveAspectRatio="none">
@@ -56,7 +56,7 @@ export const FinanceInsights = ({ summary }: { summary: AdminFinanceSummary }) =
   ];
   return <>
     <View style={[styles.insightGrid, compact && styles.insightGridCompact]}>
-      <View style={styles.panel}><Text style={styles.title}>Current wallet position</Text><Text style={styles.caption}>Held funds are part of each total and cannot be withdrawn.</Text>
+      <View style={styles.panel}><Text style={styles.title}>Current wallet position</Text><Text style={styles.caption}>Held funds cannot be withdrawn.</Text>
         <BalanceRow label="Shopping funds" total={walletBreakdown.shopping} held={walletBreakdown.shoppingHeld} color="#247FA6" />
         <BalanceRow label="Seller earnings" total={walletBreakdown.earnings} held={walletBreakdown.earningsHeld} color="#207F20" />
       </View>

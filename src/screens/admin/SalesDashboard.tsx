@@ -56,15 +56,15 @@ export const SalesDashboard = () => {
     setDateFrom(localDate(from)); setDateTo(localDate(to)); setRangeDays(days); setOffset(0);
   };
 
-  return <OperationsScaffold title="Seller verification" subtitle="Review applications and track the queue.">
+  return <OperationsScaffold title="Seller verification" subtitle="">
     <DataFreshness updatedAt={Math.max(queue.dataUpdatedAt, summary.dataUpdatedAt)} refreshing={queue.isFetching || summary.isFetching} failed={queue.isError || summary.isError} onRefresh={() => void Promise.all([queue.refetch(), summary.refetch()])} />
-    <View style={[styles.hero, compact && styles.heroCompact]}><View style={[styles.heroCopy, compact && styles.heroCopyCompact]}><Text style={styles.heroTitle}>Review queue</Text></View><View style={styles.heroCount}><Text style={styles.heroValue}>{summary.data?.pendingAging ? summary.data.counts.pending : '...'}</Text><Text style={styles.heroCountLabel}>pending in period</Text></View></View>
+    <View style={[styles.hero, compact && styles.heroCompact]}><View style={[styles.heroCopy, compact && styles.heroCopyCompact]}><Text style={styles.heroTitle}>Pending reviews</Text></View><View style={styles.heroCount}><Text style={styles.heroValue}>{summary.data?.pendingAging ? summary.data.counts.pending : '...'}</Text><Text style={styles.heroCountLabel}>Selected period</Text></View></View>
     {summary.isError && !summary.data ? <ErrorState message="Unable to load seller verification totals." onRetry={() => void summary.refetch()} /> : <>
       <View style={styles.metrics}>
-        <Metric label="Submitted" value={summary.data?.counts.total ?? '...'} note="Selected period" onPress={() => selectStatus('all')} />
-        <Metric label="Pending" value={summary.data?.counts.pending ?? '...'} note="Selected period" onPress={() => selectStatus('pending')} />
-        <Metric label="Approved" value={summary.data?.counts.approved ?? '...'} note="Selected period" onPress={() => selectStatus('approved')} />
-        <Metric label="Rejected" value={summary.data?.counts.rejected ?? '...'} note="Selected period" onPress={() => selectStatus('rejected')} />
+        <Metric label="Submitted" value={summary.data?.counts.total ?? '...'} note="" onPress={() => selectStatus('all')} />
+        <Metric label="Pending" value={summary.data?.counts.pending ?? '...'} note="" onPress={() => selectStatus('pending')} />
+        <Metric label="Approved" value={summary.data?.counts.approved ?? '...'} note="" onPress={() => selectStatus('approved')} />
+        <Metric label="Rejected" value={summary.data?.counts.rejected ?? '...'} note="" onPress={() => selectStatus('rejected')} />
         <Metric label="Over 7 days" value={summary.data?.pendingAging.over7Days ?? '...'} note="Current backlog" onPress={() => { selectStatus('pending'); setDateFrom(''); setDateTo(''); setRangeDays(0); }} urgent />
       </View>
     </>}
@@ -102,7 +102,7 @@ export const SalesDashboard = () => {
 
 const queueAge = (value?: string): 'low' | 'medium' | 'high' => { if (!value) return 'low'; const days = (Date.now() - new Date(value).getTime()) / 86_400_000; return days >= 8 ? 'high' : days >= 3 ? 'medium' : 'low'; };
 const Filter = ({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) => <Pressable onPress={onPress} style={[styles.filter, active && styles.filterActive]} accessibilityRole="button" accessibilityState={{ selected: active }}><Text style={[styles.filterText, active && styles.filterTextActive]}>{label}</Text></Pressable>;
-const Metric = ({ label, value, note, onPress, urgent }: { label: string; value: string | number; note: string; onPress: () => void; urgent?: boolean }) => <Pressable onPress={onPress} style={[styles.metric, urgent && styles.metricUrgent]} accessibilityRole="button"><Text style={[styles.metricValue, urgent && styles.metricValueUrgent]}>{value}</Text><Text style={styles.rowTitle}>{label}</Text><Text style={styles.meta}>{note}</Text></Pressable>;
+const Metric = ({ label, value, note, onPress, urgent }: { label: string; value: string | number; note: string; onPress: () => void; urgent?: boolean }) => <Pressable onPress={onPress} style={[styles.metric, urgent && styles.metricUrgent]} accessibilityRole="button"><Text style={[styles.metricValue, urgent && styles.metricValueUrgent]}>{value}</Text><Text style={styles.rowTitle}>{label}</Text>{note ? <Text style={styles.meta}>{note}</Text> : null}</Pressable>;
 const SummaryLine = ({ label, value }: { label: string; value: number }) => <View style={styles.summaryLine}><Text style={styles.meta}>{label}</Text><Text style={styles.rowTitle}>{value}</Text></View>;
 const Field = ({ label, value }: { label: string; value: string }) => <View style={styles.field}><Text style={styles.label}>{label}</Text><Text style={styles.value}>{value}</Text></View>;
 
