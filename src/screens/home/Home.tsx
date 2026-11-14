@@ -25,6 +25,7 @@ import { Button } from '../../components/ui/Button';
 import { MarketplaceBrand } from '../../components/ui/MarketplaceBrand';
 import { Search } from '../search/Search';
 import { SupportContactStrip } from '../../components/ui/SupportContactStrip';
+import { categoryGridColumns } from '../../utils/categoryGridColumns';
 
 type HomeNavigation = CompositeNavigationProp<
   NavigationProp<HomeStackParamList, 'HomeFeed'>,
@@ -36,7 +37,7 @@ const CountBadge = ({ count }: { count: number }) => count > 0 ? (
 ) : null;
 
 export const Home: React.FC = () => {
-  const { width, isCompact, isExpanded, isWeb, productColumns } = useResponsiveLayout();
+  const { width, contentWidth, isCompact, isExpanded, isWeb, productColumns } = useResponsiveLayout();
   const navigation = useNavigation<HomeNavigation>();
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -66,6 +67,8 @@ export const Home: React.FC = () => {
   const featured = useMemo(() => products.slice(0, 4), [products]);
   const recommendedServices = useMemo(() => services.slice(0, 2), [services]);
   const mainCategories = useMemo(() => rootCategories(categories), [categories]);
+  const desktopCategoryColumns = categoryGridColumns(categoriesLoading ? 6 : mainCategories.length, contentWidth - 32);
+  const categoryCellWidth = `${100 / Math.max(1, desktopCategoryColumns)}%` as const;
   const unreadQuery = useQuery({
     queryKey: notificationKeys.unread(user?.id ?? ''),
     queryFn: () => notificationService.list(false),
@@ -229,11 +232,11 @@ export const Home: React.FC = () => {
         <View style={isExpanded ? [styles.categoryGrid, styles.desktopCategoryGrid] : styles.categoryRailShell}>
           {categoriesLoading
             ? isExpanded
-              ? Array.from({ length: 8 }).map((_, index) => <View key={index} style={[styles.categorySkeleton, styles.desktopCategorySkeleton]} />)
+              ? Array.from({ length: 6 }).map((_, index) => <View key={index} style={[styles.desktopCategoryCell, { width: categoryCellWidth }]}><View style={[styles.categorySkeleton, styles.desktopCategorySkeleton]} /></View>)
               : <View style={styles.categoryRail}>{Array.from({ length: 4 }).map((_, index) => <View key={index} style={styles.categorySkeleton} />)}</View>
             : isExpanded
               ? mainCategories.map(category => (
-                <CategoryCard key={category.id} label={category.label} icon={category.icon} imageUri={products.find(product => product.categoryId && categoryBranchIds(categories, category.id).has(product.categoryId))?.images[0]} onPress={() => openCategory(category.slug)} />
+                <View key={category.id} style={[styles.desktopCategoryCell, { width: categoryCellWidth }]}><CategoryCard label={category.label} icon={category.icon} imageUri={products.find(product => product.categoryId && categoryBranchIds(categories, category.id).has(product.categoryId))?.images[0]} onPress={() => openCategory(category.slug)} /></View>
               ))
               : <FlatList
                   data={mainCategories}
@@ -316,7 +319,8 @@ const styles = StyleSheet.create({
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.sm },
   sectionTitle: { flex: 1, color: theme.colors.ink, ...theme.typography.marketplace.heading },
   categoryGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: theme.spacing.sm, marginBottom: theme.spacing.md },
-  desktopCategoryGrid: { justifyContent: 'flex-start', columnGap: theme.spacing.lg, maxWidth: 760 },
+  desktopCategoryGrid: { width: '100%', justifyContent: 'flex-start' },
+  desktopCategoryCell: { alignItems: 'center' },
   categoryRailShell: { marginHorizontal: -theme.spacing.md, marginBottom: theme.spacing.md },
   categoryRail: { gap: theme.spacing.smd, paddingHorizontal: theme.spacing.md, paddingBottom: theme.spacing.sm },
   categorySkeleton: { width: 72, height: 94, borderRadius: theme.radii.lg, backgroundColor: theme.colors.border },

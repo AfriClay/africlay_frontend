@@ -204,11 +204,20 @@ test('product cards clamp names and keep rating before price', () => {
   assert.match(source, /ellipsizeMode="tail"/);
   assert.ok(source.indexOf('<RatingBadge') < source.indexOf('formatCurrency(product.price'));
   assert.match(categoryCard, /desktopRoot: \{ width: 116, maxWidth: 116 \}/);
-  assert.match(home, /desktopCategoryGrid: \{ justifyContent: 'flex-start', columnGap:/);
+  assert.match(home, /desktopCategoryGrid: \{ width: '100%', justifyContent: 'flex-start' \}/);
   assert.match(source, /priceUnitSuffix\(product\.priceUnit\)/);
   assert.match(home, /styles\.mobileProductGrid/);
   assert.match(home, /mobileProductGrid: \{ flexDirection: 'row', flexWrap: 'wrap'/);
   assert.doesNotMatch(home, /data=\{featured\}\s+horizontal/);
+});
+
+test('desktop categories fill the available width in balanced rows', () => {
+  const { categoryGridColumns } = loadTypeScriptExports(path.join(__dirname, '../src/utils/categoryGridColumns.ts'));
+  assert.equal(categoryGridColumns(6, 1400), 6);
+  assert.equal(categoryGridColumns(6, 720), 6);
+  assert.equal(categoryGridColumns(6, 560), 3);
+  assert.equal(categoryGridColumns(5, 500), 3);
+  assert.equal(categoryGridColumns(0, 720), 0);
 });
 
 test('written sale units render as price per item without duplicating per', () => {

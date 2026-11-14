@@ -6,7 +6,7 @@ export const getResponsiveLayout = (width: number, height: number, web: boolean)
   const isWide = isExpanded && width >= 1200;
   const sidebarWidth = isWide ? 232 : 184;
   const contentWidth = Math.min(1440, Math.max(0, width - (isExpanded ? sidebarWidth + 48 : 0)));
-  return { width, height, isWeb: web, isCompact: !isExpanded, isExpanded, isWide, sidebarWidth,
+  return { width, height, isWeb: web, isCompact: !isExpanded, isExpanded, isWide, sidebarWidth, contentWidth,
     productColumns: isExpanded ? Math.max(2, Math.min(6, Math.floor((contentWidth - 48) / 200))) : 2 };
 };
 
