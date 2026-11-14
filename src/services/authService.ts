@@ -187,7 +187,7 @@ export const authService = {
   },
 
   async currentUser(): Promise<User> {
-    const response = await apiClient<BackendUser>('/auth/me/', { method: 'GET' });
+    const response = await apiClient<BackendUser>('/auth/me/', { method: 'GET', timeoutMs: 15_000 });
     return mapBackendUser(response);
   },
 

@@ -15,6 +15,7 @@ import { PolicyNotice } from '../components/legal/PolicyNotice';
 import { policyAudienceForRole, type PolicyAudience, type PolicyId } from '../content/policies';
 import { authRoutes } from '../contexts/ResponsiveLayoutContext';
 import { PageSkeleton } from '../components/ui/PageSkeleton';
+import { ErrorState } from '../components/ui/ErrorState';
 
 
 export type RootStackParamList = {
@@ -46,7 +47,7 @@ const RiderApplication = lazyScreen(() => import('../screens/admin/RiderApplicat
 const Policies = lazyScreen(() => import('../screens/legal/Policies').then(module => ({ default: module.Policies })));
 
 export const RootNavigator = () => {
-  const { user, initialized } = useAuth();
+  const { user, initialized, restoreError, retrySessionRestore } = useAuth();
   const stackOptions = useAppStackScreenOptions();
   const navigationRef = useNavigationContainerRef<RootStackParamList>();
   const [currentRoute, setCurrentRoute] = useState<{ name: string; category?: string }>({ name: 'HomeFeed' });
@@ -87,6 +88,8 @@ export const RootNavigator = () => {
     if (Platform.OS === 'web') return <PageSkeleton variant="marketplace" />;
     return <><Splash /><StatusBar style="light" /></>;
   }
+
+  if (restoreError) return <ErrorState message="Unable to restore your session. Check your connection and retry." onRetry={() => void retrySessionRestore()} />;
 
   const navigator = operationsAccess ? (
     <Stack.Navigator key="operations" initialRouteName={initialOperationsRoute} screenOptions={{ ...stackOptions, headerShown: false }}>

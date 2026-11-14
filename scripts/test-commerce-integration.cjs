@@ -17,7 +17,9 @@ const cart = { id: cartId, buyer, items: [cartItem] };
 const address = { id: addressId, address_type: 'shipping', recipient_name: 'Test Buyer', phone_number: '',
   street_address: 'Main Street 12', apartment_suite: null, city: 'Nairobi', state_province: '',
   postal_code: '00100', country: 'Kenya', country_code: 'KE', is_default: true };
-const order = { id: orderId, buyer_id: buyer, total_amount: '2400.00', currency: 'KES', status: 'pending',
+const order = { id: orderId, buyer_id: buyer, item_subtotal: '2400.00', total_amount: '2400.00', currency: 'KES', status: 'pending',
+  payment_method: 'mpesa', payment_status: 'pending', payment_option: 'pay_now', amount_paid: '0.00', amount_due: '2400.00', delivery_fee_paid: false,
+  shipping_cost: '0.00', shipped_at: null, courier_name: '', tracking_number: '', fulfillments: [],
   shipping_address: address.street_address, shipping_city: address.city, shipping_postal_code: address.postal_code,
   shipping_country: address.country, created_at: '2026-09-20T08:00:00Z',
   items: [{ id: orderItemId, product_id: product, product_name: 'Clay Tile', product_slug: 'clay-tile', seller_id: buyer,
@@ -39,7 +41,7 @@ function harness(responder) {
       compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
     }).outputText;
     vm.runInNewContext(code, {
-      exports, Headers, FormData, URLSearchParams,
+      exports, Headers, FormData, URLSearchParams, AbortController, setTimeout, clearTimeout,
       process: { env: { EXPO_PUBLIC_API_URL: 'https://api.example.test/api' } },
       localStorage: {
         getItem: key => storage.get(key) ?? null,
@@ -66,7 +68,7 @@ function harness(responder) {
         if (route.pathname === `/api/cart/orders/${orderId}/`) return json(order);
         if (route.pathname === `/api/cart/orders/${orderId}/confirm-delivery/` && init.method === 'POST') return json({ ...order, status: 'delivered' });
         if (route.pathname === '/api/cart/seller/orders/') return json([order]);
-        if (route.pathname === `/api/cart/seller/orders/${orderId}/` && init.method === 'PATCH') return json({ ...order, status: 'processing' });
+        if (route.pathname === `/api/cart/seller/orders/${orderId}/` && init.method === 'PATCH') return json({ ...order, status: 'cancelled' });
         throw new Error(`Unexpected route ${route.pathname}`);
       },
       require(name) {
@@ -202,12 +204,12 @@ test('missing order returns null, but server failures do not return mock orders'
   await assert.rejects(failed.orders.fetchOrders(), error => error.status === 500);
 });
 
-test('seller orders list and update use the new backend routes', async () => {
+test('seller orders list and cancellation use the current backend routes', async () => {
   const h = await signedIn();
   assert.equal((await h.orders.fetchSellerOrders())[0].id, orderId);
-  assert.equal((await h.orders.updateSellerOrderStatus(orderId, 'processing')).status, 'processing');
+  assert.equal((await h.orders.updateSellerOrderStatus(orderId, { status: 'cancelled' })).status, 'cancelled');
   assert.equal(h.requests[0].path, '/api/cart/seller/orders/');
-  assert.deepEqual(JSON.parse(h.requests[1].init.body), { status: 'processing' });
+  assert.deepEqual(JSON.parse(h.requests[1].init.body), { status: 'cancelled' });
   assert.equal(h.carts.clearCart, undefined);
 });
 

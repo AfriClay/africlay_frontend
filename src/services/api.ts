@@ -53,6 +53,8 @@ export class ApiTimeoutError extends Error {
   }
 }
 
+class InvalidSessionError extends Error {}
+
 type RequestOptions = Omit<RequestInit, 'body' | 'headers'> & {
   body?: unknown;
   headers?: HeadersInit;
@@ -138,18 +140,19 @@ let refreshPromise: Promise<void> | undefined;
 const refreshTokens = async (): Promise<void> => {
   const refresh = await tokenManager.getRefreshToken();
   if (!refresh) {
-    throw new Error('No refresh token is available.');
+    throw new InvalidSessionError('No refresh token is available.');
   }
 
   const data = await apiClient<Partial<TokenPair>>('/auth/token/refresh/', {
     method: 'POST',
     auth: false,
     body: { refresh },
+    timeoutMs: 15_000,
   });
   const tokens = data as Partial<TokenPair>;
   if (!tokens.access || !tokens.refresh) {
     await tokenManager.clearTokens();
-    throw new Error('The server did not return a complete token pair.');
+    throw new InvalidSessionError('The server did not return a complete token pair.');
   }
 
   await tokenManager.setTokens({ access: tokens.access, refresh: tokens.refresh });
@@ -208,10 +211,13 @@ export const apiClient = async <T>(endpoint: string, options: RequestOptions = {
         refreshPromise ??= refreshTokens().finally(() => { refreshPromise = undefined; });
         await refreshPromise;
       }
-    } catch {
-      await tokenManager.clearTokens();
-      sessionListeners.forEach(listener => listener());
-      throw new ApiError(401, data, 'Your session has expired. Please log in again.');
+    } catch (error) {
+      if (error instanceof InvalidSessionError || (error instanceof ApiError && [400, 401, 403].includes(error.status))) {
+        await tokenManager.clearTokens();
+        sessionListeners.forEach(listener => listener());
+        throw new ApiError(401, data, 'Your session has expired. Please log in again.');
+      }
+      throw error;
     }
     return apiClient<T>(endpoint, { ...options, retryOnUnauthorized: false });
   }
@@ -234,12 +240,16 @@ export const apiDownload = async (endpoint: string, retryOnUnauthorized = true):
   const response = await fetch(endpointUrl(endpoint), { credentials: 'omit', headers });
   if (response.status === 401 && retryOnUnauthorized) {
     try {
-      await refreshTokens();
+      refreshPromise ??= refreshTokens().finally(() => { refreshPromise = undefined; });
+      await refreshPromise;
       return apiDownload(endpoint, false);
-    } catch {
-      await tokenManager.clearTokens();
-      sessionListeners.forEach(listener => listener());
-      throw new ApiError(401, undefined, 'Your session has expired. Please log in again.');
+    } catch (error) {
+      if (error instanceof InvalidSessionError || (error instanceof ApiError && [400, 401, 403].includes(error.status))) {
+        await tokenManager.clearTokens();
+        sessionListeners.forEach(listener => listener());
+        throw new ApiError(401, undefined, 'Your session has expired. Please log in again.');
+      }
+      throw error;
     }
   }
   if (!response.ok) {

@@ -86,8 +86,8 @@ test('notifications support unread filtering and both read operations', async ()
   const h = await signedIn();
   const listed = (await h.notifications.list(false))[0];
   assert.equal(listed.type, 'booking');
-  assert.equal(listed.action, 'buyer_bookings');
-  assert.equal(listed.targetId, bookingId);
+  assert.equal(listed.id, notificationId);
+  assert.equal(listed.isRead, false);
   await h.notifications.markRead(notificationId);
   assert.equal(await h.notifications.markAllRead(), 1);
   assert.equal(h.requests[0].search, '?is_read=false');

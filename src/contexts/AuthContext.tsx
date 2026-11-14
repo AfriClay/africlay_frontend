@@ -16,6 +16,7 @@ interface AuthState {
   isGuest: boolean;
   loading: boolean;
   initialized: boolean;
+  restoreError?: boolean;
 }
 
 interface AuthContextValue extends AuthState {
@@ -28,11 +29,28 @@ interface AuthContextValue extends AuthState {
   logout: () => Promise<void>;
   continueAsGuest: () => Promise<void>;
   saveProfile: (profile: Partial<User>) => Promise<void>;
+  retrySessionRestore: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 const signedOut = { isGuest: true, loading: false, initialized: true } as const;
 const signedInState = (user: User): AuthState => ({ user, role: user.role, isGuest: false, loading: false, initialized: true });
+
+export const readSavedSession = async (): Promise<AuthState> => {
+  try {
+    const access = await tokenManager.getAccessToken();
+    const refresh = await tokenManager.getRefreshToken();
+    if (!access && !refresh) return signedOut;
+    return signedInState(await authService.currentUser());
+  } catch {
+    // An invalid refresh clears tokens in apiClient. A network/server failure does not.
+    const access = await tokenManager.getAccessToken().catch(() => undefined);
+    const refresh = await tokenManager.getRefreshToken().catch(() => undefined);
+    return access || refresh
+      ? { isGuest: false, loading: false, initialized: true, restoreError: true }
+      : signedOut;
+  }
+};
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [state, setState] = useState<AuthState>({ isGuest: false, loading: true, initialized: false });
@@ -40,19 +58,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => onSessionExpired(() => setState(signedOut)), []);
   useEffect(() => {
     let active = true;
-    void (async () => {
-      try {
-        const access = await tokenManager.getAccessToken();
-        const refresh = await tokenManager.getRefreshToken();
-        if (!access && !refresh) { if (active) setState(signedOut); return; }
-        const user = await authService.currentUser();
-        if (active) setState(signedInState(user));
-      } catch {
-        await tokenManager.clearTokens();
-        if (active) setState(signedOut);
-      }
-    })();
+    void readSavedSession().then(next => { if (active) setState(next); });
     return () => { active = false; };
+  }, []);
+
+  const retrySessionRestore = useCallback(async () => {
+    setState(current => ({ ...current, loading: true, initialized: false, restoreError: false }));
+    setState(await readSavedSession());
   }, []);
 
   const login = useCallback(async (email: string, password: string): Promise<LoginResult> => {
@@ -127,8 +139,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [state.pendingUser, state.user]);
 
   const value = useMemo(() => ({ ...state, login, register, verifyEmail, resendVerification,
-    sendPasswordReset, resetPassword, logout, continueAsGuest, saveProfile }),
-    [state, login, register, verifyEmail, resendVerification, sendPasswordReset, resetPassword, logout, continueAsGuest, saveProfile]);
+    sendPasswordReset, resetPassword, logout, continueAsGuest, saveProfile, retrySessionRestore }),
+    [state, login, register, verifyEmail, resendVerification, sendPasswordReset, resetPassword, logout, continueAsGuest, saveProfile, retrySessionRestore]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 

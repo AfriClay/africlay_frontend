@@ -20,7 +20,7 @@ function harness(platform, fetch, options = {}) {
   };
   const api = {};
   vm.runInNewContext(source('src/services/api.ts'), {
-    exports: api, Headers, FormData, URL, fetch, localStorage,
+    exports: api, Headers, FormData, URL, fetch, localStorage, setTimeout, clearTimeout, AbortController,
     process: { env: { EXPO_PUBLIC_API_URL: options.configuredUrl ?? 'https://api.example.test/api' } },
     require(name) {
       if (name === 'react-native') return {
@@ -44,6 +44,7 @@ function harness(platform, fetch, options = {}) {
     exports: auth,
     require(name) {
       if (name === './api') return api;
+      if (name === '../content/policies') return { registrationPolicyRequirements: { buyer: ['buyer_shipping_delivery'] } };
       throw new Error(`Unexpected import: ${name}`);
     },
   });
@@ -175,6 +176,33 @@ test('failed refresh clears both tokens and notifies session listeners', async (
   assert.equal(expired, 1);
 });
 
+test('network failure during refresh preserves credentials and does not expire the session', async () => {
+  const { api, storage } = harness('web', async url => {
+    if (url.endsWith('/token/refresh/')) throw new TypeError('network unavailable');
+    return json({}, 401);
+  });
+  await api.tokenManager.setTokens({ access: 'old-access', refresh: 'old-refresh' });
+  let expired = 0;
+  api.onSessionExpired(() => { expired++; });
+  await assert.rejects(api.apiClient('/auth/me/'), /Unable to connect to AfriClay/);
+  assert.equal(storage.size, 2);
+  assert.equal(expired, 0);
+});
+
+test('server failure during refresh preserves credentials for a later retry', async () => {
+  const { api, storage } = harness('web', async url => json({}, url.endsWith('/token/refresh/') ? 500 : 401));
+  await api.tokenManager.setTokens({ access: 'old-access', refresh: 'old-refresh' });
+  await assert.rejects(api.apiClient('/auth/me/'), error => error.status === 500);
+  assert.equal(storage.size, 2);
+});
+
+test('timed-out requests produce a bounded retryable error', async () => {
+  const { api } = harness('web', async (_url, init) => new Promise((_resolve, reject) => {
+    init.signal.addEventListener('abort', () => reject(Object.assign(new Error('aborted'), { name: 'AbortError' })));
+  }));
+  await assert.rejects(api.apiClient('/auth/me/', { auth: false, timeoutMs: 10 }), error => error.name === 'ApiTimeoutError');
+});
+
 test('repeated 401 does not refresh or retry indefinitely', async () => {
   let refreshes = 0;
   let protectedRequests = 0;
@@ -232,40 +260,32 @@ test('login and verification store the backend nested token pair', async () => {
   assert.equal(await api.tokenManager.getAccessToken(), 'verified-access');
 });
 
-test('registration logs the new user in and profile update keeps its Django fields', async () => {
+test('registration waits for verification and profile update keeps its Django fields', async () => {
   const requests = [];
   const { auth, api } = harness('web', async (url, init) => {
     requests.push({ url, init });
     if (url.endsWith('/auth/register/')) {
       return json({ user: { id: '1', email: 'member@example.test', role: 'buyer', is_verified: true } });
     }
-    if (url.endsWith('/auth/login/')) {
-      return json({
-        user: { id: '1', email: 'member@example.test', role: 'buyer', is_verified: true, profile: { first_name: 'John', last_name: 'Kimari' } },
-        tokens: { access: 'registered-access', refresh: 'registered-refresh' },
-      });
-    }
     return json({ user: { id: '1', email: 'member@example.test', role: 'buyer', profile: { first_name: 'John', last_name: 'Kimari' } } });
   });
   const registered = await auth.authService.register('John Kimari', 'member@example.test', 'password123');
-  assert.equal(registered.name, 'John Kimari');
+  assert.equal(registered.user.name, 'member');
   assert.match(requests[0].url, /\/auth\/register\/$/);
   assert.deepEqual(JSON.parse(requests[0].init.body), {
     email: 'member@example.test', password: 'password123', password_confirm: 'password123',
-    role: 'buyer', first_name: 'John', last_name: 'Kimari',
+    role: 'buyer', accepted_policies: ['buyer_shipping_delivery'], first_name: 'John', last_name: 'Kimari',
   });
   assert.equal(requests[0].init.headers.get('Authorization'), null);
-  assert.match(requests[1].url, /\/auth\/login\/$/);
-  assert.deepEqual(JSON.parse(requests[1].init.body), { email: 'member@example.test', password: 'password123' });
-  assert.equal(await api.tokenManager.getAccessToken(), 'registered-access');
-  assert.equal(await api.tokenManager.getRefreshToken(), 'registered-refresh');
+  assert.equal(requests.length, 1);
+  assert.equal(await api.tokenManager.getAccessToken(), undefined);
   await api.tokenManager.setTokens({ access: 'access', refresh: 'refresh' });
   const updated = await auth.authService.updateProfile({ name: 'John Kimari', phoneNumber: '0700000000', bio: 'Maker' });
   assert.equal(updated.name, 'John Kimari');
-  assert.deepEqual(JSON.parse(requests[2].init.body), {
+  assert.deepEqual(JSON.parse(requests[1].init.body), {
     first_name: 'John', last_name: 'Kimari', phone_number: '0700000000', bio: 'Maker',
   });
-  assert.equal(requests[2].init.headers.get('Authorization'), 'Bearer access');
+  assert.equal(requests[1].init.headers.get('Authorization'), 'Bearer access');
 });
 
 test('startup current-user lookup uses bearer and /auth/me/', async () => {
