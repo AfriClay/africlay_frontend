@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useResponsiveLayout } from '../../contexts/ResponsiveLayoutContext';
 import { Animated, FlatList, Pressable, ScrollView, StyleSheet, Text, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
+import { SlidersHorizontal } from 'lucide-react-native';
 import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query';
 import { productService } from '../../services/productService';
 import { ProductCard } from '../../components/domain/ProductCard';
@@ -21,7 +22,12 @@ import type { Product } from '../../types/product';
 const FILTER_HEIGHT = 104;
 
 export const ProductListing: React.FC = () => {
-  const { isExpanded, productColumns } = useResponsiveLayout();
+  const { isExpanded, productColumns, contentWidth } = useResponsiveLayout();
+  const useDesktopSidebar = isExpanded && contentWidth >= 860;
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const listingColumns = useDesktopSidebar
+    ? Math.max(2, Math.min(6, Math.floor((contentWidth - 48 - (sidebarOpen ? 236 : 0)) / 200)))
+    : productColumns;
   const navigation = useNavigation<NativeStackNavigationProp<HomeStackParamList, 'ProductListing'>>();
   const queryClient = useQueryClient();
   const route = useRoute<RouteProp<HomeStackParamList, 'ProductListing'>>();
@@ -29,6 +35,7 @@ export const ProductListing: React.FC = () => {
   const search = useDebouncedValue(query.trim(), 250);
   const [activeCategory, setActiveCategory] = useState<string | undefined>(route.params?.categoryId);
   const [activeTag, setActiveTag] = useState<string>();
+  const activeFilterCount = Number(Boolean(activeCategory)) + Number(Boolean(activeTag));
   const reduceMotion = useReducedMotionSafe();
   const listRef = useRef<FlatList<Product>>(null);
   const lastScrollY = useRef(0);
@@ -124,78 +131,97 @@ export const ProductListing: React.FC = () => {
     return selected ? [selected, ...tags.filter(tag => tag.slug !== selected.slug)] : tags;
   }, [activeTag, tagsQuery.data]);
 
+  const categoryButtons = [{ id: 'all', slug: '', label: 'All products' }, ...categoryOptions].map(category => {
+    const selected = activeCategory === (category.slug || undefined);
+    return <Pressable key={category.id} onPress={() => chooseCategory(category.slug || undefined)}
+      style={[styles.filterChip, useDesktopSidebar && styles.sidebarCategoryChip, selected && styles.filterActive]}
+      accessibilityRole="radio" accessibilityState={{ selected }} accessibilityLabel={category.slug ? `Browse ${category.label}` : 'All categories'}>
+      <Text numberOfLines={1} style={[styles.filterText, selected && styles.filterTextActive]}>{category.label}</Text>
+    </Pressable>;
+  });
+
   const tagButtons = [{ slug: '', label: 'All tags' }, ...tagOptions].map(tag => (
     <Pressable key={tag.slug} onPress={() => chooseTag(tag.slug || undefined)} style={[styles.filterChip, activeTag === (tag.slug || undefined) ? styles.filterActive : null]} accessibilityRole="radio" accessibilityLabel={tag.label} accessibilityState={{ selected: activeTag === (tag.slug || undefined) }}>
       <Text style={[styles.filterText, activeTag === (tag.slug || undefined) ? styles.filterTextActive : null]}>{tag.label}</Text>
     </Pressable>
   ));
 
+  const results = isLoading || categoriesQuery.isLoading || tagsQuery.isLoading ? (
+    <View style={styles.skeletonGrid}>
+      {Array.from({ length: 6 }).map((_, i) => <View key={i} style={styles.skeletonCard} />)}
+    </View>
+  ) : (
+    <FlatList
+      ref={listRef}
+      style={styles.productList}
+      data={products}
+      key={listingColumns}
+      numColumns={listingColumns}
+      keyExtractor={item => item.id}
+      renderItem={({ item }) => (
+        <View style={[styles.cardWrapper, { width: `${100 / listingColumns}%` }]}>
+          <ProductCard layout="grid" product={item} onPress={() => item.slug && navigation.navigate('ProductDetails', { productId: item.slug })} />
+        </View>
+      )}
+      ListEmptyComponent={<EmptyState title="No products found" description="Try another search or choose a different category." />}
+      ListFooterComponent={productsQuery.hasNextPage ? (
+        <Button variant="outline" onPress={() => void productsQuery.fetchNextPage()}
+          loading={productsQuery.isFetchingNextPage} loadingLabel="Loading more">Load more</Button>
+      ) : null}
+      onEndReached={() => {
+        if (productsQuery.hasNextPage && !productsQuery.isFetchingNextPage) void productsQuery.fetchNextPage();
+      }}
+      onEndReachedThreshold={0.4}
+      onScroll={useDesktopSidebar ? undefined : handleScroll}
+      scrollEventThrottle={16}
+      contentContainerStyle={products.length === 0 ? styles.emptyList : styles.list}
+      columnWrapperStyle={styles.column}
+    />
+  );
+
   if (productsQuery.isError || categoriesQuery.isError || tagsQuery.isError) return <ErrorState message="Unable to load products." onRetry={() => { void productsQuery.refetch(); void categoriesQuery.refetch(); void tagsQuery.refetch(); }} />;
 
   return (
     <View style={styles.container}>
       {isExpanded ? <Text style={styles.title}>Products</Text> : null}
-      <SearchField value={query} onChangeText={value => { setQuery(value); resetList(); }} placeholder="Search products" accessibilityLabel="Search products" containerStyle={styles.search} />
-      <Animated.View
-        accessibilityElementsHidden={!filtersVisible}
-        importantForAccessibility={filtersVisible ? 'auto' : 'no-hide-descendants'}
-        aria-hidden={!filtersVisible}
-        style={[styles.filterPanel, { height: Animated.multiply(filterProgress, FILTER_HEIGHT), opacity: filterProgress, pointerEvents: filtersVisible ? 'auto' : 'none' }]}
-      >
-        {filtersMounted ? <>
-          <ScrollView horizontal showsHorizontalScrollIndicator={isExpanded} style={styles.filterScroller} contentContainerStyle={styles.railContent} accessibilityRole="radiogroup" accessibilityLabel="Product categories">
-            <Pressable onPress={() => chooseCategory()} style={[styles.filterChip, !activeCategory ? styles.filterActive : null]} accessibilityRole="radio" accessibilityState={{ selected: !activeCategory }} accessibilityLabel="All categories">
-              <Text style={[styles.filterText, !activeCategory ? styles.filterTextActive : null]}>All products</Text>
-            </Pressable>
-            {categoryOptions.map(category => (
-              <Pressable key={category.id} onPress={() => chooseCategory(category.slug)} style={[styles.filterChip, activeCategory === category.slug && styles.filterActive]}
-                accessibilityRole="radio" accessibilityState={{ selected: activeCategory === category.slug }} accessibilityLabel={`Browse ${category.label}`}>
-                <Text numberOfLines={1} style={[styles.filterText, activeCategory === category.slug && styles.filterTextActive]}>{category.label}</Text>
-              </Pressable>
-            ))}
-          </ScrollView>
-          <ScrollView horizontal showsHorizontalScrollIndicator={isExpanded} style={styles.filterScroller} contentContainerStyle={styles.railContent} accessibilityRole="radiogroup" accessibilityLabel="Product tags">{tagButtons}</ScrollView>
-        </> : null}
-      </Animated.View>
-      {isLoading || categoriesQuery.isLoading || tagsQuery.isLoading ? (
-        <View style={styles.skeletonGrid}>
-          {Array.from({ length: 6 }).map((_, i) => (
-            <View key={i} style={styles.skeletonCard} />
-          ))}
+      {useDesktopSidebar ? <View style={styles.desktopBody}>
+        {sidebarOpen ? <ScrollView style={styles.sidebar} contentContainerStyle={styles.sidebarContent}
+          showsVerticalScrollIndicator nestedScrollEnabled accessibilityLabel="Product filters">
+          <View accessibilityRole="radiogroup" accessibilityLabel="Product categories">
+            <Text style={styles.sidebarHeading}>Categories</Text>
+            {categoryButtons}
+          </View>
+          <View accessibilityRole="radiogroup" accessibilityLabel="Product tags">
+            <Text style={styles.sidebarHeading}>Tags</Text>
+            <View style={styles.sidebarTags}>{tagButtons}</View>
+          </View>
+        </ScrollView> : null}
+        <View style={styles.resultsPane}>
+          <View style={styles.desktopToolbar}>
+            <SearchField value={query} onChangeText={value => { setQuery(value); resetList(); }} placeholder="Search products" accessibilityLabel="Search products" containerStyle={styles.desktopSearch} />
+            <Button variant="outline" size="sm" onPress={() => setSidebarOpen(value => !value)}
+              accessibilityLabel={sidebarOpen ? 'Hide filters' : activeFilterCount ? `Show ${activeFilterCount} active filters` : 'Show filters'} accessibilityState={{ expanded: sidebarOpen }}
+              icon={<SlidersHorizontal size={17} color={theme.colors.primary.DEFAULT} />}>
+              {sidebarOpen ? 'Hide filters' : activeFilterCount ? `Filters (${activeFilterCount})` : 'Filters'}
+            </Button>
+          </View>
+          {results}
         </View>
-      ) : (
-        <FlatList
-          ref={listRef}
-          data={products}
-          key={productColumns}
-          numColumns={productColumns}
-          keyExtractor={item => item.id}
-          renderItem={({ item }) => (
-            <View style={[styles.cardWrapper, { width: `${100 / productColumns}%` }]}>
-              <ProductCard layout="grid" product={item} onPress={() => item.slug && navigation.navigate('ProductDetails', { productId: item.slug })} />
-            </View>
-          )}
-          ListEmptyComponent={<EmptyState title="No products found" description="Try another search or choose a different category." />}
-          ListFooterComponent={productsQuery.hasNextPage ? (
-            <Button
-              variant="outline"
-              onPress={() => void productsQuery.fetchNextPage()}
-              loading={productsQuery.isFetchingNextPage}
-              loadingLabel="Loading more"
-            >Load more</Button>
-          ) : null}
-          onEndReached={() => {
-            if (productsQuery.hasNextPage && !productsQuery.isFetchingNextPage) {
-              void productsQuery.fetchNextPage();
-            }
-          }}
-          onEndReachedThreshold={0.4}
-          onScroll={handleScroll}
-          scrollEventThrottle={16}
-          contentContainerStyle={products.length === 0 ? styles.emptyList : styles.list}
-          columnWrapperStyle={styles.column}
-        />
-      )}
+      </View> : <>
+        <SearchField value={query} onChangeText={value => { setQuery(value); resetList(); }} placeholder="Search products" accessibilityLabel="Search products" containerStyle={styles.search} />
+        <Animated.View
+          accessibilityElementsHidden={!filtersVisible}
+          importantForAccessibility={filtersVisible ? 'auto' : 'no-hide-descendants'}
+          aria-hidden={!filtersVisible}
+          style={[styles.filterPanel, { height: Animated.multiply(filterProgress, FILTER_HEIGHT), opacity: filterProgress, pointerEvents: filtersVisible ? 'auto' : 'none' }]}
+        >
+          {filtersMounted ? <>
+            <ScrollView horizontal showsHorizontalScrollIndicator={isExpanded} style={styles.filterScroller} contentContainerStyle={styles.railContent} accessibilityRole="radiogroup" accessibilityLabel="Product categories">{categoryButtons}</ScrollView>
+            <ScrollView horizontal showsHorizontalScrollIndicator={isExpanded} style={styles.filterScroller} contentContainerStyle={styles.railContent} accessibilityRole="radiogroup" accessibilityLabel="Product tags">{tagButtons}</ScrollView>
+          </> : null}
+        </Animated.View>
+        {results}
+      </>}
     </View>
   );
 };
@@ -213,6 +239,16 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.md,
   },
   search: { marginBottom: theme.spacing.md },
+  desktopBody: { flex: 1, minHeight: 0, flexDirection: 'row', gap: theme.spacing.md },
+  sidebar: { width: 220, flexGrow: 0, flexShrink: 0, borderWidth: 1, borderColor: theme.colors.border, borderRadius: theme.radii.md, backgroundColor: theme.colors.white },
+  sidebarContent: { padding: theme.spacing.md, paddingBottom: theme.spacing.lg },
+  sidebarHeading: { color: theme.colors.ink, fontSize: theme.typography.body.fontSize, fontWeight: '800', marginBottom: theme.spacing.sm, marginTop: theme.spacing.xs },
+  sidebarCategoryChip: { width: '100%', marginRight: 0 },
+  sidebarTags: { flexDirection: 'row', flexWrap: 'wrap' },
+  resultsPane: { flex: 1, minWidth: 0 },
+  desktopToolbar: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm, marginBottom: theme.spacing.md },
+  desktopSearch: { flex: 1, minWidth: 0 },
+  productList: { flex: 1, minHeight: 0 },
   filterPanel: { overflow: 'hidden', flexShrink: 0 },
   filterScroller: { flexGrow: 0, flexShrink: 0, height: 44, marginBottom: theme.spacing.sm },
   railContent: { paddingRight: theme.spacing.md, alignItems: 'center' },
