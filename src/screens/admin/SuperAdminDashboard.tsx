@@ -120,7 +120,7 @@ export const SuperAdminDashboard = () => {
     finally { setBusy(false); }
   };
 
-  return <OperationsScaffold title="Administration" subtitle="Platform authority for staff access, marketplace safety, catalog governance, order oversight, and audited operational controls.">
+  return <OperationsScaffold title="Administration" subtitle="Access, orders, catalog and audit.">
     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabsViewport} contentContainerStyle={styles.tabsRow} accessibilityLabel="Administration sections">{(Object.keys(sectionLabels) as Section[]).map(value => <Pressable key={value} onPress={() => changeSection(value)} style={[styles.tab, section === value && styles.tabActive]} accessibilityRole="tab" accessibilityState={{ selected: section === value }}><Text style={[styles.tabText, section === value && styles.tabTextActive]}>{value === 'requests' ? `${sectionLabels[value]} (${requests.isError ? '?' : requests.data?.count ?? '...'})` : sectionLabels[value]}</Text></Pressable>)}</ScrollView>
 
     {section === 'overview' ? <OverviewSection data={overview.data} loading={overview.isLoading} failed={overview.isError} retry={() => void overview.refetch()} refreshing={overview.isFetching} updatedAt={overview.dataUpdatedAt} trendDays={trendDays} onTrendDays={setTrendDays} recentAudit={audit.data?.results.slice(0, 6) ?? []} auditLoading={audit.isLoading} auditFailed={audit.isError} onNavigate={changeSection} onOpenSales={() => navigation.navigate('SalesDashboard')} onOpenCatalogArchived={() => { setCatalogStatus('archived'); changeSection('catalog'); }} onOpenOrders={(statusValue, paymentValue) => { if (statusValue) setOrderStatus(statusValue); if (paymentValue) setPaymentStatus(paymentValue); changeSection('orders'); }} /> : null}
@@ -163,12 +163,12 @@ const OverviewSection = ({ data, loading, failed, retry, refreshing, updatedAt, 
   if (failed && !data) return <ErrorState message="Unable to load the administration overview." onRetry={retry} />;
   if (loading || !data) return <Text style={styles.empty}>Loading platform overview...</Text>;
   const queues = [
-    { label: 'Access requests', count: data.dashboardAccessPending, detail: 'Dashboard access requests waiting for a decision', open: () => onNavigate('requests'), tone: 'amber' as const, icon: <ClipboardList size={18} color={operationsColors.amber} /> },
-    { label: 'Failed payments', count: data.orders.paymentFailed, detail: 'Orders with a failed payment status', open: () => onOpenOrders(undefined, 'failed'), tone: 'red' as const, icon: <CircleAlert size={18} color={operationsColors.red} /> },
-    { label: 'Payments pending', count: data.orders.paymentPending, detail: 'Orders awaiting payment completion', open: () => onOpenOrders(undefined, 'pending'), tone: 'amber' as const, icon: <CreditCard size={18} color={operationsColors.amber} /> },
-    { label: 'Orders pending', count: data.orders.pending, detail: 'Orders not yet in fulfilment', open: () => onOpenOrders('pending'), tone: 'amber' as const, icon: <ShoppingBag size={18} color={operationsColors.amber} /> },
-    { label: 'KYC pending', count: data.stores.kycPending, detail: 'Seller verification submissions awaiting review', open: onOpenSales, tone: 'amber' as const, icon: <ShieldCheck size={18} color={operationsColors.amber} /> },
-    { label: 'Archived listings', count: data.products.archived + data.services.archived, detail: 'Listings removed from the public marketplace', open: onOpenCatalogArchived, tone: 'amber' as const, icon: <Package size={18} color={operationsColors.amber} /> },
+    { label: 'Access requests', count: data.dashboardAccessPending, open: () => onNavigate('requests'), tone: 'amber' as const, icon: <ClipboardList size={18} color={operationsColors.amber} /> },
+    { label: 'Failed payments', count: data.orders.paymentFailed, open: () => onOpenOrders(undefined, 'failed'), tone: 'red' as const, icon: <CircleAlert size={18} color={operationsColors.red} /> },
+    { label: 'Payments pending', count: data.orders.paymentPending, open: () => onOpenOrders(undefined, 'pending'), tone: 'amber' as const, icon: <CreditCard size={18} color={operationsColors.amber} /> },
+    { label: 'Orders pending', count: data.orders.pending, open: () => onOpenOrders('pending'), tone: 'amber' as const, icon: <ShoppingBag size={18} color={operationsColors.amber} /> },
+    { label: 'KYC pending', count: data.stores.kycPending, open: onOpenSales, tone: 'amber' as const, icon: <ShieldCheck size={18} color={operationsColors.amber} /> },
+    { label: 'Archived listings', count: data.products.archived + data.services.archived, open: onOpenCatalogArchived, tone: 'amber' as const, icon: <Package size={18} color={operationsColors.amber} /> },
   ];
   const activeQueues = queues.filter(queue => queue.count > 0).length;
   const orderStages = [
@@ -183,11 +183,7 @@ const OverviewSection = ({ data, loading, failed, retry, refreshing, updatedAt, 
     <DataFreshness updatedAt={updatedAt} refreshing={refreshing} failed={failed || auditFailed} onRefresh={retry} />
     <View style={styles.commandHero}>
       <View style={styles.commandHeroCopy}>
-        <View style={styles.commandEyebrow}><ShieldCheck size={15} color="#C8E6D2" /><Text style={styles.commandEyebrowText}>SUPERADMIN COMMAND CENTER</Text></View>
         <Text style={styles.commandTitle}>Platform overview</Text>
-        <Text style={styles.commandSubtitle}>{activeQueues
-          ? `${activeQueues} of ${queues.length} tracked review areas have open work. Start with the highlighted queues below.`
-          : `All ${queues.length} tracked review queues are clear. Use the current platform snapshot to keep an eye on operations.`}</Text>
       </View>
       <View style={[styles.commandStatus, activeQueues > 0 && styles.commandStatusActive]}>
         <Text style={[styles.commandStatusValue, activeQueues > 0 && styles.commandStatusValueActive]}>{activeQueues || '0'}</Text>
@@ -196,8 +192,7 @@ const OverviewSection = ({ data, loading, failed, retry, refreshing, updatedAt, 
     </View>
 
     <View style={styles.overviewHeading}>
-      <View><Text style={styles.overviewTitle}>Review queue</Text><Text style={styles.overviewDescription}>Current workload signals · select a card to open its workspace</Text></View>
-      <Text style={styles.liveTag}>CURRENT SNAPSHOT</Text>
+      <Text style={styles.overviewTitle}>Review queue</Text>
     </View>
     <View style={styles.queueGrid}>
       {queues.map(queue => <Pressable
@@ -213,13 +208,11 @@ const OverviewSection = ({ data, loading, failed, retry, refreshing, updatedAt, 
         </View>
         <Text style={styles.queueCount}>{queue.count.toLocaleString('en-KE')}</Text>
         <Text style={styles.queueLabel}>{queue.label}</Text>
-        <Text style={styles.queueDetail}>{queue.count ? queue.detail : 'Nothing waiting in this queue'}</Text>
-        <Text style={[styles.queueState, queue.count > 0 && queue.tone === 'red' && styles.queueStateUrgent, queue.count === 0 && styles.queueStateClear]}>{queue.count ? 'REVIEW' : 'CLEAR'}</Text>
       </Pressable>)}
     </View>
 
     <View style={styles.overviewHeading}>
-      <View><Text style={styles.overviewTitle}>Platform pulse</Text><Text style={styles.overviewDescription}>Current totals from the administration overview</Text></View>
+      <Text style={styles.overviewTitle}>Platform totals</Text>
     </View>
     <View style={styles.metrics}>
       <OverviewMetric icon={<Users size={17} color={operationsColors.green} />} label="Accounts" value={data.accounts.total} note={`${data.accounts.active.toLocaleString('en-KE')} active · ${data.accounts.suspended.toLocaleString('en-KE')} suspended`} />
@@ -228,20 +221,20 @@ const OverviewSection = ({ data, loading, failed, retry, refreshing, updatedAt, 
       <OverviewMetric icon={<ShoppingBag size={17} color={operationsColors.green} />} label="Orders" value={data.orders.total} note={`${(data.orders.pending + data.orders.processing + data.orders.shipped).toLocaleString('en-KE')} in motion · ${data.orders.paymentFailed.toLocaleString('en-KE')} payment failures`} />
     </View>
     <View style={styles.flowPanel}>
-      <View style={styles.flowHeading}><View><Text style={styles.overviewTitle}>Order flow</Text><Text style={styles.overviewDescription}>Fulfilment status breakdown · {data.orders.total.toLocaleString('en-KE')} total orders</Text></View><Pressable onPress={() => onNavigate('orders')} accessibilityRole="button" style={styles.flowLink}><Text style={styles.flowLinkText}>Open orders</Text><ArrowUpRight size={15} color={operationsColors.green} /></Pressable></View>
+      <View style={styles.flowHeading}><Text style={styles.overviewTitle}>Order flow</Text><Pressable onPress={() => onNavigate('orders')} accessibilityRole="button" style={styles.flowLink}><Text style={styles.flowLinkText}>Open orders</Text><ArrowUpRight size={15} color={operationsColors.green} /></Pressable></View>
       <View style={styles.flowGrid}>{orderStages.map(stage => <View key={stage.label} style={styles.flowStage}>
         <View style={styles.flowStageHeader}><Text style={styles.flowStageLabel}>{stage.label}</Text><Text style={styles.flowStageCount}>{stage.count.toLocaleString('en-KE')}</Text></View>
         <View style={styles.flowTrack}><View style={[styles.flowFill, stage.label === 'Cancelled' && styles.flowFillMuted, { width: `${Math.round((stage.count / largestStage) * 100)}%` }]} /></View>
       </View>)}</View>
     </View>
     <View style={styles.flowPanel}>
-      <View style={styles.flowHeading}><View><Text style={styles.overviewTitle}>Growth and operations trend</Text><Text style={styles.overviewDescription}>Daily persisted activity. Empty days are shown as zero.</Text></View><View style={styles.filters}>{([7, 30, 90] as const).map(days => <FilterButton key={days} label={`${days} days`} active={trendDays === days} onPress={() => onTrendDays(days)} />)}</View></View>
+      <View style={styles.flowHeading}><Text style={styles.overviewTitle}>Daily activity</Text><View style={styles.filters}>{([7, 30, 90] as const).map(days => <FilterButton key={days} label={`${days} days`} active={trendDays === days} onPress={() => onTrendDays(days)} />)}</View></View>
       <TrendBars label="New accounts" values={data.trends.map(item => item.accounts)} dates={data.trends.map(item => item.date)} />
       <TrendBars label="New stores" values={data.trends.map(item => item.stores)} dates={data.trends.map(item => item.date)} />
       <TrendBars label="Orders" values={data.trends.map(item => item.orders)} dates={data.trends.map(item => item.date)} />
     </View>
     <View style={styles.flowPanel}>
-      <View style={styles.flowHeading}><View><Text style={styles.overviewTitle}>Recent administrative activity</Text><Text style={styles.overviewDescription}>Append-only audit events from real administrative actions.</Text></View><Pressable onPress={() => onNavigate('audit')} accessibilityRole="button" style={styles.flowLink}><Text style={styles.flowLinkText}>Open audit log</Text><ArrowUpRight size={15} color={operationsColors.green} /></Pressable></View>
+      <View style={styles.flowHeading}><Text style={styles.overviewTitle}>Recent administrative activity</Text><Pressable onPress={() => onNavigate('audit')} accessibilityRole="button" style={styles.flowLink}><Text style={styles.flowLinkText}>Open audit log</Text><ArrowUpRight size={15} color={operationsColors.green} /></Pressable></View>
       {auditLoading ? <Text style={styles.empty}>Loading audit activity...</Text> : auditFailed && !recentAudit.length ? <Text style={styles.empty}>Audit activity unavailable.</Text> : recentAudit.length ? recentAudit.map(item => <View key={item.id} style={styles.recentRow}><View style={styles.main}><Text style={styles.rowTitle}>{item.action.replaceAll('_', ' ')}</Text><Text style={styles.meta}>{item.actorEmail || 'System'} - {item.targetType}:{item.targetId}</Text></View><Text style={styles.meta}>{formatOperationsDate(item.createdAt)}</Text></View>) : <Text style={styles.empty}>No audit activity is available.</Text>}
     </View>
   </>;
@@ -266,12 +259,9 @@ const TrendBars = ({ label, values, dates }: { label: string; values: number[]; 
 };
 
 const styles = StyleSheet.create({
-  commandHero: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 18, padding: 22, marginBottom: 20, borderRadius: 8, backgroundColor: '#173E2D' },
+  commandHero: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 18, padding: 16, marginBottom: 20, borderRadius: 8, backgroundColor: '#173E2D' },
   commandHeroCopy: { flex: 1, minWidth: 220 },
-  commandEyebrow: { flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 10 },
-  commandEyebrowText: { color: '#C8E6D2', fontSize: 10, fontWeight: '800', letterSpacing: 1.1 },
   commandTitle: { color: '#FFFFFF', fontSize: 25, fontWeight: '800' },
-  commandSubtitle: { maxWidth: 660, color: '#D5E5DA', fontSize: 12, lineHeight: 19, marginTop: 6 },
   commandStatus: { minWidth: 102, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 14, paddingVertical: 11, borderRadius: 7, backgroundColor: '#DFF0E5' },
   commandStatusActive: { backgroundColor: '#FFF0D8' },
   commandStatusValue: { color: operationsColors.green, fontSize: 25, fontWeight: '800' },
@@ -280,10 +270,8 @@ const styles = StyleSheet.create({
   commandStatusLabelActive: { color: operationsColors.amber },
   overviewHeading: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 10 },
   overviewTitle: { color: operationsColors.ink, fontSize: 16, fontWeight: '800' },
-  overviewDescription: { color: operationsColors.muted, fontSize: 11, marginTop: 4 },
-  liveTag: { color: operationsColors.green, fontSize: 9, fontWeight: '800', letterSpacing: 0.8, paddingHorizontal: 9, paddingVertical: 6, borderRadius: 4, backgroundColor: operationsColors.greenSoft },
   queueGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 20 },
-  queueCard: { flexGrow: 1, flexBasis: 174, minWidth: 145, minHeight: 196, padding: 13, borderWidth: 1, borderColor: operationsColors.border, borderRadius: 10, backgroundColor: operationsColors.panel },
+  queueCard: { flexGrow: 1, flexBasis: 174, minWidth: 145, minHeight: 130, padding: 13, borderWidth: 1, borderColor: operationsColors.border, borderRadius: 10, backgroundColor: operationsColors.panel },
   queueCardActive: { borderColor: '#E5C99E', backgroundColor: '#FFFCF7' },
   queueCardUrgent: { borderColor: '#E6B8B4', backgroundColor: '#FFFAF9' },
   queueCardTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
@@ -291,10 +279,6 @@ const styles = StyleSheet.create({
   queueIconUrgent: { backgroundColor: operationsColors.redSoft },
   queueCount: { color: operationsColors.ink, fontSize: 26, fontWeight: '800', marginTop: 11 },
   queueLabel: { color: operationsColors.ink, fontSize: 13, fontWeight: '800', marginTop: 2 },
-  queueDetail: { flex: 1, color: operationsColors.muted, fontSize: 10, lineHeight: 15, marginTop: 5 },
-  queueState: { alignSelf: 'flex-start', color: operationsColors.amber, fontSize: 9, fontWeight: '800', letterSpacing: 0.7, marginTop: 10 },
-  queueStateUrgent: { color: operationsColors.red },
-  queueStateClear: { color: operationsColors.green },
   overviewMetric: { flexGrow: 1, flexBasis: 160, minHeight: 119, padding: 14, borderWidth: 1, borderColor: operationsColors.border, borderRadius: 10, backgroundColor: operationsColors.panel },
   overviewMetricHeading: { flexDirection: 'row', alignItems: 'center', gap: 7 },
   overviewMetricLabel: { color: operationsColors.muted, fontSize: 11, fontWeight: '700' },

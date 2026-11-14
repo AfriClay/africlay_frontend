@@ -89,7 +89,7 @@ test('operations login routes assigned accounts and rejects unassigned marketpla
   const login = source('src/screens/admin/OperationsLogin.tsx');
   assert.match(login, /canAccessOperations\(user\)/);
   assert.match(login, /dashboardFor\(auth\.user\)/);
-  assert.match(login, /has not been assigned access to an operations dashboard/);
+  assert.match(login, /No operations access\. Contact a super administrator/);
   assert.doesNotMatch(login, /Create account/);
 });
 
@@ -219,7 +219,7 @@ test('operations workspaces fit compact screens and retain stale data labels', (
   const admin = source('src/screens/admin/SuperAdminDashboard.tsx');
   const finance = source('src/screens/admin/FinanceDashboard.tsx');
   const sales = source('src/screens/admin/SalesDashboard.tsx');
-  assert.match(shell, /Refresh failed; showing last loaded data/);
+  assert.match(shell, /Refresh failed · showing saved data/);
   assert.match(shell, /navigationLinks/);
   assert.match(admin, /horizontal showsHorizontalScrollIndicator=\{false\} style=\{styles\.tabsViewport\}/);
   assert.match(admin, /compact && styles\.listCompact/);

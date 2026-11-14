@@ -56,9 +56,9 @@ export const SalesDashboard = () => {
     setDateFrom(localDate(from)); setDateTo(localDate(to)); setRangeDays(days); setOffset(0);
   };
 
-  return <OperationsScaffold title="Seller verification" subtitle="Onboarding funnel, queue aging, reviewer workload, and direct KYC decisions. Finance and account administration remain separate.">
+  return <OperationsScaffold title="Seller verification" subtitle="Review applications and track the queue.">
     <DataFreshness updatedAt={Math.max(queue.dataUpdatedAt, summary.dataUpdatedAt)} refreshing={queue.isFetching || summary.isFetching} failed={queue.isError || summary.isError} onRefresh={() => void Promise.all([queue.refetch(), summary.refetch()])} />
-    <View style={[styles.hero, compact && styles.heroCompact]}><View style={[styles.heroCopy, compact && styles.heroCopyCompact]}><Text style={styles.heroEyebrow}>SALES REVIEW WORKSPACE</Text><Text style={styles.heroTitle}>Seller verification queue</Text><Text style={styles.heroNote}>Oldest pending submissions appear first. Open a seller to inspect their documents and record a decision.</Text></View><View style={styles.heroCount}><Text style={styles.heroValue}>{summary.data?.pendingAging ? summary.data.counts.pending : '...'}</Text><Text style={styles.heroCountLabel}>pending in period</Text></View></View>
+    <View style={[styles.hero, compact && styles.heroCompact]}><View style={[styles.heroCopy, compact && styles.heroCopyCompact]}><Text style={styles.heroTitle}>Review queue</Text></View><View style={styles.heroCount}><Text style={styles.heroValue}>{summary.data?.pendingAging ? summary.data.counts.pending : '...'}</Text><Text style={styles.heroCountLabel}>pending in period</Text></View></View>
     {summary.isError && !summary.data ? <ErrorState message="Unable to load seller verification totals." onRetry={() => void summary.refetch()} /> : <>
       <View style={styles.metrics}>
         <Metric label="Submitted" value={summary.data?.counts.total ?? '...'} note="Selected period" onPress={() => selectStatus('all')} />
@@ -68,7 +68,7 @@ export const SalesDashboard = () => {
         <Metric label="Over 7 days" value={summary.data?.pendingAging.over7Days ?? '...'} note="Current backlog" onPress={() => { selectStatus('pending'); setDateFrom(''); setDateTo(''); setRangeDays(0); }} urgent />
       </View>
     </>}
-    <View style={styles.sectionHeading}><Text style={styles.sectionTitle}>Verification queue</Text><Text style={styles.sectionHint}>Select a submission to review</Text></View>
+    <View style={styles.sectionHeading}><Text style={styles.sectionTitle}>Submissions</Text></View>
     <View style={styles.toolbar}>
       <SearchField value={search} onChangeText={value => { setSearch(value); setOffset(0); }} placeholder="Search store, seller or registration" accessibilityLabel="Search KYC submissions" containerStyle={styles.search} />
       <View style={styles.filters}>{(['pending', 'approved', 'rejected', 'all'] as const).map(value => <Filter key={value} label={value} active={status === value} onPress={() => selectStatus(value)} />)}</View>
@@ -109,9 +109,9 @@ const Field = ({ label, value }: { label: string; value: string }) => <View styl
 const styles = StyleSheet.create({
   hero: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 16, padding: 20, marginBottom: 16, borderRadius: 12, backgroundColor: '#173E2D' },
   heroCompact: { flexDirection: 'column', alignItems: 'flex-start' }, heroCopyCompact: { flex: 0, width: '100%', minWidth: 0 },
-  heroCopy: { flex: 1, minWidth: 190 }, heroEyebrow: { color: '#BFE5CA', fontSize: 10, fontWeight: '800', letterSpacing: 1 }, heroTitle: { color: '#FFFFFF', fontSize: 22, fontWeight: '800', marginTop: 7 }, heroNote: { color: '#D5E5DA', fontSize: 12, lineHeight: 19, marginTop: 6, maxWidth: 640 },
+  heroCopy: { flex: 1, minWidth: 190 }, heroTitle: { color: '#FFFFFF', fontSize: 22, fontWeight: '800' },
   heroCount: { minWidth: 106, alignItems: 'center', paddingHorizontal: 14, paddingVertical: 10, borderRadius: 10, backgroundColor: '#E8F2EC' }, heroValue: { color: operationsColors.green, fontSize: 27, fontWeight: '800' }, heroCountLabel: { color: operationsColors.green, fontSize: 10, fontWeight: '800' },
-  sectionHeading: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginTop: 8, marginBottom: 10 }, sectionTitle: { color: operationsColors.ink, fontSize: 18, fontWeight: '800' }, sectionHint: { color: operationsColors.muted, fontSize: 11 },
+  sectionHeading: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginTop: 8, marginBottom: 10 }, sectionTitle: { color: operationsColors.ink, fontSize: 18, fontWeight: '800' },
   layoutCompact: { flexDirection: 'column' }, queueCompact: { width: '100%', flex: 0, minWidth: 0 }, detailCompact: { width: '100%', flex: 0, minWidth: 0 },
   pagination: { minHeight: 56, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: 10 },
   metrics: { flexDirection: 'row', flexWrap: 'wrap', gap: 9, marginBottom: 12 }, metric: { flexGrow: 1, flexBasis: 150, minHeight: 100, padding: 13, borderWidth: 1, borderColor: operationsColors.border, borderRadius: 10, backgroundColor: operationsColors.panel }, metricUrgent: { borderColor: operationsColors.red, backgroundColor: operationsColors.redSoft }, metricValue: { color: operationsColors.green, fontSize: 23, fontWeight: '800' }, metricValueUrgent: { color: operationsColors.red }, summaryGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 16, marginBottom: 14 }, summaryPanel: { flexGrow: 1, flexBasis: 280, minWidth: 0, borderWidth: 1, borderColor: operationsColors.border, borderRadius: 10, backgroundColor: operationsColors.panel, overflow: 'hidden' }, summaryLine: { minHeight: 42, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 13, borderTopWidth: 1, borderTopColor: operationsColors.border }, workload: { minHeight: 54, flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 13, borderTopWidth: 1, borderTopColor: operationsColors.border }, workloadValue: { color: operationsColors.green, fontSize: 18, fontWeight: '800' },

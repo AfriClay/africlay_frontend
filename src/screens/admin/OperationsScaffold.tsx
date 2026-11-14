@@ -30,7 +30,7 @@ export const formatQueueAge = (value?: string) => {
 };
 
 export const DataFreshness = ({ updatedAt, refreshing, failed = false, onRefresh }: { updatedAt: number; refreshing: boolean; failed?: boolean; onRefresh: () => void }) => <View style={styles.freshness}>
-  <Text style={[styles.freshnessText, failed && styles.freshnessError]} accessibilityRole={failed ? 'alert' : undefined}>{failed ? updatedAt ? 'Refresh failed; showing last loaded data' : 'Live data unavailable' : refreshing ? 'Refreshing data...' : updatedAt ? `Updated ${new Date(updatedAt).toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit' })}` : 'Waiting for live data'}</Text>
+  <Text style={[styles.freshnessText, failed && styles.freshnessError]} accessibilityRole={failed ? 'alert' : undefined}>{failed ? updatedAt ? 'Refresh failed · showing saved data' : 'Data unavailable' : refreshing ? 'Refreshing...' : updatedAt ? `Updated ${new Date(updatedAt).toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit' })}` : 'Loading data...'}</Text>
   <Pressable onPress={onRefresh} disabled={refreshing} accessibilityRole="button" accessibilityLabel="Refresh dashboard data" accessibilityState={{ disabled: refreshing }} style={styles.refreshButton}>
     <RefreshCw size={15} color={operationsColors.green} /><Text style={styles.refreshText}>Refresh</Text>
   </Pressable>
@@ -59,7 +59,6 @@ export const OperationsScaffold = ({ title, subtitle, children, scrollRef }: { t
     isSuperAdmin(auth.user) && { label: 'Administration', route: 'SuperAdminDashboard' as const, icon: ShieldCheck },
   ].filter(Boolean) as Array<{ label: string; route: 'SalesDashboard' | 'FinanceDashboard' | 'LogisticsDashboard' | 'RiderDashboard' | 'SuperAdminDashboard'; icon: typeof BadgeCheck }>;
 
-  const activeSection = links.find(link => link.route === route.name)?.label ?? 'Operations';
   const navigationLinks = <ScrollView horizontal style={compact ? styles.navViewportCompact : styles.navViewport} showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.navigation, compact && styles.navigationCompact]}>
         {links.map(link => { const Icon = link.icon; const active = link.route === route.name; return <Pressable key={link.route} onPress={() => navigation.navigate(link.route)} accessibilityRole="link" accessibilityState={{ selected: active }} accessibilityLabel={`${link.label} dashboard`} style={[styles.navLink, active && styles.navLinkActive]}>
           <Icon size={17} color={operationsColors.green} /><Text style={[styles.navText, active && styles.navTextActive]}>{link.label}</Text>
@@ -85,7 +84,7 @@ export const OperationsScaffold = ({ title, subtitle, children, scrollRef }: { t
       showsVerticalScrollIndicator
       testID="operations-scroll"
     >
-      <View style={[styles.heading, compact && styles.headingCompact]}><Text style={styles.eyebrow}>AFRICLAY / {activeSection.toUpperCase()}</Text><Text style={[styles.title, compact && styles.titleCompact]}>{title}</Text><Text style={styles.subtitle}>{subtitle}</Text></View>
+      <View style={[styles.heading, compact && styles.headingCompact]}><Text style={[styles.title, compact && styles.titleCompact]}>{title}</Text>{subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}</View>
       {children}
     </ScrollView>
   </SafeAreaView>;
@@ -100,7 +99,6 @@ const styles = StyleSheet.create({
   navViewport: { flex: 1, minWidth: 0 }, navViewportCompact: { flexGrow: 0, flexShrink: 0, width: '100%', height: 44 },
   navigation: { flexGrow: 1, justifyContent: 'center', alignItems: 'center', gap: 6 }, navigationCompact: { justifyContent: 'flex-start', paddingHorizontal: 8 }, navLink: { minHeight: 40, flexDirection: 'row', alignItems: 'center', gap: 7, paddingHorizontal: 13, borderRadius: 20 }, navLinkActive: { backgroundColor: operationsColors.greenSoft }, navText: { color: operationsColors.muted, fontSize: 12, fontWeight: '700' }, navTextActive: { color: operationsColors.green },
   scroll: { flex: 1, minHeight: 0 }, content: { flexGrow: 1, width: '100%', maxWidth: 1320, alignSelf: 'center', padding: 24, paddingBottom: 120 }, contentCompact: { padding: 14, paddingBottom: 144 }, heading: { marginBottom: 20 }, headingCompact: { marginBottom: 16 },
-  eyebrow: { color: operationsColors.green, fontSize: 10, fontWeight: '800', letterSpacing: 1.1, marginBottom: 7 },
   title: { color: operationsColors.ink, fontSize: 29, fontWeight: '800' }, titleCompact: { fontSize: 24 }, subtitle: { color: operationsColors.muted, fontSize: 13, lineHeight: 20, marginTop: 5, maxWidth: 760 },
   pill: { alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4, backgroundColor: operationsColors.amberSoft },
   pillGreen: { backgroundColor: operationsColors.greenSoft }, pillRed: { backgroundColor: operationsColors.redSoft },

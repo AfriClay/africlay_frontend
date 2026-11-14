@@ -68,19 +68,19 @@ export const RiderDashboard = () => {
     finally { setBusyId(undefined); }
   };
 
-  return <OperationsScaffold title="My deliveries" subtitle="Only jobs assigned to you appear here. Confirm each handover after it has happened.">
+  return <OperationsScaffold title="My deliveries" subtitle="Confirm each handover after it happens.">
     {!allowed ? <View style={styles.card}><Text style={styles.error} accessibilityRole="alert">An approved rider account is required to view this page.</Text><Button onPress={() => navigation.navigate('OperationsLogin')}>Sign in to Operations</Button></View> : <>
       {error ? <Text style={styles.error} accessibilityRole="alert">{error}</Text> : null}
       <View style={styles.summaryRow}>
-        <View style={styles.summary}><Text style={styles.count}>{collections.data?.count ?? '—'}</Text><Text style={styles.muted}>Assigned seller collections</Text></View>
-        <View style={styles.summary}><Text style={styles.count}>{homeJobs.data?.count ?? '—'}</Text><Text style={styles.muted}>Assigned home deliveries</Text></View>
+        <View style={styles.summary}><Text style={styles.count}>{collections.data?.count ?? '—'}</Text><Text style={styles.muted}>Seller collections</Text></View>
+        <View style={styles.summary}><Text style={styles.count}>{homeJobs.data?.count ?? '—'}</Text><Text style={styles.muted}>Home deliveries</Text></View>
       </View>
 
       <Text style={styles.sectionTitle}>Seller to pickup point</Text>
       <DataFreshness updatedAt={collections.dataUpdatedAt} refreshing={collections.isFetching} failed={collections.isError} onRefresh={() => void collections.refetch()} />
       {collections.isLoading ? <Text style={styles.muted}>Loading assigned collections...</Text> : null}
-      {collections.isError ? <Text style={styles.error}>Collections could not be loaded. Use Refresh to try again.</Text> : null}
-      {collections.data && !collections.data.results.length ? <Text style={styles.muted}>No active seller collections are assigned to you.</Text> : null}
+      {collections.isError ? <Text style={styles.error}>Collections unavailable.</Text> : null}
+      {collections.data && !collections.data.results.length ? <Text style={styles.muted}>No active collections.</Text> : null}
       {collections.data?.results.map(shipment => {
         const next = nextCollectionStage(shipment);
         return <View key={shipment.id} style={styles.card}>
@@ -97,8 +97,8 @@ export const RiderDashboard = () => {
       <Text style={styles.sectionTitle}>Pickup point to home</Text>
       <DataFreshness updatedAt={homeJobs.dataUpdatedAt} refreshing={homeJobs.isFetching} failed={homeJobs.isError} onRefresh={() => void homeJobs.refetch()} />
       {homeJobs.isLoading ? <Text style={styles.muted}>Loading assigned home deliveries...</Text> : null}
-      {homeJobs.isError ? <Text style={styles.error}>Home deliveries could not be loaded. Use Refresh to try again.</Text> : null}
-      {homeJobs.data && !homeJobs.data.results.length ? <Text style={styles.muted}>No active home deliveries are assigned to you.</Text> : null}
+      {homeJobs.isError ? <Text style={styles.error}>Home deliveries unavailable.</Text> : null}
+      {homeJobs.data && !homeJobs.data.results.length ? <Text style={styles.muted}>No active home deliveries.</Text> : null}
       {homeJobs.data?.results.map(job => {
         const next = nextHomeStage(job);
         return <View key={job.order_id} style={styles.card}>

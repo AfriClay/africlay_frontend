@@ -101,7 +101,7 @@ export const LogisticsDashboard = () => {
   };
 
   if (approvedRider) return null;
-  return <OperationsScaffold title="Delivery logistics" subtitle="Seller collections, pickup points and assigned doorstep rides. Record milestones only after the physical handover has happened.">
+  return <OperationsScaffold title="Delivery logistics" subtitle="Record milestones after each physical handover.">
     {!allowed ? <Text style={styles.error}>Logistics access required.</Text> : <>
       <Text style={styles.title}>Delivery alerts</Text>
       {notices.isLoading ? <Text style={styles.muted}>Loading alerts...</Text> : null}
@@ -111,7 +111,7 @@ export const LogisticsDashboard = () => {
       {administrator ? <><Text style={styles.title}>Rider applications</Text>
         {applications.isLoading ? <Text style={styles.muted}>Loading applications...</Text> : null}
         {applications.isError ? <Button variant="outline" onPress={() => void applications.refetch()}>Retry rider applications</Button> : null}
-        {applications.data && !applications.data.results.length ? <Text style={styles.muted}>No rider applications await review.</Text> : null}
+        {applications.data && !applications.data.results.length ? <Text style={styles.muted}>No applications to review.</Text> : null}
         {applications.data?.results.map(application => <View key={application.id} style={styles.card}>
           <Text style={styles.title}>{application.applicant_email}</Text>
           <Text style={styles.detail}>{application.city} · {application.vehicle_type} · {application.vehicle_registration}</Text>
@@ -126,7 +126,7 @@ export const LogisticsDashboard = () => {
       {shipments.isLoading ? <Text style={styles.muted}>Loading shipments...</Text> : null}
       {shipments.isError ? <View><Text style={styles.error}>Shipments could not be loaded.</Text><Button variant="secondary" onPress={() => void shipments.refetch()}>Retry</Button></View> : null}
       {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
-      {shipments.data && !shipments.data.results.length ? <Text style={styles.muted}>No active shipments are assigned to you.</Text> : null}
+      {shipments.data && !shipments.data.results.length ? <Text style={styles.muted}>No active shipments.</Text> : null}
       {shipments.data?.results.map(shipment => {
         const next = nextStage(shipment);
         return <View key={shipment.id} style={styles.card}>
@@ -147,7 +147,7 @@ export const LogisticsDashboard = () => {
       <DataFreshness updatedAt={homeJobs.dataUpdatedAt} refreshing={homeJobs.isFetching} failed={homeJobs.isError} onRefresh={() => void homeJobs.refetch()} />
       {homeJobs.isLoading ? <Text style={styles.muted}>Loading home deliveries...</Text> : null}
       {homeJobs.isError ? <View><Text style={styles.error}>Home deliveries could not be loaded.</Text><Button variant="secondary" onPress={() => void homeJobs.refetch()}>Retry</Button></View> : null}
-      {homeJobs.data && !homeJobs.data.results.length ? <Text style={styles.muted}>No active home deliveries are assigned to you.</Text> : null}
+      {homeJobs.data && !homeJobs.data.results.length ? <Text style={styles.muted}>No active home deliveries.</Text> : null}
       {homeJobs.data?.results.map(job => {
         const next = nextHomeStage(job);
         return <View key={job.order_id} style={styles.card}>

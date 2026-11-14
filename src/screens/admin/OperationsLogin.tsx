@@ -46,7 +46,7 @@ export const OperationsLogin = () => {
       const user = await authService.currentUser();
       if (!canAccessOperations(user)) {
         await auth.logout();
-        setError('This account has not been assigned access to an operations dashboard. Contact a super administrator.');
+        setError('No operations access. Contact a super administrator.');
       }
     } catch (value) {
       setError(getAuthErrorMessage(value, 'Unable to sign in to operations.'));
@@ -57,7 +57,7 @@ export const OperationsLogin = () => {
     <ScrollView testID="operations-login-scroll" style={styles.scroll} contentContainerStyle={styles.root} keyboardShouldPersistTaps="handled"><View style={styles.panel}>
       <ShieldCheck size={34} color={operationsColors.green} />
       <Text style={styles.title}>Operations access required</Text>
-      <Text style={styles.copy}>Your marketplace account is signed in, but no operations dashboard assignment is active.</Text>
+      <Text style={styles.copy}>This account has no operations access.</Text>
       <Button fullWidth onPress={() => void auth.logout()}>Sign in with another account</Button>
       <Button fullWidth variant="outline" onPress={() => navigation.navigate('AppTabs')}>Return to marketplace</Button>
       <Button fullWidth variant="outline" onPress={() => navigation.navigate('RiderApplication')}>Apply to deliver</Button>
@@ -68,7 +68,7 @@ export const OperationsLogin = () => {
     <ScrollView testID="operations-login-scroll" style={styles.scroll} contentContainerStyle={styles.root} keyboardShouldPersistTaps="handled"><View style={styles.panel}>
       <MarketplaceBrand compact />
       <Text style={styles.title}>Operations sign in</Text>
-      <Text style={styles.copy}>Use your assigned staff account. Your credentials will open the dashboard roles granted to your account.</Text>
+      <Text style={styles.copy}>Use your assigned staff account.</Text>
       <Controller control={control} name="email" render={({ field: { onChange, value }, fieldState }) => <Input label="Email" required value={value} onChangeText={onChange} keyboardType="email-address" autoCapitalize="none" autoComplete="email" autoCorrect={false} placeholder="name@company.com" error={fieldState.error?.message} accessibilityLabel="Operations email" />} />
       <Controller control={control} name="password" render={({ field: { onChange, value }, fieldState }) => <Input label="Password" required value={value} onChangeText={onChange} secureTextEntry autoComplete="current-password" placeholder="Enter your password" error={fieldState.error?.message} accessibilityLabel="Operations password" />} />
       {error ? <Text style={styles.error} accessibilityRole="alert">{error}</Text> : null}
@@ -77,7 +77,7 @@ export const OperationsLogin = () => {
         screen: 'ForgotPassword',
         params: { returnToOperations: true },
       })}>Forgot password?</Button>
-      <View style={styles.notice}><ShieldCheck size={17} color={operationsColors.green} /><Text style={styles.noticeText}>Dashboard access is assigned and audited by a super administrator.</Text></View>
+      <View style={styles.notice}><ShieldCheck size={17} color={operationsColors.green} /><Text style={styles.noticeText}>Access is assigned by a super administrator.</Text></View>
       <Button fullWidth variant="outline" onPress={() => navigation.navigate('AppTabs')}>Back to marketplace</Button>
       <Button fullWidth variant="tertiary" onPress={() => navigation.navigate('RiderApplication')}>Apply to deliver instead</Button>
     </View></ScrollView>
