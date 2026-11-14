@@ -37,7 +37,7 @@ export const SalesDashboard = () => {
   const selected = useMemo(() => rows.find(item => item.id === selectedId) ?? rows[0], [rows, selectedId]);
   const selectStatus = (value: 'all' | AdminKycStatus) => { setStatus(value); setOffset(0); setSelectedId(undefined); };
 
-  if (!allowed) return <ErrorState message="Sales reviewer access is required for this dashboard." />;
+  if (!allowed) return <ErrorState kind="forbidden" message="Sales reviewer access is required for this dashboard." />;
 
   const submit = async () => {
     if (!selected || !decision || busy) return;

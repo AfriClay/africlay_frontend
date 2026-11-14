@@ -20,7 +20,7 @@ import { HomeStackParamList } from '../../navigation/HomeStack';
 import { RootStackParamList } from '../../navigation/RootNavigator';
 import { useResponsiveLayout } from '../../contexts/ResponsiveLayoutContext';
 import { ErrorState } from '../../components/ui/ErrorState';
-import { EmptyState } from '../../components/ui/EmptyState';
+import { NotFoundScreen } from '../common/NotFoundScreen';
 import { recordId } from '../../services/catalogContract';
 import { catalogCategories, catalogKeys } from '../../services/catalogQueries';
 import { getApiErrorMessage } from '../../services/api';
@@ -90,7 +90,7 @@ export const ProductDetails: React.FC = () => {
 
   if (productQuery.isError) return <ErrorState message="Unable to load this product." onRetry={() => void productQuery.refetch()} />;
   if (isLoading) return <PageSkeleton variant="detail" />;
-  if (!product) return <EmptyState title="Product not found" description="This product is unavailable. Go back to browse other items." />;
+  if (!product) return <NotFoundScreen title="Product not found" message="This product may have been removed or its link has changed." />;
 
   const actions = <View onLayout={event => setActionHeight(event.nativeEvent.layout.height)} style={[styles.actions, isExpanded && styles.desktopActions]}>
     {canBuy ? <View style={styles.buttonRow}>

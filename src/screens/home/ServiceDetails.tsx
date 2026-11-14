@@ -6,7 +6,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { CatalogImage } from '../../components/ui/CatalogImage';
 import { ErrorState } from '../../components/ui/ErrorState';
-import { EmptyState } from '../../components/ui/EmptyState';
+import { NotFoundScreen } from '../common/NotFoundScreen';
 import { recordId } from '../../services/catalogContract';
 import { HomeStackParamList } from '../../navigation/HomeStack';
 import { serviceService } from '../../services/serviceService';
@@ -36,7 +36,7 @@ export const ServiceDetails: React.FC = () => {
   const booking = useMutation({ mutationFn: ({ serviceId, scheduledAt }: { serviceId: string; scheduledAt: string }) => bookingService.create(serviceId, scheduledAt, notes.trim()) });
   if (query.isError) return <ErrorState message="Unable to load this service." onRetry={() => void query.refetch()} />;
   if (query.isLoading) return <PageSkeleton variant="detail" />;
-  if (!query.data) return <EmptyState title="Service not found" description="This service is unavailable. Go back to browse other services." />;
+  if (!query.data) return <NotFoundScreen title="Service not found" message="This service may have been removed or its link has changed." />;
   const service = query.data;
   const book = async () => {
     if (!user) { setAuthSheet(true); return; }

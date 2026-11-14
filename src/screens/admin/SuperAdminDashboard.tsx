@@ -88,7 +88,7 @@ export const SuperAdminDashboard = () => {
   const selectedUser = useMemo(() => users.data?.results.find(item => item.id === selectedUserId) ?? users.data?.results[0], [users.data, selectedUserId]);
   const selectedStore = useMemo(() => stores.data?.results.find(item => item.id === selectedStoreId) ?? stores.data?.results[0], [stores.data, selectedStoreId]);
 
-  if (!allowed) return <ErrorState message="Super administrator access is required for this dashboard." />;
+  if (!allowed) return <ErrorState kind="forbidden" message="Super administrator access is required for this dashboard." />;
 
   const changeSection = (value: Section) => {
     setSection(value);

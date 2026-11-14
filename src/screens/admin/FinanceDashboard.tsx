@@ -64,7 +64,7 @@ export const FinanceDashboard = () => {
   const selectedTopup = topups.data?.results.find(item => item.id === selectedTopupId);
   const selectedTransaction = transactions.data?.results.find(item => item.id === selectedTransactionId);
 
-  if (!allowed) return <ErrorState message="Finance access is required for this dashboard." />;
+  if (!allowed) return <ErrorState kind="forbidden" message="Finance access is required for this dashboard." />;
 
   const exportCsv = async () => {
     setActionError(undefined);

@@ -15,6 +15,7 @@ import { Image } from 'expo-image';
 import { BadgeCheck } from 'lucide-react-native';
 import { ErrorState } from '../../components/ui/ErrorState';
 import { EmptyState } from '../../components/ui/EmptyState';
+import { NotFoundScreen } from '../common/NotFoundScreen';
 import { recordId } from '../../services/catalogContract';
 import { catalogCategories, catalogKeys } from '../../services/catalogQueries';
 import { serviceService } from '../../services/serviceService';
@@ -51,7 +52,7 @@ export const SellerStore: React.FC = () => {
   }
 
   if (!seller) {
-    return <EmptyState title="Seller not found" description="This store is unavailable. Go back to browse another seller." />;
+    return <NotFoundScreen title="Seller not found" message="This store may have been removed or its link has changed." />;
   }
 
   const columns = isExpanded ? Math.min(productColumns, 6) : 2;

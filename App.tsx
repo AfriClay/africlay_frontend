@@ -17,6 +17,7 @@ import { useAuth } from './src/hooks/useAuth';
 import { WishlistProvider } from './src/contexts/WishlistContext';
 import { NativeNotificationBridge } from './src/components/notifications/NativeNotificationBridge';
 import { MobileWebPullToRefresh } from './src/components/MobileWebPullToRefresh';
+import { AppCrashBoundary } from './src/components/AppCrashBoundary';
 import { ThemeProvider } from './src/contexts/ThemeContext';
 import { canAccessOperations } from './src/utils/roles';
 import { catalogKeys, isPublicCatalogQuery } from './src/services/catalogQueries';
@@ -80,7 +81,7 @@ export default function App() {
         <ResponsiveLayoutProvider>
           <QueryClientProvider client={queryClient}>
             <AuthProvider>
-              <AppContent />
+              <AppCrashBoundary><AppContent /></AppCrashBoundary>
             </AuthProvider>
           </QueryClientProvider>
         </ResponsiveLayoutProvider>

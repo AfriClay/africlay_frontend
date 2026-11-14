@@ -57,6 +57,7 @@ test('every content screen has a vertical scrolling owner or an intentional exem
     'admin/SalesDashboard.tsx',
     'admin/SuperAdminDashboard.tsx',
     'auth/Splash.tsx',
+    'common/NotFoundScreen.tsx', // AppErrorPage owns the vertical ScrollView.
   ]);
   const missing = files.filter(file => {
     const relative = path.relative(screensRoot, file).replaceAll('\\', '/');

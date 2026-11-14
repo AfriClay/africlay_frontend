@@ -101,6 +101,7 @@ export const linking = {
       RiderDashboard: 'operations/rider',
       SuperAdminDashboard: 'operations/admin',
       Policies: 'policies/:policyId?',
+      NotFound: '*',
     },
   },
 } as LinkingOptions<RootStackParamList>;

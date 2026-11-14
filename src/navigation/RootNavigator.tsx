@@ -16,6 +16,7 @@ import { policyAudienceForRole, type PolicyAudience, type PolicyId } from '../co
 import { authRoutes } from '../contexts/ResponsiveLayoutContext';
 import { PageSkeleton } from '../components/ui/PageSkeleton';
 import { ErrorState } from '../components/ui/ErrorState';
+import { NotFoundScreen } from '../screens/common/NotFoundScreen';
 
 
 export type RootStackParamList = {
@@ -31,6 +32,7 @@ export type RootStackParamList = {
   OperationsLogin: undefined;
   RiderApplication: undefined;
   Policies: { policyId?: PolicyId; audience?: PolicyAudience } | undefined;
+  NotFound: undefined;
 };
 
 const Stack = createAppStackNavigator<RootStackParamList>();
@@ -101,6 +103,7 @@ export const RootNavigator = () => {
       <Stack.Screen name="RiderDashboard" component={RiderDashboard} />
       <Stack.Screen name="SuperAdminDashboard" component={SuperAdminDashboard} />
       <Stack.Screen name="Policies" component={Policies} options={{ headerShown: true, title: 'Terms & Policies' }} />
+      <Stack.Screen name="NotFound" component={NotFoundScreen} />
     </Stack.Navigator>
   ) : (
     <Stack.Navigator key="marketplace" initialRouteName="AppTabs" screenOptions={{ ...stackOptions, headerShown: false }}>
@@ -116,6 +119,7 @@ export const RootNavigator = () => {
       <Stack.Screen name="OperationsLogin" component={OperationsLogin} />
       <Stack.Screen name="RiderApplication" component={RiderApplication} />
       <Stack.Screen name="Policies" component={Policies} options={{ headerShown: true, title: 'Terms & Policies' }} />
+      <Stack.Screen name="NotFound" component={NotFoundScreen} />
     </Stack.Navigator>
   );
 
