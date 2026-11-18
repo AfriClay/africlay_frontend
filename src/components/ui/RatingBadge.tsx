@@ -9,8 +9,8 @@ interface RatingBadgeProps {
 }
 
 export const RatingBadge: React.FC<RatingBadgeProps> = ({ rating, reviewCount }) => (
-  <View style={styles.root}>
-    <Star size={14} color={theme.colors.secondary.DEFAULT} />
+  <View style={styles.root} accessible accessibilityLabel={`${rating.toFixed(1)} out of 5 stars${reviewCount ? ` from ${reviewCount} reviews` : ''}`}>
+    <Star size={14} color={theme.colors.secondary.DEFAULT} fill={theme.colors.secondary.DEFAULT} />
     <Text style={styles.rating}>{rating.toFixed(1)}</Text>
     {reviewCount ? <Text style={styles.meta}> ({reviewCount})</Text> : null}
   </View>

@@ -136,6 +136,7 @@ test('product list maps backend IDs, category, tags, decimal price, stock and im
   assert.equal(items.length, 1);
   assert.equal(items[0].id, product.id);
   assert.equal(items[0].slug, product.slug);
+  assert.equal(items[0].description, product.description);
   assert.equal(items[0].sellerId, store.id);
   assert.equal(items[0].category, category.name);
   assert.equal(items[0].categoryId, category.id);

@@ -19,6 +19,7 @@ export const ProductCard: React.FC<ProductCardProps> = React.memo(({ product, on
   const { isExpanded } = useResponsiveLayout();
   const [focused, setFocused] = useState(false);
   const [hovered, setHovered] = useState(false);
+  const cardDescription = product.description.trim().replace(/\s+/g, ' ');
   return (
   <View style={[styles.root, marketplace && styles.marketplaceRoot, layout === 'grid' ? styles.gridRoot : null, layout === 'compact' ? styles.compactRoot : null]}>
   <Pressable onFocus={() => setFocused(true)} onBlur={() => setFocused(false)} onHoverIn={() => setHovered(true)} onHoverOut={() => setHovered(false)} style={({ pressed }) => [styles.pressable, layout === 'compact' && styles.compactPressable, (focused || hovered) && { backgroundColor: theme.colors.primary.tint }, pressed && { opacity: 0.9 }]} onPress={onPress} accessibilityRole="button" accessibilityLabel={`View ${product.name}`}>
@@ -26,8 +27,9 @@ export const ProductCard: React.FC<ProductCardProps> = React.memo(({ product, on
       style={[styles.image, layout === 'grid' && styles.gridImage, isExpanded && layout === 'grid' && { height: undefined, aspectRatio: 1.2 }, layout === 'compact' ? styles.compactImage : null]} />
     <View style={[styles.content, layout === 'grid' && styles.gridContent, layout === 'compact' ? styles.compactContent : null]}>
       <Text numberOfLines={2} ellipsizeMode="tail" style={[styles.name, marketplace && styles.marketplaceName, layout === 'grid' && styles.gridName]}>{product.name}</Text>
+      {layout === 'grid' && cardDescription ? <Text numberOfLines={1} ellipsizeMode="tail" style={styles.cardDescription}>{cardDescription}</Text> : null}
       {product.reviewCount > 0 && <RatingBadge rating={product.rating} reviewCount={product.reviewCount} />}
-      <Text style={[styles.price, marketplace && styles.marketplacePrice]}>{product.priceOptions?.length ? 'From ' : ''}{formatCurrency(product.price, product.currency)}{priceUnitSuffix(product.priceUnit)}</Text>
+      <Text style={[styles.price, marketplace && styles.marketplacePrice, layout === 'grid' && styles.gridPrice]}>{product.priceOptions?.length ? 'From ' : ''}{formatCurrency(product.price, product.currency)}{priceUnitSuffix(product.priceUnit)}</Text>
     </View>
   </Pressable>
   </View>
@@ -74,6 +76,12 @@ const styles = StyleSheet.create({
     minHeight: 124,
   },
   gridName: { minHeight: 0, marginBottom: theme.spacing.sm },
+  cardDescription: {
+    color: theme.colors.muted,
+    fontSize: theme.typography.small.fontSize,
+    marginBottom: theme.spacing.xs,
+  },
+  gridPrice: { marginTop: theme.spacing.xs },
   compactContent: {
     flex: 1,
     justifyContent: 'center',
