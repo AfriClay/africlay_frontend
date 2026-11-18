@@ -47,7 +47,8 @@ const descriptionPreview = (description: string): string => {
 };
 
 export const ProductDetails: React.FC = () => {
-  const { isWide } = useResponsiveLayout();
+  const { isExpanded, isWide, width } = useResponsiveLayout();
+  const sideBySide = isExpanded && width >= 1000;
   const reducedMotion = useReducedMotionSafe();
   const detailScrollRef = useRef<ScrollView>(null);
   const detailsTop = useRef(0);
@@ -114,7 +115,7 @@ export const ProductDetails: React.FC = () => {
   const showReviews = () => detailScrollRef.current?.scrollTo({ y: detailsTop.current + reviewsTop.current - theme.spacing.lg, animated: !reducedMotion });
   const showDeliveryPolicy = () => navigation.getParent()?.getParent<NativeStackNavigationProp<RootStackParamList>>()?.navigate('Policies', { policyId: 'shipping-and-delivery', audience: 'buyer' });
 
-  const actions = <View onLayout={event => setActionHeight(event.nativeEvent.layout.height)} style={[styles.actions, isWide && styles.desktopActions]}>
+  const actions = <View onLayout={event => setActionHeight(event.nativeEvent.layout.height)} style={[styles.actions, sideBySide && styles.desktopActions]}>
     {canBuy ? <View style={styles.buttonRow}>
       <Button style={styles.actionButton} variant="secondary" icon={<ShoppingCart color={theme.colors.primary.DEFAULT} size={20} />} onPress={() => void handleAddToCart()} disabled={cart.mutating || needsChoice || Boolean(chosenOption && !chosenOption.stockQuantity)} loading={pendingAction === 'cart'} loadingLabel="Adding">Add to cart</Button>
       <Button style={styles.actionButton} onPress={buyNow} disabled={needsChoice || Boolean(chosenOption && !chosenOption.stockQuantity)}>Buy now</Button>
@@ -123,12 +124,12 @@ export const ProductDetails: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView ref={detailScrollRef} contentContainerStyle={[styles.content, { paddingBottom: isWide ? theme.spacing.lg : actionHeight + theme.spacing.lg }]}>
-        <View style={[styles.hero, isWide && styles.heroWide]}>
-          <View style={[styles.galleryColumn, isWide && styles.galleryColumnWide]}>
+      <ScrollView ref={detailScrollRef} contentContainerStyle={[styles.content, { paddingBottom: sideBySide ? theme.spacing.lg : actionHeight + theme.spacing.lg }]}>
+        <View style={[styles.hero, sideBySide && styles.heroWide]}>
+          <View style={[styles.galleryColumn, sideBySide && styles.galleryColumnWide]}>
             <ProductGallery key={product.id} images={product.images} name={product.name} />
           </View>
-          <View style={[styles.summaryColumn, isWide && styles.summaryColumnWide]}>
+          <View style={[styles.summaryColumn, sideBySide && styles.summaryColumnWide]}>
         <View style={styles.nameRow}><Text style={[styles.name, isWide && styles.nameWide]}>{product.name}</Text><WishlistToggle productId={product.id} onGuest={() => setAuthSheetVisible(true)} /></View>
         {product.reviewCount > 0 && <Pressable onPress={showReviews} accessibilityRole="button" accessibilityLabel={`Read ${product.reviewCount} product reviews`} style={styles.reviewJump}>
           <RatingBadge rating={product.rating} reviewCount={product.reviewCount} /><ArrowRight size={15} color={theme.colors.primary.DEFAULT} />
@@ -142,18 +143,6 @@ export const ProductDetails: React.FC = () => {
           </View>
           {seller && <Text style={styles.sellerLink}>View Store</Text>}
         </Pressable>}
-        <View style={styles.deliveryPanel}>
-          <View style={styles.deliveryHeading}><Truck size={20} color={theme.colors.primary.dark} /><Text style={styles.deliveryTitle}>Delivery & collection</Text></View>
-          <Text style={styles.deliveryCopy}>Choose a pickup point or available doorstep delivery at checkout. See the delivery fee before payment.</Text>
-          <Pressable onPress={showDeliveryPolicy} accessibilityRole="link" style={styles.deliveryPolicyLink}>
-            <Text style={styles.deliveryPolicyText}>Shipping & delivery policy</Text><ArrowRight size={16} color={theme.colors.primary.dark} />
-          </Pressable>
-        </View>
-        {cartError && <Text style={styles.cartError} accessibilityRole="alert">{cartError}</Text>}
-        {isWide && actions}
-          </View>
-        </View>
-        <View style={styles.details} onLayout={event => { detailsTop.current = event.nativeEvent.layout.y; }}>
         {fullDescription ? <View style={styles.descriptionSection}>
           <Text style={styles.sectionTitle}>About this item</Text>
           <Text style={styles.description} numberOfLines={!descriptionExpanded && hasMoreDescription ? 3 : undefined}>
@@ -164,12 +153,24 @@ export const ProductDetails: React.FC = () => {
             {descriptionExpanded ? <ChevronUp size={16} color={theme.colors.primary.DEFAULT} /> : <ChevronDown size={16} color={theme.colors.primary.DEFAULT} />}
           </Pressable>}
         </View> : null}
+        <View style={styles.deliveryPanel}>
+          <View style={styles.deliveryHeading}><Truck size={20} color={theme.colors.primary.dark} /><Text style={styles.deliveryTitle}>Delivery & collection</Text></View>
+          <Text style={styles.deliveryCopy}>Choose a pickup point or available doorstep delivery at checkout. See the delivery fee before payment.</Text>
+          <Pressable onPress={showDeliveryPolicy} accessibilityRole="link" style={styles.deliveryPolicyLink}>
+            <Text style={styles.deliveryPolicyText}>Shipping & delivery policy</Text><ArrowRight size={16} color={theme.colors.primary.dark} />
+          </Pressable>
+        </View>
+        {cartError && <Text style={styles.cartError} accessibilityRole="alert">{cartError}</Text>}
+        {sideBySide && actions}
+          </View>
+        </View>
+        <View style={styles.details} onLayout={event => { detailsTop.current = event.nativeEvent.layout.y; }}>
         {product.deliveryEstimate.trim() ? <Text style={styles.meta}>Delivery estimate: {product.deliveryEstimate}</Text> : null}
         <View onLayout={event => { reviewsTop.current = event.nativeEvent.layout.y; }}><ReviewSection target={{ type: 'product', id: product.id }} /></View>
         </View>
       </ScrollView>
-      {!isWide && actions}
-      {isFocused && <CartToast key={product.id} event={cartEvent} bottom={!isWide ? actionHeight + theme.spacing.sm : theme.spacing.md} />}
+      {!sideBySide && actions}
+      {isFocused && <CartToast key={product.id} event={cartEvent} bottom={!sideBySide ? actionHeight + theme.spacing.sm : theme.spacing.md} />}
       <GuestAuthSheet visible={authSheetVisible} onClose={() => setAuthSheetVisible(false)} description="Log in or create an account to save this product to your wishlist." />
     </SafeAreaView>
   );
@@ -178,7 +179,7 @@ export const ProductDetails: React.FC = () => {
 const styles = StyleSheet.create({
   hero: { width: '100%' },
   heroWide: { flexDirection: 'row', alignItems: 'flex-start', gap: theme.spacing.xl },
-  galleryColumn: { minWidth: 0 },
+  galleryColumn: { minWidth: 0, width: '100%', maxWidth: 560, alignSelf: 'center' },
   galleryColumnWide: { flex: 1, maxWidth: 560 },
   summaryColumn: { minWidth: 0 },
   summaryColumnWide: { flex: 1 },
@@ -263,7 +264,10 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.sm,
   },
   descriptionSection: {
-    marginBottom: theme.spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
+    paddingTop: theme.spacing.md,
+    marginBottom: theme.spacing.md,
   },
   description: {
     color: theme.colors.muted,
