@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Animated, BackHandler, FlatList, Keyboard, Platform, Pressable, StyleSheet, Text, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CompositeNavigationProp, NavigationProp, useNavigation } from '@react-navigation/native';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Bell, Plus, Search as SearchIcon, ShoppingCart } from 'lucide-react-native';
 import { PromotionalCarousel } from '../../components/domain/PromotionalCarousel';
 import { CategoryCard } from '../../components/domain/CategoryCard';
@@ -11,14 +11,15 @@ import { ServiceCard } from '../../components/domain/ServiceCard';
 import { useReducedMotionSafe } from '../../hooks/useReducedMotionSafe';
 import { HomeStackParamList } from '../../navigation/HomeStack';
 import { RootStackParamList } from '../../navigation/RootNavigator';
-import { productService } from '../../services/productService';
+import { productService, type CatalogCategory } from '../../services/productService';
+import type { Product } from '../../types/product';
 import { theme } from '../../theme';
 import { useResponsiveLayout } from '../../contexts/ResponsiveLayoutContext';
 import { ErrorState } from '../../components/ui/ErrorState';
 import { catalogCategories, catalogKeys } from '../../services/catalogQueries';
 import { useAuth } from '../../hooks/useAuth';
 import { canAccessBuyerTools, canAccessSellerTools } from '../../utils/roles';
-import { rootCategories } from '../../utils/categoryTree';
+import { categoryBranchIds, rootCategories } from '../../utils/categoryTree';
 import { useCart } from '../../hooks/useCart';
 import { notificationKeys, notificationService } from '../../services/notificationService';
 import { Button } from '../../components/ui/Button';
@@ -35,6 +36,16 @@ type HomeNavigation = CompositeNavigationProp<
 const CountBadge = ({ count }: { count: number }) => count > 0 ? (
   <View style={styles.countBadge}><Text style={styles.countBadgeText}>{count > 99 ? '99+' : count}</Text></View>
 ) : null;
+
+const categoryProductPhoto = (category: CatalogCategory, categories: CatalogCategory[], products: Product[], allowFallback = false): string | undefined => {
+  const branch = categoryBranchIds(categories, category.id);
+  const candidates = products.filter(product => product.categoryId && branch.has(product.categoryId) && product.images[0]);
+  if (/electronic/i.test(category.label)) {
+    const suitable = candidates.find(product => /speaker|headphone|laptop|power bank|socket|phone|charger|computer/i.test(product.name));
+    return suitable?.images[0] ?? (allowFallback ? candidates[0]?.images[0] : undefined);
+  }
+  return candidates[0]?.images[0];
+};
 
 export const Home: React.FC = () => {
   const { width, contentWidth, isCompact, isExpanded, isWeb, productColumns } = useResponsiveLayout();
@@ -67,6 +78,39 @@ export const Home: React.FC = () => {
   const featured = useMemo(() => products.slice(0, 4), [products]);
   const recommendedServices = useMemo(() => services.slice(0, 2), [services]);
   const mainCategories = useMemo(() => rootCategories(categories), [categories]);
+  const loadedCategoryPhotos = useMemo(() => {
+    const photos = new Map<string, string>();
+    for (const category of mainCategories) {
+      const productPhoto = categoryProductPhoto(category, categories, products);
+      const beautyServicePhoto = /beauty|wellness/i.test(category.label)
+        ? services.find(service => /hair|salon|spa|skin|makeup|nail|beauty/i.test(service.title) && service.images[0])?.images[0]
+        : undefined;
+      const photo = productPhoto ?? beautyServicePhoto;
+      if (photo) photos.set(category.id, photo);
+    }
+    return photos;
+  }, [mainCategories, categories, products, services]);
+  const missingCategoryPhotos = mainCategories.filter(category => !productsLoading && !loadedCategoryPhotos.has(category.id)
+    && !(/beauty|wellness/i.test(category.label) && serviceQuery.isLoading));
+  const categoryPhotoQueries = useQueries({ queries: missingCategoryPhotos.map(category => ({
+    queryKey: catalogKeys.categoryCover(category.slug),
+    queryFn: async () => {
+      const page = await productService.fetchProductPage(
+        { category: category.slug, limit: /electronic/i.test(category.label) ? 8 : 1 }, catalogCategories(queryClient),
+      );
+      return categoryProductPhoto(category, categories, page.results, true) ?? null;
+    },
+    staleTime: 10 * 60_000,
+  })) });
+  const categoryPhoto = (category: CatalogCategory) => {
+    const loadedPhoto = loadedCategoryPhotos.get(category.id);
+    const queryIndex = missingCategoryPhotos.findIndex(item => item.id === category.id);
+    return {
+      imageUri: loadedPhoto ?? (queryIndex >= 0 ? categoryPhotoQueries[queryIndex]?.data ?? undefined : undefined),
+      imageLoading: !loadedPhoto && (productsLoading || (/beauty|wellness/i.test(category.label) && serviceQuery.isLoading)
+        || (queryIndex >= 0 && categoryPhotoQueries[queryIndex]?.isPending)),
+    };
+  };
   const desktopCategoryColumns = categoryGridColumns(categoriesLoading ? 6 : mainCategories.length, contentWidth - 32);
   const categoryCellWidth = `${100 / Math.max(1, desktopCategoryColumns)}%` as const;
   const unreadQuery = useQuery({
@@ -236,14 +280,14 @@ export const Home: React.FC = () => {
               : <View style={styles.categoryRail}>{Array.from({ length: 4 }).map((_, index) => <View key={index} style={styles.categorySkeleton} />)}</View>
             : isExpanded
               ? mainCategories.map(category => (
-                <View key={category.id} style={[styles.desktopCategoryCell, { width: categoryCellWidth }]}><CategoryCard label={category.label} icon={category.icon} onPress={() => openCategory(category.slug)} /></View>
+                <View key={category.id} style={[styles.desktopCategoryCell, { width: categoryCellWidth }]}><CategoryCard label={category.label} {...categoryPhoto(category)} onPress={() => openCategory(category.slug)} /></View>
               ))
               : <FlatList
                   data={mainCategories}
                   horizontal
                   showsHorizontalScrollIndicator={false}
                   keyExtractor={category => category.id}
-                  renderItem={({ item: category }) => <CategoryCard label={category.label} icon={category.icon} onPress={() => openCategory(category.slug)} />}
+                  renderItem={({ item: category }) => <CategoryCard label={category.label} {...categoryPhoto(category)} onPress={() => openCategory(category.slug)} />}
                   contentContainerStyle={styles.categoryRail}
                 />}
         </View>

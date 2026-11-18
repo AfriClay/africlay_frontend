@@ -6,6 +6,7 @@ export const catalogKeys = {
   featuredProducts: (limit: number) => ['products', 'featured', limit] as const,
   productsFiltered: (category?: string, tag?: string, search?: string) => ['products', { category: category ?? '', tag: tag ?? '', search: search ?? '' }] as const,
   categories: ['categories'] as const,
+  categoryCover: (slug: string) => ['products', 'category-cover', slug] as const,
   tags: ['tags'] as const,
   sellers: ['sellers'] as const,
   product: (id: string) => ['product', id] as const,
