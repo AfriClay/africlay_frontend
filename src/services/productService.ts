@@ -111,11 +111,22 @@ const asPrice = (value: string | number): number => {
   return amount;
 };
 
+const categoryIcon = (slug: string, name: string): string => {
+  const category = `${name} ${slug}`.toLowerCase();
+  if (/electronic|computer|phone|gadget|tech/.test(category)) return 'MonitorSmartphone';
+  if (/home|living|furniture|decor|appliance/.test(category)) return 'House';
+  if (/fashion|cloth|apparel|accessor|shoe/.test(category)) return 'Shirt';
+  if (/beauty|wellness|cosmetic|personal-care/.test(category)) return 'Sparkles';
+  if (/food|pantry|grocery|produce/.test(category)) return 'ShoppingBasket';
+  if (/agricultur|farm|garden|seed/.test(category)) return 'Sprout';
+  return 'Tag';
+};
+
 const toCategory = (item: z.infer<typeof categorySchema>): CatalogCategory => ({
   id: item.id,
   slug: item.slug,
   label: item.name,
-  icon: 'Tag',
+  icon: categoryIcon(item.slug, item.name),
   parent: item.parent ?? undefined,
 });
 

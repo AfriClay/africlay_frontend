@@ -18,7 +18,7 @@ import { ErrorState } from '../../components/ui/ErrorState';
 import { catalogCategories, catalogKeys } from '../../services/catalogQueries';
 import { useAuth } from '../../hooks/useAuth';
 import { canAccessBuyerTools, canAccessSellerTools } from '../../utils/roles';
-import { categoryBranchIds, rootCategories } from '../../utils/categoryTree';
+import { rootCategories } from '../../utils/categoryTree';
 import { useCart } from '../../hooks/useCart';
 import { notificationKeys, notificationService } from '../../services/notificationService';
 import { Button } from '../../components/ui/Button';
@@ -236,14 +236,14 @@ export const Home: React.FC = () => {
               : <View style={styles.categoryRail}>{Array.from({ length: 4 }).map((_, index) => <View key={index} style={styles.categorySkeleton} />)}</View>
             : isExpanded
               ? mainCategories.map(category => (
-                <View key={category.id} style={[styles.desktopCategoryCell, { width: categoryCellWidth }]}><CategoryCard label={category.label} icon={category.icon} imageUri={products.find(product => product.categoryId && categoryBranchIds(categories, category.id).has(product.categoryId))?.images[0]} onPress={() => openCategory(category.slug)} /></View>
+                <View key={category.id} style={[styles.desktopCategoryCell, { width: categoryCellWidth }]}><CategoryCard label={category.label} icon={category.icon} onPress={() => openCategory(category.slug)} /></View>
               ))
               : <FlatList
                   data={mainCategories}
                   horizontal
                   showsHorizontalScrollIndicator={false}
                   keyExtractor={category => category.id}
-                  renderItem={({ item: category }) => <CategoryCard label={category.label} icon={category.icon} imageUri={products.find(product => product.categoryId && categoryBranchIds(categories, category.id).has(product.categoryId))?.images[0]} onPress={() => openCategory(category.slug)} />}
+                  renderItem={({ item: category }) => <CategoryCard label={category.label} icon={category.icon} onPress={() => openCategory(category.slug)} />}
                   contentContainerStyle={styles.categoryRail}
                 />}
         </View>
