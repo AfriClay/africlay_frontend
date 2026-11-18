@@ -25,8 +25,8 @@ export const ProductCard: React.FC<ProductCardProps> = React.memo(({ product, on
     <CatalogImage uri={product.images[0]} label={product.name} contentFit={layout === 'grid' ? 'contain' : 'cover'}
       style={[styles.image, layout === 'grid' && styles.gridImage, isExpanded && layout === 'grid' && { height: undefined, aspectRatio: 1.2 }, layout === 'compact' ? styles.compactImage : null]} />
     <View style={[styles.content, layout === 'grid' && styles.gridContent, layout === 'compact' ? styles.compactContent : null]}>
-      <Text numberOfLines={2} ellipsizeMode="tail" style={[styles.name, marketplace && styles.marketplaceName]}>{product.name}</Text>
-      {layout === 'grid' ? <View style={styles.ratingSlot}>{product.reviewCount > 0 && <RatingBadge rating={product.rating} reviewCount={product.reviewCount} />}</View> : product.reviewCount > 0 && <RatingBadge rating={product.rating} reviewCount={product.reviewCount} />}
+      <Text numberOfLines={2} ellipsizeMode="tail" style={[styles.name, marketplace && styles.marketplaceName, layout === 'grid' && styles.gridName]}>{product.name}</Text>
+      {product.reviewCount > 0 && <RatingBadge rating={product.rating} reviewCount={product.reviewCount} />}
       <Text style={[styles.price, marketplace && styles.marketplacePrice]}>{product.priceOptions?.length ? 'From ' : ''}{formatCurrency(product.price, product.currency)}{priceUnitSuffix(product.priceUnit)}</Text>
     </View>
   </Pressable>
@@ -73,10 +73,7 @@ const styles = StyleSheet.create({
   gridContent: {
     minHeight: 124,
   },
-  ratingSlot: {
-    minHeight: 20,
-    justifyContent: 'center',
-  },
+  gridName: { minHeight: 0, marginBottom: theme.spacing.sm },
   compactContent: {
     flex: 1,
     justifyContent: 'center',
