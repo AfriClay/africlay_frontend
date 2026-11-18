@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -11,7 +11,7 @@ import { priceUnitSuffix } from '../../utils/priceUnit';
 import { RatingBadge } from '../../components/ui/RatingBadge';
 import { useCart } from '../../hooks/useCart';
 import { useAuth } from '../../hooks/useAuth';
-import { ChevronDown, ChevronUp, ShoppingCart } from 'lucide-react-native';
+import { ArrowRight, ChevronDown, ChevronUp, ShoppingCart, Truck } from 'lucide-react-native';
 import { ProductGallery } from '../../components/domain/ProductGallery';
 import { CartToast } from '../../components/ui/CartToast';
 import { useIsFocused } from '@react-navigation/native';
@@ -29,6 +29,7 @@ import { ReviewSection } from '../../components/domain/ReviewSection';
 import { Button } from '../../components/ui/Button';
 import { canAccessBuyerTools } from '../../utils/roles';
 import { PageSkeleton } from '../../components/ui/PageSkeleton';
+import { useReducedMotionSafe } from '../../hooks/useReducedMotionSafe';
 
 type ProductDetailsRoute = RouteProp<HomeStackParamList, 'ProductDetails'>;
 type ProductDetailsNavigation = CompositeNavigationProp<
@@ -46,7 +47,11 @@ const descriptionPreview = (description: string): string => {
 };
 
 export const ProductDetails: React.FC = () => {
-  const { isExpanded, isCompact } = useResponsiveLayout();
+  const { isWide } = useResponsiveLayout();
+  const reducedMotion = useReducedMotionSafe();
+  const detailScrollRef = useRef<ScrollView>(null);
+  const detailsTop = useRef(0);
+  const reviewsTop = useRef(0);
   const [cartEvent, setCartEvent] = useState(0);
   const [actionHeight, setActionHeight] = useState(0);
   const isFocused = useIsFocused();
@@ -106,8 +111,10 @@ export const ProductDetails: React.FC = () => {
   const fullDescription = product.description.trim();
   const preview = descriptionPreview(fullDescription);
   const hasMoreDescription = preview !== fullDescription;
+  const showReviews = () => detailScrollRef.current?.scrollTo({ y: detailsTop.current + reviewsTop.current - theme.spacing.lg, animated: !reducedMotion });
+  const showDeliveryPolicy = () => navigation.getParent()?.getParent<NativeStackNavigationProp<RootStackParamList>>()?.navigate('Policies', { policyId: 'shipping-and-delivery', audience: 'buyer' });
 
-  const actions = <View onLayout={event => setActionHeight(event.nativeEvent.layout.height)} style={[styles.actions, isExpanded && styles.desktopActions]}>
+  const actions = <View onLayout={event => setActionHeight(event.nativeEvent.layout.height)} style={[styles.actions, isWide && styles.desktopActions]}>
     {canBuy ? <View style={styles.buttonRow}>
       <Button style={styles.actionButton} variant="secondary" icon={<ShoppingCart color={theme.colors.primary.DEFAULT} size={20} />} onPress={() => void handleAddToCart()} disabled={cart.mutating || needsChoice || Boolean(chosenOption && !chosenOption.stockQuantity)} loading={pendingAction === 'cart'} loadingLabel="Adding">Add to cart</Button>
       <Button style={styles.actionButton} onPress={buyNow} disabled={needsChoice || Boolean(chosenOption && !chosenOption.stockQuantity)}>Buy now</Button>
@@ -116,22 +123,37 @@ export const ProductDetails: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: isExpanded ? theme.spacing.lg : actionHeight + theme.spacing.lg }]}>
-        <View style={isExpanded && styles.desktopColumns}>
-        <View style={isExpanded && styles.desktopColumn}>
-        <ProductGallery key={product.id} images={product.images} name={product.name} />
-        </View>
-        <View style={isExpanded && styles.desktopColumn}>
-        <View style={styles.nameRow}><Text style={styles.name}>{product.name}</Text><WishlistToggle productId={product.id} onGuest={() => setAuthSheetVisible(true)} /></View>
+      <ScrollView ref={detailScrollRef} contentContainerStyle={[styles.content, { paddingBottom: isWide ? theme.spacing.lg : actionHeight + theme.spacing.lg }]}>
+        <View style={[styles.hero, isWide && styles.heroWide]}>
+          <View style={[styles.galleryColumn, isWide && styles.galleryColumnWide]}>
+            <ProductGallery key={product.id} images={product.images} name={product.name} />
+          </View>
+          <View style={[styles.summaryColumn, isWide && styles.summaryColumnWide]}>
+        <View style={styles.nameRow}><Text style={[styles.name, isWide && styles.nameWide]}>{product.name}</Text><WishlistToggle productId={product.id} onGuest={() => setAuthSheetVisible(true)} /></View>
+        {product.reviewCount > 0 && <Pressable onPress={showReviews} accessibilityRole="button" accessibilityLabel={`Read ${product.reviewCount} product reviews`} style={styles.reviewJump}>
+          <RatingBadge rating={product.rating} reviewCount={product.reviewCount} /><ArrowRight size={15} color={theme.colors.primary.DEFAULT} />
+        </Pressable>}
         <Text style={styles.price}>{chosenOption ? formatCurrency(chosenOption.price, product.currency) : `${product.priceOptions?.length ? 'From ' : ''}${formatCurrency(product.price, product.currency)}`}{priceUnitSuffix(product.priceUnit)}</Text>
         {Boolean(product.priceOptions?.length) && <View style={styles.choices}><Text style={styles.sectionTitle}>Choose a price option</Text>{product.priceOptions?.map(option => <Pressable key={option.id} accessibilityRole="radio" accessibilityState={{ selected: selectedOptionId === option.id, disabled: option.stockQuantity === 0 }} disabled={option.stockQuantity === 0} onPress={() => { setSelectedOptionId(option.id); setCartError(undefined); }} style={[styles.choice, selectedOptionId === option.id && styles.choiceSelected]}><Text style={styles.choiceText}>{option.label} · {formatCurrency(option.price, product.currency)}</Text><Text style={styles.choiceStock}>{option.stockQuantity ? `${option.stockQuantity} available` : 'Sold out'}</Text></Pressable>)}</View>}
-        {product.reviewCount > 0 && <RatingBadge rating={product.rating} reviewCount={product.reviewCount} />}
         {sellerQuery.isError ? <ErrorState message="Unable to load seller details." onRetry={() => void sellerQuery.refetch()} /> : <Pressable disabled={!seller} accessibilityState={{ disabled: !seller }} style={styles.sellerCard} onPress={() => seller && (navigation as any).navigate('SellerStore', { sellerId: seller.id })} accessibilityRole="button">
           <View>
+            <Text style={styles.sellerLabel}>Sold by</Text>
             <Text style={styles.sellerName}>{seller?.name ?? (sellerQuery.isLoading ? 'Loading seller...' : 'Seller unavailable')}</Text>
           </View>
           {seller && <Text style={styles.sellerLink}>View Store</Text>}
         </Pressable>}
+        <View style={styles.deliveryPanel}>
+          <View style={styles.deliveryHeading}><Truck size={20} color={theme.colors.primary.dark} /><Text style={styles.deliveryTitle}>Delivery & collection</Text></View>
+          <Text style={styles.deliveryCopy}>Choose a pickup point or available doorstep delivery at checkout. See the delivery fee before payment.</Text>
+          <Pressable onPress={showDeliveryPolicy} accessibilityRole="link" style={styles.deliveryPolicyLink}>
+            <Text style={styles.deliveryPolicyText}>Shipping & delivery policy</Text><ArrowRight size={16} color={theme.colors.primary.dark} />
+          </Pressable>
+        </View>
+        {cartError && <Text style={styles.cartError} accessibilityRole="alert">{cartError}</Text>}
+        {isWide && actions}
+          </View>
+        </View>
+        <View style={styles.details} onLayout={event => { detailsTop.current = event.nativeEvent.layout.y; }}>
         {fullDescription ? <View style={styles.descriptionSection}>
           <Text style={styles.sectionTitle}>About this item</Text>
           <Text style={styles.description} numberOfLines={!descriptionExpanded && hasMoreDescription ? 3 : undefined}>
@@ -143,23 +165,25 @@ export const ProductDetails: React.FC = () => {
           </Pressable>}
         </View> : null}
         {product.deliveryEstimate.trim() ? <Text style={styles.meta}>Delivery estimate: {product.deliveryEstimate}</Text> : null}
-        {cartError && <Text style={styles.description} accessibilityRole="alert">{cartError}</Text>}
-        {isExpanded && actions}
-        <ReviewSection target={{ type: 'product', id: product.id }} />
-        </View>
+        <View onLayout={event => { reviewsTop.current = event.nativeEvent.layout.y; }}><ReviewSection target={{ type: 'product', id: product.id }} /></View>
         </View>
       </ScrollView>
-      {isCompact && actions}
-      {isFocused && <CartToast key={product.id} event={cartEvent} bottom={isCompact ? actionHeight + theme.spacing.sm : theme.spacing.md} />}
+      {!isWide && actions}
+      {isFocused && <CartToast key={product.id} event={cartEvent} bottom={!isWide ? actionHeight + theme.spacing.sm : theme.spacing.md} />}
       <GuestAuthSheet visible={authSheetVisible} onClose={() => setAuthSheetVisible(false)} description="Log in or create an account to save this product to your wishlist." />
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  desktopColumns: { flexDirection: 'row', gap: theme.spacing.lg, alignItems: 'flex-start' },
-  desktopColumn: { flex: 1, minWidth: 0 },
-  desktopActions: { position: 'relative', paddingHorizontal: 0 },
+  hero: { width: '100%' },
+  heroWide: { flexDirection: 'row', alignItems: 'flex-start', gap: theme.spacing.xl },
+  galleryColumn: { minWidth: 0 },
+  galleryColumnWide: { flex: 1, maxWidth: 560 },
+  summaryColumn: { minWidth: 0 },
+  summaryColumnWide: { flex: 1 },
+  details: { width: '100%', maxWidth: 960, alignSelf: 'center', marginTop: theme.spacing.xl, borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: theme.spacing.lg },
+  desktopActions: { position: 'relative', padding: 0, borderTopWidth: 0, backgroundColor: 'transparent', marginTop: theme.spacing.sm },
   container: {
     flex: 1,
     backgroundColor: theme.colors.cream,
@@ -191,23 +215,34 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     marginBottom: theme.spacing.sm,
   },
+  nameWide: { fontSize: 30, lineHeight: 36 },
   nameRow: { flexDirection: 'row', alignItems: 'flex-start', gap: theme.spacing.sm },
+  reviewJump: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs, minHeight: 36, marginBottom: theme.spacing.xs },
   price: {
     color: theme.colors.secondary.dark,
-    fontSize: theme.typography.h2.fontSize,
+    fontSize: 28,
     fontWeight: '800',
-    marginBottom: theme.spacing.sm,
+    marginBottom: theme.spacing.md,
   },
   sellerCard: {
     backgroundColor: theme.colors.white,
     borderRadius: theme.radii.lg,
     padding: theme.spacing.md,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: theme.spacing.lg,
-    ...theme.shadows.sm,
+    marginBottom: theme.spacing.md,
   },
+  sellerLabel: { color: theme.colors.muted, fontSize: theme.typography.small.fontSize, marginBottom: 2 },
+  deliveryPanel: { backgroundColor: theme.colors.primary.tint, borderRadius: theme.radii.lg, padding: theme.spacing.md, marginBottom: theme.spacing.md },
+  deliveryHeading: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm, marginBottom: theme.spacing.sm },
+  deliveryTitle: { color: theme.colors.ink, fontSize: theme.typography.body.fontSize, fontWeight: '700' },
+  deliveryCopy: { color: theme.colors.muted, fontSize: theme.typography.small.fontSize, lineHeight: 20 },
+  deliveryPolicyLink: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs, minHeight: 44, marginTop: theme.spacing.xs },
+  deliveryPolicyText: { color: theme.colors.primary.dark, fontSize: theme.typography.small.fontSize, fontWeight: '700' },
+  cartError: { color: theme.colors.error, marginBottom: theme.spacing.sm },
   choices: { marginBottom: theme.spacing.md, gap: theme.spacing.sm },
   choice: { minHeight: 56, padding: theme.spacing.sm, borderWidth: 1, borderColor: theme.colors.border, borderRadius: theme.radii.md, backgroundColor: theme.colors.white },
   choiceSelected: { borderColor: theme.colors.primary.DEFAULT, backgroundColor: theme.colors.primary.tint },
@@ -228,10 +263,7 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.sm,
   },
   descriptionSection: {
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.border,
-    paddingTop: theme.spacing.md,
-    marginBottom: theme.spacing.lg,
+    marginBottom: theme.spacing.sm,
   },
   description: {
     color: theme.colors.muted,

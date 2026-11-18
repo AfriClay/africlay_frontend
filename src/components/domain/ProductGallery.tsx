@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { CatalogImage } from '../ui/CatalogImage';
 import { useResponsiveLayout } from '../../contexts/ResponsiveLayoutContext';
 import { theme } from '../../theme';
@@ -11,7 +11,8 @@ export function ProductGallery({ images, name, children }: { images?: string[]; 
   const index = Math.min(selected, Math.max(0, urls.length - 1));
   return <View style={styles.gallery}>
     <View style={styles.frame}>
-      <CatalogImage uri={urls[index]} label={name} style={isExpanded ? styles.expanded : styles.image} contentFit={isExpanded ? 'contain' : 'cover'} />
+      <CatalogImage uri={urls[index]} label={name} style={isExpanded ? styles.expanded : styles.image} contentFit="contain" />
+      {urls.length > 1 && <Text style={styles.imageCount} accessibilityLabel={`Image ${index + 1} of ${urls.length}`}>{index + 1} / {urls.length}</Text>}
       {children}
     </View>
     {urls.length > 1 && <ScrollView horizontal contentContainerStyle={styles.thumbnails}>
@@ -27,8 +28,9 @@ export function ProductGallery({ images, name, children }: { images?: string[]; 
 const styles = StyleSheet.create({
   gallery: { minWidth: 0, marginBottom: theme.spacing.lg },
   frame: { borderRadius: theme.radii.lg, overflow: 'hidden' },
-  image: { width: '100%', height: 300 },
-  expanded: { width: '100%', aspectRatio: 1 },
+  image: { width: '100%', height: 300, backgroundColor: theme.colors.white },
+  expanded: { width: '100%', aspectRatio: 1, backgroundColor: theme.colors.white },
+  imageCount: { position: 'absolute', right: theme.spacing.smd, bottom: theme.spacing.smd, overflow: 'hidden', backgroundColor: theme.colors.white, color: theme.colors.ink, fontSize: theme.typography.small.fontSize, paddingHorizontal: theme.spacing.sm, paddingVertical: theme.spacing.xs, borderRadius: theme.radii.pill },
   thumbnails: { gap: theme.spacing.sm, paddingTop: theme.spacing.sm, paddingBottom: theme.spacing.xs },
   thumbnail: { width: 64, height: 64, padding: theme.spacing.xs, borderWidth: 2, borderColor: theme.colors.border, borderRadius: theme.radii.sm },
   selected: { borderColor: theme.colors.primary.DEFAULT },
