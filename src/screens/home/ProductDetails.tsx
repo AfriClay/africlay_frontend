@@ -11,7 +11,7 @@ import { priceUnitSuffix } from '../../utils/priceUnit';
 import { RatingBadge } from '../../components/ui/RatingBadge';
 import { useCart } from '../../hooks/useCart';
 import { useAuth } from '../../hooks/useAuth';
-import { ShoppingCart } from 'lucide-react-native';
+import { ChevronDown, ChevronUp, ShoppingCart } from 'lucide-react-native';
 import { ProductGallery } from '../../components/domain/ProductGallery';
 import { CartToast } from '../../components/ui/CartToast';
 import { useIsFocused } from '@react-navigation/native';
@@ -36,6 +36,15 @@ type ProductDetailsNavigation = CompositeNavigationProp<
   NativeStackNavigationProp<RootStackParamList>
 >;
 
+const DESCRIPTION_PREVIEW_LENGTH = 100;
+
+const descriptionPreview = (description: string): string => {
+  const text = description.trim().replace(/\s+/g, ' ');
+  if (text.length <= DESCRIPTION_PREVIEW_LENGTH) return text;
+  const lastSpace = text.lastIndexOf(' ', DESCRIPTION_PREVIEW_LENGTH);
+  return `${text.slice(0, lastSpace > 0 ? lastSpace : DESCRIPTION_PREVIEW_LENGTH)}…`;
+};
+
 export const ProductDetails: React.FC = () => {
   const { isExpanded, isCompact } = useResponsiveLayout();
   const [cartEvent, setCartEvent] = useState(0);
@@ -57,6 +66,8 @@ export const ProductDetails: React.FC = () => {
   const [cartError, setCartError] = useState<string>();
   const [selectedOptionId, setSelectedOptionId] = useState<string>();
   useEffect(() => { setSelectedOptionId(undefined); }, [productId]);
+  const [descriptionExpanded, setDescriptionExpanded] = useState(false);
+  useEffect(() => { setDescriptionExpanded(false); }, [productId]);
   const [pendingAction, setPendingAction] = useState<'cart'>();
   const canBuy = !auth.user || canAccessBuyerTools(auth.user.role);
   const chosenOption = product?.priceOptions?.find(option => option.id === selectedOptionId);
@@ -92,6 +103,10 @@ export const ProductDetails: React.FC = () => {
   if (isLoading) return <PageSkeleton variant="detail" />;
   if (!product) return <NotFoundScreen title="Product not found" message="This product may have been removed or its link has changed." />;
 
+  const fullDescription = product.description.trim();
+  const preview = descriptionPreview(fullDescription);
+  const hasMoreDescription = preview !== fullDescription;
+
   const actions = <View onLayout={event => setActionHeight(event.nativeEvent.layout.height)} style={[styles.actions, isExpanded && styles.desktopActions]}>
     {canBuy ? <View style={styles.buttonRow}>
       <Button style={styles.actionButton} variant="secondary" icon={<ShoppingCart color={theme.colors.primary.DEFAULT} size={20} />} onPress={() => void handleAddToCart()} disabled={cart.mutating || needsChoice || Boolean(chosenOption && !chosenOption.stockQuantity)} loading={pendingAction === 'cart'} loadingLabel="Adding">Add to cart</Button>
@@ -117,9 +132,17 @@ export const ProductDetails: React.FC = () => {
           </View>
           {seller && <Text style={styles.sellerLink}>View Store</Text>}
         </Pressable>}
-        <Text style={styles.sectionTitle}>Description</Text>
-        <Text style={styles.description}>{product.description}</Text>
-        <Text style={styles.meta}>Delivery estimate: {product.deliveryEstimate}</Text>
+        {fullDescription ? <View style={styles.descriptionSection}>
+          <Text style={styles.sectionTitle}>About this item</Text>
+          <Text style={styles.description} numberOfLines={!descriptionExpanded && hasMoreDescription ? 3 : undefined}>
+            {descriptionExpanded || !hasMoreDescription ? fullDescription : preview}
+          </Text>
+          {hasMoreDescription && <Pressable style={styles.descriptionToggle} onPress={() => setDescriptionExpanded(value => !value)} accessibilityRole="button" accessibilityState={{ expanded: descriptionExpanded }} accessibilityLabel={descriptionExpanded ? 'Show less product description' : 'Read full product description'}>
+            <Text style={styles.descriptionToggleText}>{descriptionExpanded ? 'Show less' : 'Read more'}</Text>
+            {descriptionExpanded ? <ChevronUp size={16} color={theme.colors.primary.DEFAULT} /> : <ChevronDown size={16} color={theme.colors.primary.DEFAULT} />}
+          </Pressable>}
+        </View> : null}
+        {product.deliveryEstimate.trim() ? <Text style={styles.meta}>Delivery estimate: {product.deliveryEstimate}</Text> : null}
         {cartError && <Text style={styles.description} accessibilityRole="alert">{cartError}</Text>}
         {isExpanded && actions}
         <ReviewSection target={{ type: 'product', id: product.id }} />
@@ -204,11 +227,19 @@ const styles = StyleSheet.create({
     color: theme.colors.ink,
     marginBottom: theme.spacing.sm,
   },
+  descriptionSection: {
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
+    paddingTop: theme.spacing.md,
+    marginBottom: theme.spacing.lg,
+  },
   description: {
     color: theme.colors.muted,
-    marginBottom: theme.spacing.sm,
     fontSize: theme.typography.body.fontSize,
+    lineHeight: theme.typography.body.lineHeight,
   },
+  descriptionToggle: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs, minHeight: 44 },
+  descriptionToggleText: { color: theme.colors.primary.DEFAULT, fontWeight: '700', fontSize: theme.typography.small.fontSize },
   meta: {
     color: theme.colors.muted,
     marginBottom: theme.spacing.xl,
