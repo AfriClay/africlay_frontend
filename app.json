@@ -19,7 +19,7 @@
       "predictiveBackGestureEnabled": false
     },
     "web": {
-      "favicon": "./assets/africlay-brand-v1.png"
+      "favicon": "./assets/africlay-favicon-mark.png"
     },
     "plugins": [
       "expo-image",
