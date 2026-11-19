@@ -17,6 +17,7 @@ import { useAuth } from './src/hooks/useAuth';
 import { WishlistProvider } from './src/contexts/WishlistContext';
 import { NativeNotificationBridge } from './src/components/notifications/NativeNotificationBridge';
 import { MobileWebPullToRefresh } from './src/components/MobileWebPullToRefresh';
+import { WebAnalytics } from './src/components/WebAnalytics';
 import { AppCrashBoundary } from './src/components/AppCrashBoundary';
 import { ThemeProvider } from './src/contexts/ThemeContext';
 import { canAccessOperations } from './src/utils/roles';
@@ -59,7 +60,7 @@ const AppContent = () => {
     }
     previousIdentity.current = activeIdentity;
   }, [activeIdentity, client]);
-  const navigator = <AppFrame><MobileWebPullToRefresh /><NativeNotificationBridge /><RootNavigator /></AppFrame>;
+  const navigator = <AppFrame><MobileWebPullToRefresh /><NativeNotificationBridge /><RootNavigator /><WebAnalytics /></AppFrame>;
   return canAccessOperations(user) ? navigator : <CartProvider><WishlistProvider>{navigator}</WishlistProvider></CartProvider>;
 };
 
