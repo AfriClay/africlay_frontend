@@ -18,6 +18,7 @@ import { Button } from '../../components/ui/Button';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { useReducedMotionSafe } from '../../hooks/useReducedMotionSafe';
 import type { Product } from '../../types/product';
+import { usePageSeo } from '../../hooks/usePageSeo';
 
 const FILTER_HEIGHT = 104;
 
@@ -101,6 +102,8 @@ export const ProductListing: React.FC = () => {
     }
   };
   const categoriesQuery = useQuery({ queryKey: catalogKeys.categories, queryFn: productService.fetchCategories });
+  const routedCategory = categoriesQuery.data?.find(category => category.slug === route.params?.categoryId);
+  usePageSeo({ title: routedCategory ? `${routedCategory.label} products` : 'Browse products', description: routedCategory ? `Browse ${routedCategory.label} products on AfriClay Market.` : 'Explore products offered by sellers on AfriClay Market.', path: route.params?.categoryId ? `/products/${route.params.categoryId}` : '/products' });
   const tagsQuery = useQuery({ queryKey: catalogKeys.tags, queryFn: productService.fetchTags });
   const productsQuery = useInfiniteQuery({
     queryKey: catalogKeys.productsFiltered(activeCategory, activeTag, search),

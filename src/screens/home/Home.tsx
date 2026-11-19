@@ -27,6 +27,7 @@ import { MarketplaceBrand } from '../../components/ui/MarketplaceBrand';
 import { Search } from '../search/Search';
 import { SupportContactStrip } from '../../components/ui/SupportContactStrip';
 import { categoryGridColumns } from '../../utils/categoryGridColumns';
+import { usePageSeo } from '../../hooks/usePageSeo';
 
 type HomeNavigation = CompositeNavigationProp<
   NavigationProp<HomeStackParamList, 'HomeFeed'>,
@@ -48,6 +49,7 @@ const categoryProductPhoto = (category: CatalogCategory, categories: CatalogCate
 };
 
 export const Home: React.FC = () => {
+  usePageSeo({ title: 'Shop products and services in Kenya', description: 'Browse products, services and seller stores on AfriClay Market.', path: '/', schema: { '@context': 'https://schema.org', '@type': 'WebSite', name: 'AfriClay Market', url: 'https://www.africlaymarket.com' } });
   const { width, contentWidth, isCompact, isExpanded, isWeb, productColumns } = useResponsiveLayout();
   const navigation = useNavigation<HomeNavigation>();
   const queryClient = useQueryClient();

@@ -15,10 +15,12 @@ import { serviceService, ServiceCategory } from '../../services/serviceService';
 import { ErrorState } from '../../components/ui/ErrorState';
 import { SearchField } from '../../components/ui/SearchField';
 import { Button } from '../../components/ui/Button';
+import { usePageSeo } from '../../hooks/usePageSeo';
 
 type ServicesNavigation = NativeStackNavigationProp<HomeStackParamList, 'Services'>;
 
 export const Services: React.FC = () => {
+  usePageSeo({ title: 'Browse services', description: 'Explore services offered by sellers on AfriClay Market.', path: '/services' });
   const { isExpanded, isWeb } = useResponsiveLayout();
   const Content = isWeb ? ScrollView : View;
   const [contentWidth, setContentWidth] = useState(0);

@@ -30,6 +30,7 @@ import { Button } from '../../components/ui/Button';
 import { canAccessBuyerTools } from '../../utils/roles';
 import { PageSkeleton } from '../../components/ui/PageSkeleton';
 import { useReducedMotionSafe } from '../../hooks/useReducedMotionSafe';
+import { usePageSeo } from '../../hooks/usePageSeo';
 
 type ProductDetailsRoute = RouteProp<HomeStackParamList, 'ProductDetails'>;
 type ProductDetailsNavigation = CompositeNavigationProp<
@@ -64,6 +65,14 @@ export const ProductDetails: React.FC = () => {
   useEffect(() => { setCartEvent(0); }, [productId, isFocused]);
   const productQuery = useQuery({ queryKey: catalogKeys.product(productId), queryFn: () => productService.fetchProductById(productId, catalogCategories(queryClient)), enabled: Boolean(productId) });
   const { data: product, isLoading } = productQuery;
+  usePageSeo({ title: product?.name ?? 'Product', description: product?.description || `${product?.name ?? 'Product'} on AfriClay Market.`, path: `/product/${product?.slug ?? productId}`, image: product?.images[0],
+    schema: product ? { '@context': 'https://schema.org', '@type': 'Product', name: product.name, description: product.description || product.name,
+      url: `https://www.africlaymarket.com/product/${product.slug}`, ...(product.images[0] ? { image: product.images[0] } : {}),
+      ...(product.reviewCount > 0 && product.rating >= 1 && product.rating <= 5
+        ? { aggregateRating: { '@type': 'AggregateRating', ratingValue: product.rating, reviewCount: product.reviewCount } } : {}),
+      offers: { '@type': 'Offer', price: product.price, priceCurrency: product.currency, availability: product.priceOptions?.length
+        ? product.priceOptions.some(option => option.stockQuantity > 0) ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock'
+        : product.availableQuantity > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock' } } : undefined });
   const sellerId = product?.sellerId ?? '';
   const sellerQuery = useQuery({ queryKey: catalogKeys.seller(sellerId), queryFn: () => productService.fetchSeller(sellerId), enabled: Boolean(sellerId) });
   const { data: seller } = sellerQuery;

@@ -20,6 +20,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { bookingKeys, bookingService } from '../../services/bookingService';
 import { getApiErrorMessage } from '../../services/api';
 import { PageSkeleton } from '../../components/ui/PageSkeleton';
+import { usePageSeo } from '../../hooks/usePageSeo';
 
 export const ServiceDetails: React.FC = () => {
   const { user } = useAuth();
@@ -33,6 +34,8 @@ export const ServiceDetails: React.FC = () => {
   const { params } = useRoute<RouteProp<HomeStackParamList, 'ServiceDetails'>>();
   const slug = recordId(params?.serviceId);
   const query = useQuery({ queryKey: ['service', slug], queryFn: () => serviceService.detail(slug), enabled: Boolean(slug) });
+  usePageSeo({ title: query.data?.title ?? 'Service', description: query.data?.description || `${query.data?.title ?? 'Service'} on AfriClay Market.`, path: `/services/${query.data?.slug ?? slug}`, image: query.data?.images[0],
+    schema: query.data ? { '@context': 'https://schema.org', '@type': 'Service', name: query.data.title, description: query.data.description || query.data.title, url: `https://www.africlaymarket.com/services/${query.data.slug}` } : undefined });
   const booking = useMutation({ mutationFn: ({ serviceId, scheduledAt }: { serviceId: string; scheduledAt: string }) => bookingService.create(serviceId, scheduledAt, notes.trim()) });
   if (query.isError) return <ErrorState message="Unable to load this service." onRetry={() => void query.refetch()} />;
   if (query.isLoading) return <PageSkeleton variant="detail" />;

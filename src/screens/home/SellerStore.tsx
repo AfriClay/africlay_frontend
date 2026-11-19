@@ -23,6 +23,7 @@ import { ServiceCard } from '../../components/domain/ServiceCard';
 import { useResponsiveLayout } from '../../contexts/ResponsiveLayoutContext';
 import { ReviewSection } from '../../components/domain/ReviewSection';
 import { PageSkeleton } from '../../components/ui/PageSkeleton';
+import { usePageSeo } from '../../hooks/usePageSeo';
 
 const tabs = ['Shop', 'Services', 'Reviews', 'About'] as const;
 
@@ -36,6 +37,7 @@ export const SellerStore: React.FC = () => {
   useEffect(() => setActiveTab('Shop'), [sellerId]);
   const sellerQuery = useQuery<Seller | null>({ queryKey: catalogKeys.seller(sellerId), queryFn: () => productService.fetchSeller(sellerId), enabled: Boolean(sellerId) });
   const { data: seller, isLoading: sellerLoading } = sellerQuery;
+  usePageSeo({ title: seller?.name ?? 'Seller store', description: seller?.bio || `Browse ${seller?.name ?? 'this store'} on AfriClay Market.`, path: `/store/${seller?.slug ?? sellerId}`, image: seller?.bannerUrl ?? seller?.logoUrl });
   const productsQuery = useQuery<Product[]>({ queryKey: catalogKeys.storeProducts(sellerId), queryFn: () => productService.fetchProductsBySeller(sellerId, catalogCategories(queryClient)), enabled: Boolean(seller) });
   const { data: products = [], isLoading: productsLoading } = productsQuery;
   const servicesQuery = useQuery({
