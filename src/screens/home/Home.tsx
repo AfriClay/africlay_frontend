@@ -28,6 +28,7 @@ import { Search } from '../search/Search';
 import { SupportContactStrip } from '../../components/ui/SupportContactStrip';
 import { categoryGridColumns } from '../../utils/categoryGridColumns';
 import { usePageSeo } from '../../hooks/usePageSeo';
+import { SeoHeading } from '../../components/ui/SeoHeading';
 
 type HomeNavigation = CompositeNavigationProp<
   NavigationProp<HomeStackParamList, 'HomeFeed'>,
@@ -266,6 +267,7 @@ export const Home: React.FC = () => {
         onScroll={handleContentScroll}
         scrollEventThrottle={16}
       >
+        <SeoHeading>Shop products and services in Kenya</SeoHeading>
         <PromotionalCarousel products={featured} loading={productsLoading} onProductPress={productId => {
           const product = products.find(item => item.id === productId);
           if (product?.slug) navigation.navigate('ProductDetails', { productId: product.slug });

@@ -55,7 +55,15 @@ export const RootNavigator = () => {
   const [currentRoute, setCurrentRoute] = useState<{ name: string; category?: string }>({ name: 'HomeFeed' });
   const updateRoute = () => {
     const route = navigationRef.getCurrentRoute();
-    if (route) setCurrentRoute({ name: route.name, category: (route.params as { categoryId?: string } | undefined)?.categoryId });
+    if (route) {
+      setCurrentRoute({ name: route.name, category: (route.params as { categoryId?: string } | undefined)?.categoryId });
+      // Public screens manage their own metadata through usePageSeo. React Navigation's
+      // default document title would replace that title with the internal route name.
+      if (Platform.OS === 'web' && typeof document !== 'undefined' && !['HomeFeed', 'ProductListing', 'ProductDetails', 'SellerStore', 'Services', 'ServiceDetails'].includes(route.name)) {
+        const optionTitle = (navigationRef.getCurrentOptions() as { title?: unknown } | undefined)?.title;
+        document.title = `${typeof optionTitle === 'string' ? optionTitle : route.name} | AfriClay Market`;
+      }
+    }
   };
   const [minimumSplashElapsed, setMinimumSplashElapsed] = useState(Platform.OS === 'web');
 
@@ -125,7 +133,7 @@ export const RootNavigator = () => {
 
   return (
     <>
-    <NavigationContainer ref={navigationRef} linking={linking} onReady={() => { updateRoute(); leaveAuthAfterSignIn(); }} onStateChange={updateRoute}>
+    <NavigationContainer ref={navigationRef} linking={linking} documentTitle={{ enabled: false }} onReady={() => { updateRoute(); leaveAuthAfterSignIn(); }} onStateChange={updateRoute}>
       {operationsAccess || currentRoute.name === 'OperationsLogin' || currentRoute.name === 'RiderApplication' || currentRoute.name === 'RiderDashboard' ? navigator : <MarketplaceShell route={currentRoute.name} category={currentRoute.category} navigate={destination => {
         if (!navigationRef.isReady()) return;
         if (destination.root === 'Policies') navigationRef.navigate('Policies', destination.params as RootStackParamList['Policies']);
