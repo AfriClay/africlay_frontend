@@ -23,7 +23,7 @@ export const ProductCard: React.FC<ProductCardProps> = React.memo(({ product, on
   return (
   <View style={[styles.root, marketplace && styles.marketplaceRoot, layout === 'grid' ? styles.gridRoot : null, layout === 'compact' ? styles.compactRoot : null]}>
   <Pressable onFocus={() => setFocused(true)} onBlur={() => setFocused(false)} onHoverIn={() => setHovered(true)} onHoverOut={() => setHovered(false)} style={({ pressed }) => [styles.pressable, layout === 'compact' && styles.compactPressable, (focused || hovered) && { backgroundColor: theme.colors.primary.tint }, pressed && { opacity: 0.9 }]} onPress={onPress} accessibilityRole="button" accessibilityLabel={`View ${product.name}`}>
-    <CatalogImage uri={product.images[0]} label={product.name} contentFit={layout === 'grid' ? 'contain' : 'cover'}
+    <CatalogImage uri={product.images[0]} label={product.imageRecords?.[0]?.altText || product.name} contentFit={layout === 'grid' ? 'contain' : 'cover'}
       style={[styles.image, layout === 'grid' && styles.gridImage, isExpanded && layout === 'grid' && { height: undefined, aspectRatio: 1.2 }, layout === 'compact' ? styles.compactImage : null]} />
     <View style={[styles.content, layout === 'grid' && styles.gridContent, layout === 'compact' ? styles.compactContent : null]}>
       <Text numberOfLines={2} ellipsizeMode="tail" style={[styles.name, marketplace && styles.marketplaceName, layout === 'grid' && styles.gridName]}>{product.name}</Text>

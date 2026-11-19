@@ -6,7 +6,7 @@ import { useResponsiveLayout } from '../../contexts/ResponsiveLayoutContext';
 import { useReducedMotionSafe } from '../../hooks/useReducedMotionSafe';
 import { theme } from '../../theme';
 
-export function ProductGallery({ images, name, children }: { images?: string[]; name: string; children?: ReactNode }) {
+export function ProductGallery({ images, imageAlts, name, children }: { images?: string[]; imageAlts?: string[]; name: string; children?: ReactNode }) {
   const { isExpanded } = useResponsiveLayout();
   const reducedMotion = useReducedMotionSafe();
   const [selected, setSelected] = useState(0);
@@ -17,7 +17,7 @@ export function ProductGallery({ images, name, children }: { images?: string[]; 
     <View style={styles.frame}>
       <Pressable onPress={() => setEnlarged(true)} disabled={!urls.length} accessibilityRole="button"
         accessibilityLabel={`View ${name} image ${index + 1} larger`} accessibilityState={{ disabled: !urls.length }}>
-        <CatalogImage uri={urls[index]} label={name} style={isExpanded ? styles.expanded : styles.image} contentFit="contain" />
+        <CatalogImage uri={urls[index]} label={imageAlts?.[index] || name} style={isExpanded ? styles.expanded : styles.image} contentFit="contain" />
         {urls.length > 0 && <View style={styles.zoomHint}><Expand size={16} color={theme.colors.ink} /><Text style={styles.zoomText}>View photo</Text></View>}
       </Pressable>
       {urls.length > 1 && <Text style={styles.imageCount} accessibilityLabel={`Image ${index + 1} of ${urls.length}`}>{index + 1} / {urls.length}</Text>}
@@ -27,7 +27,7 @@ export function ProductGallery({ images, name, children }: { images?: string[]; 
       {urls.map((uri, i) => <Pressable key={`${uri}-${i}`} onPress={() => setSelected(i)}
         accessibilityRole="button" accessibilityLabel={`Product image ${i + 1} of ${urls.length}`}
         accessibilityState={{ selected: i === index }} style={[styles.thumbnail, i === index && styles.selected]}>
-        <CatalogImage uri={uri} label={`${name}, thumbnail ${i + 1}`} style={styles.preview} contentFit="contain" />
+        <CatalogImage uri={uri} label={`${imageAlts?.[i] || name}, thumbnail ${i + 1}`} style={styles.preview} contentFit="contain" />
       </Pressable>)}
     </ScrollView>}
     <Modal visible={enlarged} transparent animationType={reducedMotion ? 'none' : 'fade'} onRequestClose={() => setEnlarged(false)}>
@@ -37,7 +37,7 @@ export function ProductGallery({ images, name, children }: { images?: string[]; 
             <Text style={styles.modalTitle} numberOfLines={1}>{name}</Text>
             <Pressable onPress={() => setEnlarged(false)} accessibilityRole="button" accessibilityLabel="Close photo viewer" style={styles.modalButton}><X size={22} color={theme.colors.white} /></Pressable>
           </View>
-          <CatalogImage uri={urls[index]} label={`${name}, image ${index + 1} of ${urls.length}`} style={styles.modalImage} contentFit="contain" />
+          <CatalogImage uri={urls[index]} label={`${imageAlts?.[index] || name}, image ${index + 1} of ${urls.length}`} style={styles.modalImage} contentFit="contain" />
           {urls.length > 1 && <View style={styles.modalControls}>
             <Pressable onPress={() => setSelected((index + urls.length - 1) % urls.length)} accessibilityRole="button" accessibilityLabel="Previous product photo" style={styles.modalButton}><ChevronLeft size={24} color={theme.colors.white} /></Pressable>
             <Text style={styles.modalCount}>{index + 1} / {urls.length}</Text>

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { FlatList, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Platform, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { RouteProp, useRoute, useNavigation } from '@react-navigation/native';
@@ -12,7 +12,7 @@ import { RatingBadge } from '../../components/ui/RatingBadge';
 import { ProductCard } from '../../components/domain/ProductCard';
 import { HomeStackParamList } from '../../navigation/HomeStack';
 import { Image } from 'expo-image';
-import { BadgeCheck } from 'lucide-react-native';
+import { BadgeCheck, Share2 } from 'lucide-react-native';
 import { ErrorState } from '../../components/ui/ErrorState';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { NotFoundScreen } from '../common/NotFoundScreen';
@@ -34,6 +34,7 @@ export const SellerStore: React.FC = () => {
   const sellerId = recordId(route.params?.sellerId);
   const { isExpanded, productColumns } = useResponsiveLayout();
   const [activeTab, setActiveTab] = useState<typeof tabs[number]>('Shop');
+  const [shareStatus, setShareStatus] = useState('');
   useEffect(() => setActiveTab('Shop'), [sellerId]);
   const sellerQuery = useQuery<Seller | null>({ queryKey: catalogKeys.seller(sellerId), queryFn: () => productService.fetchSeller(sellerId), enabled: Boolean(sellerId) });
   const { data: seller, isLoading: sellerLoading } = sellerQuery;
@@ -57,16 +58,36 @@ export const SellerStore: React.FC = () => {
     return <NotFoundScreen title="Seller not found" message="This store may have been removed or its link has changed." />;
   }
 
+  const shareStore = async () => {
+    const url = `https://www.africlaymarket.com/store/${encodeURIComponent(seller.slug ?? sellerId)}`;
+    setShareStatus('');
+    try {
+      if (Platform.OS === 'web') {
+        if (navigator.share) await navigator.share({ title: seller.name, url });
+        else if (navigator.clipboard?.writeText) { await navigator.clipboard.writeText(url); setShareStatus('Store link copied'); }
+        else setShareStatus('Copy this page address to share the store');
+      } else {
+        await Share.share({ message: `${seller.name} on AfriClay Market: ${url}`, url });
+      }
+    } catch (error) {
+      if (!(error instanceof Error) || error.name !== 'AbortError') setShareStatus('Unable to share this store right now');
+    }
+  };
+
   const columns = isExpanded ? Math.min(productColumns, 6) : 2;
   const serviceColumns = isExpanded ? 2 : 1;
   const storeHeader = <>
-    {seller.bannerUrl ? <Image source={{ uri: seller.bannerUrl }} style={[styles.banner, isExpanded && styles.desktopBanner]} contentFit="cover" cachePolicy="memory-disk" /> : null}
+    {seller.bannerUrl ? <Image source={{ uri: seller.bannerUrl }} alt={`${seller.name} store banner`} style={[styles.banner, isExpanded && styles.desktopBanner]} contentFit="cover" cachePolicy="memory-disk" /> : null}
     <View style={styles.header}>
-      <View style={styles.storeIdentity}><View style={styles.logo}>{seller.logoUrl ? <Image source={{ uri: seller.logoUrl }} style={styles.logoImage} contentFit="cover" cachePolicy="memory-disk" /> : <Text style={styles.logoText}>{seller.name.slice(0, 2).toUpperCase()}</Text>}</View><View style={styles.storeCopy}><Text style={styles.name}>{seller.name}</Text></View></View>
+      <View style={styles.storeIdentity}><View style={styles.logo}>{seller.logoUrl ? <Image source={{ uri: seller.logoUrl }} alt={`${seller.name} store logo`} style={styles.logoImage} contentFit="cover" cachePolicy="memory-disk" /> : <Text style={styles.logoText}>{seller.name.slice(0, 2).toUpperCase()}</Text>}</View><View style={styles.storeCopy}><Text style={styles.name}>{seller.name}</Text></View></View>
       <View style={styles.badgeRow}>
         {seller.reviewCount > 0 && <RatingBadge rating={seller.rating} reviewCount={seller.reviewCount} />}
         {seller.verified ? <View style={styles.verifiedRow}><BadgeCheck color={theme.colors.success} size={16} /><Text style={styles.verified}>Verified Seller</Text></View> : null}
+        <Pressable onPress={() => void shareStore()} style={styles.shareAction} accessibilityRole="button" accessibilityLabel={`Share ${seller.name} store`}>
+          <Share2 color={theme.colors.primary.dark} size={17} /><Text style={styles.shareText}>Share store</Text>
+        </Pressable>
       </View>
+      {shareStatus ? <Text style={styles.shareStatus} accessibilityLiveRegion="polite">{shareStatus}</Text> : null}
     </View>
     <View style={styles.tabBar}>
       {tabs.map(tab => (
@@ -147,7 +168,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: theme.spacing.sm,
+    flexWrap: 'wrap',
   },
+  shareAction: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs, minHeight: 44 },
+  shareText: { color: theme.colors.primary.dark, fontWeight: '700' },
+  shareStatus: { color: theme.colors.muted, fontSize: theme.typography.small.fontSize },
   verifiedRow: { flexDirection: 'row', alignItems: 'center' },
   verified: {
     marginLeft: theme.spacing.sm,

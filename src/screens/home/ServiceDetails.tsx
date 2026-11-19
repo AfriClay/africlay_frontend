@@ -56,7 +56,7 @@ export const ServiceDetails: React.FC = () => {
   };
   return <SafeAreaView style={styles.container}>
     <ScrollView contentContainerStyle={styles.content}>
-      <CatalogImage uri={service.images[0]} label={service.title} style={styles.image} />
+      <CatalogImage uri={service.images[0]} label={service.imageRecords?.[0]?.altText || service.title} style={styles.image} />
       <Text style={styles.title}>{service.title}</Text>
       <Text style={styles.price}>From {formatCurrency(service.priceFrom, service.currency)}</Text>
       <Text style={styles.description}>{service.durationMinutes} minutes</Text>

@@ -142,7 +142,7 @@ export const ProductDetails: React.FC = () => {
       <ScrollView ref={detailScrollRef} contentContainerStyle={[styles.content, isWide && styles.wideContent, { paddingBottom: sideBySide ? theme.spacing.xl : actionHeight + theme.spacing.xl }]}>
         <View style={[styles.hero, sideBySide && styles.heroWide]}>
           <View style={[styles.galleryColumn, sideBySide && styles.galleryColumnWide]}>
-            <ProductGallery key={product.id} images={product.images} name={product.name} />
+            <ProductGallery key={product.id} images={product.images} imageAlts={product.imageRecords?.map(image => image.altText || product.name)} name={product.name} />
           </View>
           <View style={[styles.summaryColumn, sideBySide && styles.summaryColumnWide]}>
             {product.category && product.category !== 'Uncategorized' && <Text style={styles.category}>{product.category}</Text>}

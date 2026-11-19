@@ -5,7 +5,7 @@ import { API_ORIGIN, ApiError, apiClient } from './api';
 import { CatalogDataError, recordId } from './catalogContract';
 
 const categorySchema = z.object({ id: z.string().uuid(), name: z.string(), slug: z.string(), parent: z.string().uuid().nullish() });
-const imageSchema = z.object({ id: z.string().uuid().optional(), image: z.string().nullish(), is_primary: z.boolean(), display_order: z.number() });
+const imageSchema = z.object({ id: z.string().uuid().optional(), image: z.string().nullish(), alt_text: z.string().nullish(), is_primary: z.boolean(), display_order: z.number() });
 const serviceSchema = z.object({
   id: z.string().uuid(), store: z.string().uuid(), category: z.string().uuid().nullish(),
   tags: z.array(z.string().uuid()), images: z.array(imageSchema), name: z.string(), slug: z.string(),
@@ -39,8 +39,8 @@ const toService = (raw: BackendService, categories: ServiceCategory[]): Service 
   const amount = Number(raw.price);
   if (!Number.isFinite(amount) || amount < 0) throw new CatalogDataError();
   const imageRecords = [...raw.images].sort((a, b) => Number(b.is_primary) - Number(a.is_primary) || a.display_order - b.display_order)
-    .map(item => ({ id: item.id, url: mediaUrl(item.image), isPrimary: item.is_primary }))
-    .filter((item): item is { id: string | undefined; url: string; isPrimary: boolean } => Boolean(item.url));
+    .map(item => ({ id: item.id, url: mediaUrl(item.image), isPrimary: item.is_primary, altText: item.alt_text?.trim() || undefined }))
+    .filter((item): item is { id: string | undefined; url: string; isPrimary: boolean; altText: string | undefined } => Boolean(item.url));
   return {
     id: raw.id, slug: raw.slug, status: raw.status, title: raw.name, description: raw.description,
     priceFrom: amount, currency: raw.currency, durationMinutes: raw.duration_minutes,

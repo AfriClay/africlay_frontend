@@ -8,7 +8,7 @@ import { serviceService } from './serviceService';
 
 const optionalText = z.string().nullish();
 const quantity = z.number().int().nonnegative();
-const imageSchema = z.object({ id: z.string().uuid().optional(), image: optionalText, is_primary: z.boolean().optional(), display_order: z.number().optional() });
+const imageSchema = z.object({ id: z.string().uuid().optional(), image: optionalText, alt_text: optionalText, is_primary: z.boolean().optional(), display_order: z.number().optional() });
 const priceOptionSchema = z.object({ id: z.string().uuid(), label: z.string(), price: z.union([z.string(), z.number()]), stock_quantity: quantity, weight_kg: z.union([z.string(), z.number()]), active: z.boolean().optional().default(true) });
 const productSchema = z.object({
   id: z.string().min(1), store: z.string().min(1), category: optionalText,
@@ -124,8 +124,8 @@ const toProduct = (raw: BackendProduct, categories: CatalogCategory[]): Product 
   const activePriceOptions: ProductPriceOption[] = raw.price_options.filter(option => option.active).map(option => ({ id: option.id, label: option.label, price: asPrice(option.price), stockQuantity: option.stock_quantity, weightKg: asPrice(option.weight_kg), active: option.active }));
   const availablePriceOptions = activePriceOptions.filter(option => option.stockQuantity > 0);
   const orderedImages = [...raw.images].sort((a, b) => Number(Boolean(b.is_primary)) - Number(Boolean(a.is_primary)) || (a.display_order ?? 0) - (b.display_order ?? 0));
-  const imageRecords = orderedImages.map(item => ({ id: item.id, url: imageUrl(item.image), isPrimary: Boolean(item.is_primary) }))
-    .filter((item): item is { id: string | undefined; url: string; isPrimary: boolean } => Boolean(item.url));
+  const imageRecords = orderedImages.map(item => ({ id: item.id, url: imageUrl(item.image), isPrimary: Boolean(item.is_primary), altText: item.alt_text?.trim() || undefined }))
+    .filter((item): item is { id: string | undefined; url: string; isPrimary: boolean; altText: string | undefined } => Boolean(item.url));
   return {
     id: raw.id, slug: raw.slug, sku: raw.sku, status: raw.status,
     name: raw.name, description: raw.description ?? '', price: availablePriceOptions.length ? Math.min(...availablePriceOptions.map(option => option.price)) : asPrice(raw.price), priceUnit: raw.price_unit,

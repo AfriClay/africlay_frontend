@@ -14,7 +14,7 @@ interface ServiceCardProps {
 
 export const ServiceCard: React.FC<ServiceCardProps> = ({ service, onPress, marketplace = false, grid = false }) => (
   <Pressable style={({ pressed }) => [styles.root, grid && { width: '100%', marginRight: 0 }, marketplace && styles.marketplaceRoot, pressed && { opacity: 0.9 }]} onPress={onPress} accessibilityRole="button" accessibilityLabel={`View ${service.title}`}>
-    <CatalogImage uri={service.images[0]} label={service.title} style={styles.image} />
+    <CatalogImage uri={service.images[0]} label={service.imageRecords?.[0]?.altText || service.title} style={styles.image} />
     <View style={styles.content}>
       <Text style={[styles.name, marketplace && styles.marketplaceName]}>{service.title}</Text>
       <Text style={styles.price}>From {formatCurrency(service.priceFrom, service.currency)}</Text>
