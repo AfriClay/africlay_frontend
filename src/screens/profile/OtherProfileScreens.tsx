@@ -216,6 +216,7 @@ export const Settings: React.FC = () => {
 const faqs = [
   { question: 'How do I place an order?', answer: 'Add a product to your cart, select an address, and choose a payment option at checkout.' },
   { question: 'Can I track delivery?', answer: 'My Orders shows confirmed shipment milestones recorded by AfriClay. It does not show live GPS location or a guaranteed arrival time.' },
+  { question: 'Does AfriClay use site analytics?', answer: 'On the website, Microsoft Clarity measures visits and interactions. We request no analytics or advertising cookies and mask page content in recordings.' },
 ];
 export const SupportHelp: React.FC = () => {
   const [open, setOpen] = useState<number>();
