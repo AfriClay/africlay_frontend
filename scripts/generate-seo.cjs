@@ -30,6 +30,7 @@ function renderHtml(shell, page) {
   const image = page.image && /^https:\/\//i.test(page.image) ? page.image : undefined;
   const meta = [
     `<title>${escapeHtml(title)}</title>`,
+    `<link rel="icon" type="image/png" sizes="512x512" href="/africlay-favicon-mark.png" />`,
     `<meta name="description" content="${escapeHtml(description)}" />`,
     `<link rel="canonical" href="${escapeHtml(url)}" />`,
     `<meta property="og:site_name" content="AfriClay Market" />`,
