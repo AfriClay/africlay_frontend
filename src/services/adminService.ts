@@ -87,6 +87,12 @@ export type AdminOverview = {
   trendDays: number;
   trends: Array<{ date: string; accounts: number; stores: number; orders: number; grossOrderValue: number }>;
 };
+export type VisitorInsights = {
+  status: 'ready' | 'stale' | 'unavailable' | 'unconfigured';
+  periodDays: number;
+  updatedAt: string | null;
+  metrics: { visits: number | null; rageClicks: number | null; scriptErrors: number | null } | null;
+};
 export type AdminCatalogKind = 'products' | 'services';
 export type AdminCatalogStatus = 'draft' | 'published' | 'archived';
 export type AdminCatalogItem = {
@@ -258,6 +264,7 @@ export const adminKeys = {
   accessRequests: (status = 'pending') => ['operations', 'access-requests', status] as const,
   ownAccessRequests: ['operations', 'my-access-requests'] as const,
   overview: (days = 30) => ['operations', 'admin-overview', days] as const,
+  visitorInsights: ['operations', 'visitor-insights'] as const,
   catalog: (kind: AdminCatalogKind, status = 'all', search = '') => ['operations', 'catalog', kind, status, search] as const,
   orders: (status = 'all', paymentStatus = 'all', search = '') => ['operations', 'orders', status, paymentStatus, search] as const,
   taxonomy: (kind: TaxonomyKind) => ['operations', 'taxonomy', kind] as const,
@@ -265,6 +272,19 @@ export const adminKeys = {
 
 export const adminService = {
   getOverview: async (days = 30): Promise<AdminOverview> => mapOverview(await apiClient(`/auth/admin/overview/${query({ days })}`)),
+  getVisitorInsights: async (): Promise<VisitorInsights> => {
+    const raw: any = await apiClient('/auth/admin/visitor-insights/');
+    return {
+      status: raw.status,
+      periodDays: raw.period_days,
+      updatedAt: raw.updated_at ?? null,
+      metrics: raw.metrics ? {
+        visits: raw.metrics.visits ?? null,
+        rageClicks: raw.metrics.rage_clicks ?? null,
+        scriptErrors: raw.metrics.script_errors ?? null,
+      } : null,
+    };
+  },
   listCatalog: async (kind: AdminCatalogKind, filters: Record<string, string | number | undefined> = {}) => page(await apiClient(`/auth/admin/catalog/${kind}/${query(filters)}`), mapCatalogItem(kind)),
   changeCatalogStatus: async (item: AdminCatalogItem, action: 'archive' | 'restore_to_draft', reason: string): Promise<AdminCatalogItem> => mapCatalogItem(item.kind)(await apiClient(`/auth/admin/catalog/${item.kind}/${item.id}/status/`, { method: 'POST', body: { action, reason, confirm: true } })),
   listOrders: async (filters: Record<string, string | number | undefined> = {}) => page(await apiClient(`/auth/admin/orders/${query(filters)}`), mapOrder),

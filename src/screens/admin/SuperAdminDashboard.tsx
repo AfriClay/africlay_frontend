@@ -70,6 +70,7 @@ export const SuperAdminDashboard = () => {
   const [assignmentRole, setAssignmentRole] = useState<StaffRole>('sales_reviewer');
 
   const overview = useQuery({ queryKey: adminKeys.overview(trendDays), queryFn: () => adminService.getOverview(trendDays), enabled: allowed && section === 'overview' });
+  const visitors = useQuery({ queryKey: adminKeys.visitorInsights, queryFn: adminService.getVisitorInsights, enabled: allowed && section === 'overview', staleTime: 30 * 60 * 1000, retry: false });
   const requests = useQuery({ queryKey: adminKeys.accessRequests('pending'), queryFn: () => adminService.listAccessRequests({ status: 'pending', limit: 100 }), enabled: allowed });
   const users = useQuery({ queryKey: adminKeys.users(search), queryFn: () => adminService.listUsers({ search: search.trim(), limit: 100 }), enabled: allowed && section === 'accounts' });
   const stores = useQuery({ queryKey: adminKeys.stores(search), queryFn: () => adminService.listStores({ search: search.trim(), limit: 100 }), enabled: allowed && section === 'stores' });
@@ -123,7 +124,7 @@ export const SuperAdminDashboard = () => {
   return <OperationsScaffold title="Administration" subtitle="">
     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabsViewport} contentContainerStyle={styles.tabsRow} accessibilityLabel="Administration sections">{(Object.keys(sectionLabels) as Section[]).map(value => <Pressable key={value} onPress={() => changeSection(value)} style={[styles.tab, section === value && styles.tabActive]} accessibilityRole="tab" accessibilityState={{ selected: section === value }}><Text style={[styles.tabText, section === value && styles.tabTextActive]}>{value === 'requests' ? `${sectionLabels[value]} (${requests.isError ? '?' : requests.data?.count ?? '...'})` : sectionLabels[value]}</Text></Pressable>)}</ScrollView>
 
-    {section === 'overview' ? <OverviewSection data={overview.data} loading={overview.isLoading} failed={overview.isError} retry={() => void overview.refetch()} refreshing={overview.isFetching} updatedAt={overview.dataUpdatedAt} trendDays={trendDays} onTrendDays={setTrendDays} recentAudit={audit.data?.results.slice(0, 6) ?? []} auditLoading={audit.isLoading} auditFailed={audit.isError} onNavigate={changeSection} onOpenSales={() => navigation.navigate('SalesDashboard')} onOpenCatalogArchived={() => { setCatalogStatus('archived'); changeSection('catalog'); }} onOpenOrders={(statusValue, paymentValue) => { if (statusValue) setOrderStatus(statusValue); if (paymentValue) setPaymentStatus(paymentValue); changeSection('orders'); }} /> : null}
+    {section === 'overview' ? <OverviewSection data={overview.data} loading={overview.isLoading} failed={overview.isError} retry={() => void overview.refetch()} refreshing={overview.isFetching} updatedAt={overview.dataUpdatedAt} trendDays={trendDays} onTrendDays={setTrendDays} visitors={visitors.data} visitorsLoading={visitors.isLoading} visitorsFailed={visitors.isError} recentAudit={audit.data?.results.slice(0, 6) ?? []} auditLoading={audit.isLoading} auditFailed={audit.isError} onNavigate={changeSection} onOpenSales={() => navigation.navigate('SalesDashboard')} onOpenCatalogArchived={() => { setCatalogStatus('archived'); changeSection('catalog'); }} onOpenOrders={(statusValue, paymentValue) => { if (statusValue) setOrderStatus(statusValue); if (paymentValue) setPaymentStatus(paymentValue); changeSection('orders'); }} /> : null}
 
     {section === 'requests' ? <><View style={[styles.panel, styles.assignmentPanel]}><Text style={styles.panelTitle}>Assign dashboard access</Text><Text style={styles.assignmentHelp}>Choose an account and role. Changes revoke sessions and are audited.</Text><View style={styles.assignmentForm}><Input label="Staff account email" required value={assignmentEmail} onChangeText={setAssignmentEmail} placeholder="staff@company.com" keyboardType="email-address" autoCapitalize="none" autoComplete="email" accessibilityLabel="Staff account email" /><View style={styles.filters}>{(['sales_reviewer', 'finance', 'logistics'] as StaffRole[]).map(role => <FilterButton key={role} label={role === 'sales_reviewer' ? 'Sales review' : role === 'finance' ? 'Finance' : 'Logistics'} active={assignmentRole === role} onPress={() => setAssignmentRole(role)} />)}</View><View style={styles.rowActions}><Button variant="outline" disabled={!assignmentEmail.trim()} onPress={() => setPending({ kind: 'emailRole', email: assignmentEmail.trim(), role: assignmentRole, action: 'revoke' })}>Revoke</Button><Button disabled={!assignmentEmail.trim()} onPress={() => setPending({ kind: 'emailRole', email: assignmentEmail.trim(), role: assignmentRole, action: 'grant' })}>Grant access</Button></View></View></View><View style={styles.panel}><Text style={styles.panelTitle}>Pending dashboard access</Text>{requests.isError ? <ErrorState message="Unable to load dashboard access requests." onRetry={() => void requests.refetch()} /> : requests.isLoading ? <Text style={styles.empty}>Loading requests...</Text> : requests.data?.results.length ? requests.data.results.map(item => <View key={item.id} style={styles.requestRow}><View style={styles.main}><Text style={styles.rowTitle}>{item.requesterName || item.requesterEmail}</Text><StatusPill value={item.requestedRole === 'sales_reviewer' ? 'sales review' : item.requestedRole === 'finance' ? 'finance' : 'logistics'} /><Text style={styles.meta}>{item.requesterEmail}</Text><Text style={styles.reasonText}>{item.requestReason}</Text><Text style={styles.meta}>{formatOperationsDate(item.createdAt)}</Text></View><View style={styles.rowActions}><Button size="sm" variant="outline" onPress={() => setPending({ kind: 'request', record: item, decision: 'rejected' })}>Reject</Button><Button size="sm" onPress={() => setPending({ kind: 'request', record: item, decision: 'approved' })}>Approve</Button></View></View>) : <Text style={styles.empty}>No dashboard access requests are waiting for review.</Text>}</View></> : null}
 
@@ -143,7 +144,7 @@ export const SuperAdminDashboard = () => {
   </OperationsScaffold>;
 };
 
-const OverviewSection = ({ data, loading, failed, retry, refreshing, updatedAt, trendDays, onTrendDays, recentAudit, auditLoading, auditFailed, onNavigate, onOpenSales, onOpenCatalogArchived, onOpenOrders }: {
+const OverviewSection = ({ data, loading, failed, retry, refreshing, updatedAt, trendDays, onTrendDays, visitors, visitorsLoading, visitorsFailed, recentAudit, auditLoading, auditFailed, onNavigate, onOpenSales, onOpenCatalogArchived, onOpenOrders }: {
   data?: Awaited<ReturnType<typeof adminService.getOverview>>;
   loading: boolean;
   failed: boolean;
@@ -152,6 +153,9 @@ const OverviewSection = ({ data, loading, failed, retry, refreshing, updatedAt, 
   updatedAt: number;
   trendDays: 7 | 30 | 90;
   onTrendDays: (days: 7 | 30 | 90) => void;
+  visitors?: Awaited<ReturnType<typeof adminService.getVisitorInsights>>;
+  visitorsLoading: boolean;
+  visitorsFailed: boolean;
   recentAudit: Awaited<ReturnType<typeof adminService.listAuditLogs>>['results'];
   auditLoading: boolean;
   auditFailed: boolean;
@@ -220,6 +224,24 @@ const OverviewSection = ({ data, loading, failed, retry, refreshing, updatedAt, 
       <OverviewMetric icon={<Package size={17} color={operationsColors.green} />} label="Catalog listings" value={data.products.total + data.services.total} note={`${(data.products.published + data.services.published).toLocaleString('en-KE')} published · ${(data.products.draft + data.services.draft).toLocaleString('en-KE')} draft`} />
       <OverviewMetric icon={<ShoppingBag size={17} color={operationsColors.green} />} label="Orders" value={data.orders.total} note={`${(data.orders.pending + data.orders.processing + data.orders.shipped).toLocaleString('en-KE')} in motion · ${data.orders.paymentFailed.toLocaleString('en-KE')} payment failures`} />
     </View>
+    <View style={styles.visitorPanel}>
+      <View style={styles.visitorHeading}>
+        <Text style={styles.overviewTitle}>Visitor experience</Text>
+        <Text style={styles.visitorSource}>Last 72 hours · Microsoft Clarity</Text>
+      </View>
+      {visitorsLoading ? <Text style={styles.visitorMessage}>Loading visitor data...</Text>
+        : visitorsFailed ? <Text style={styles.visitorMessage}>Visitor data is unavailable.</Text>
+        : visitors?.status === 'unconfigured' ? <Text style={styles.visitorMessage}>Clarity access is not configured.</Text>
+        : !visitors?.metrics ? <Text style={styles.visitorMessage}>Visitor data is temporarily unavailable.</Text>
+        : <>
+          <View style={styles.visitorMetrics}>
+            <VisitorMetric label="Visits" value={visitors.metrics.visits} note="Browsing sessions" />
+            <VisitorMetric label="Repeated clicks" value={visitors.metrics.rageClicks} note="May signal confusion" />
+            <VisitorMetric label="Browser errors" value={visitors.metrics.scriptErrors} note="Website code issues" />
+          </View>
+          <Text style={styles.visitorFootnote}>{visitors.status === 'stale' ? 'Latest update unavailable · ' : 'Updated '}{visitors.updatedAt ? new Date(visitors.updatedAt).toLocaleString('en-KE') : 'time unknown'}</Text>
+        </>}
+    </View>
     <View style={styles.flowPanel}>
       <View style={styles.flowHeading}><Text style={styles.overviewTitle}>Order flow</Text><Pressable onPress={() => onNavigate('orders')} accessibilityRole="button" style={styles.flowLink}><Text style={styles.flowLinkText}>Open orders</Text><ArrowUpRight size={15} color={operationsColors.green} /></Pressable></View>
       <View style={styles.flowGrid}>{orderStages.map(stage => <View key={stage.label} style={styles.flowStage}>
@@ -247,6 +269,11 @@ const OverviewMetric = ({ icon, label, value, note }: { icon: React.ReactNode; l
   <View style={styles.overviewMetricHeading}>{icon}<Text style={styles.overviewMetricLabel}>{label}</Text></View>
   <Text style={styles.overviewMetricValue}>{value.toLocaleString('en-KE')}</Text>
   <Text style={styles.overviewMetricNote}>{note}</Text>
+</View>;
+const VisitorMetric = ({ label, value, note }: { label: string; value: number | null; note: string }) => <View style={styles.visitorMetric} accessibilityLabel={`${label}: ${value === null ? 'unavailable' : value.toLocaleString('en-KE')}. ${note}`}>
+  <Text style={styles.visitorValue}>{value === null ? '—' : value.toLocaleString('en-KE')}</Text>
+  <Text style={styles.visitorLabel}>{label}</Text>
+  <Text style={styles.visitorNote}>{value === null ? 'Not reported' : note}</Text>
 </View>;
 const TrendBars = ({ label, values, dates }: { label: string; values: number[]; dates: string[] }) => {
   const largest = Math.max(...values, 1);
@@ -284,6 +311,16 @@ const styles = StyleSheet.create({
   overviewMetricLabel: { color: operationsColors.muted, fontSize: 11, fontWeight: '700' },
   overviewMetricValue: { color: operationsColors.ink, fontSize: 24, fontWeight: '800', marginTop: 9 },
   overviewMetricNote: { color: operationsColors.muted, fontSize: 10, lineHeight: 15, marginTop: 3 },
+  visitorPanel: { padding: 16, marginBottom: 14, borderWidth: 1, borderColor: operationsColors.border, borderRadius: 10, backgroundColor: operationsColors.panel },
+  visitorHeading: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'baseline', justifyContent: 'space-between', gap: 6, marginBottom: 14 },
+  visitorSource: { color: operationsColors.muted, fontSize: 11 },
+  visitorMetrics: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  visitorMetric: { flexGrow: 1, flexBasis: 140, minWidth: 120, padding: 12, borderRadius: 8, backgroundColor: operationsColors.greenSoft },
+  visitorValue: { color: operationsColors.green, fontSize: 22, fontWeight: '800' },
+  visitorLabel: { color: operationsColors.ink, fontSize: 12, fontWeight: '800', marginTop: 3 },
+  visitorNote: { color: operationsColors.muted, fontSize: 10, marginTop: 2 },
+  visitorFootnote: { color: operationsColors.muted, fontSize: 10, marginTop: 12 },
+  visitorMessage: { color: operationsColors.muted, fontSize: 12 },
   flowPanel: { padding: 16, marginTop: 4, borderWidth: 1, borderColor: operationsColors.border, borderRadius: 7, backgroundColor: operationsColors.panel },
   flowHeading: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 16 },
   flowLink: { minHeight: 36, flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 9, borderWidth: 1, borderColor: operationsColors.border, borderRadius: 5 },
