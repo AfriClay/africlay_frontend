@@ -49,7 +49,7 @@ export const PromotionalCarousel = ({ products, loading, onProductPress }: Promo
           }}>
           {products.map(product => (
             <View key={product.id} style={{ width, paddingHorizontal: theme.spacing.xs }}>
-              <Pressable accessibilityRole="button" accessibilityLabel={`View product: ${product.name}, ${formatCurrency(product.price, product.currency)}${priceUnitSuffix(product.priceUnit)}`}
+              <Pressable accessibilityRole="button"
                 onPress={() => onProductPress(product.id)}
                 style={({ pressed }) => [styles.card, { minHeight: isExpanded ? Math.min(360, Math.max(300, width / 4.5)) : 232 }, pressed && styles.pressed]}>
                 <View style={[styles.copy, isExpanded && styles.expandedCopy]}>

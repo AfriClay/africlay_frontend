@@ -89,7 +89,7 @@ export const MarketplaceShell = ({ children, route, category, navigate }: Props)
         <Action label={policyLabel} icon={BookOpenCheck} active={route === 'Policies'} onPress={() => navigate({ root: 'Policies', params: policyAudience ? { audience: policyAudience } : undefined })} />
         <Action label="Profile" icon={User} active={route === 'ProfileOverview'} onPress={() => navigate({ tab: 'Profile', screen: 'ProfileOverview' })} />
       </ScrollView></Animated.View></CollapsedSidebar.Provider>}
-      <View style={[styles.main, (focused || !isExpanded) && { padding: 0 }]}><View style={[styles.route, isExpanded && { maxWidth: contentLimit(route) }]}>{children}</View></View>
+      <View role="main" style={[styles.main, (focused || !isExpanded) && { padding: 0 }]}><View style={[styles.route, isExpanded && { maxWidth: contentLimit(route) }]}>{children}</View></View>
     </View>
   </View>;
 };

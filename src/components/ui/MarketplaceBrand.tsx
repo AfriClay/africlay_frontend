@@ -27,8 +27,8 @@ export const MarketplaceBrand = ({
         source={require('../../../assets/africlay-brand-v1.svg')}
         style={[styles.logo, compact && styles.compactLogo]}
         contentFit="contain"
-        accessible={false}
-        alt=""
+        accessibilityLabel="AfriClay Market logo"
+        alt="AfriClay Market logo"
       />
     </View>
     {showName ? (
