@@ -24,8 +24,8 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
   secondaryActionLabel,
   onSecondaryAction,
 }) => (
-  <RNModal transparent animationType="slide" visible={visible} onRequestClose={onClose}>
-    <Pressable style={styles.backdrop} onPress={onClose} accessibilityRole="button" />
+  <RNModal transparent animationType="slide" visible={visible} onRequestClose={onClose} accessibilityLabel={title}>
+    <Pressable style={styles.backdrop} onPress={onClose} accessibilityRole="button" accessibilityLabel={`Close ${title}`} />
     <View style={styles.sheet}>
       <View style={styles.handle} />
       <Text style={styles.title}>{title}</Text>

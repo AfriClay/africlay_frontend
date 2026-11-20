@@ -6,7 +6,7 @@ import { theme } from '../../theme';
 export const SupportContactStrip = () => (
   <Pressable
     accessibilityRole="link"
-    accessibilityLabel={`Call AfriClay support on ${SUPPORT_PHONE_DISPLAY}`}
+    accessibilityLabel={`Need help? Call AfriClay support ${SUPPORT_PHONE_DISPLAY}`}
     onPress={() => void Linking.openURL(SUPPORT_PHONE_URL)}
     style={({ pressed }) => [styles.strip, pressed && styles.pressed]}
   >

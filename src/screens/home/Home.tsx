@@ -24,7 +24,6 @@ import { useCart } from '../../hooks/useCart';
 import { notificationKeys, notificationService } from '../../services/notificationService';
 import { Button } from '../../components/ui/Button';
 import { MarketplaceBrand } from '../../components/ui/MarketplaceBrand';
-import { Search } from '../search/Search';
 import { SupportContactStrip } from '../../components/ui/SupportContactStrip';
 import { categoryGridColumns } from '../../utils/categoryGridColumns';
 import { usePageSeo } from '../../hooks/usePageSeo';
@@ -34,6 +33,8 @@ type HomeNavigation = CompositeNavigationProp<
   NavigationProp<HomeStackParamList, 'HomeFeed'>,
   NavigationProp<RootStackParamList>
 >;
+
+const InlineSearch = React.lazy(() => import('../search/Search').then(module => ({ default: module.Search })));
 
 const CountBadge = ({ count }: { count: number }) => count > 0 ? (
   <View style={styles.countBadge}><Text style={styles.countBadgeText}>{count > 99 ? '99+' : count}</Text></View>
@@ -63,6 +64,7 @@ export const Home: React.FC = () => {
   const wordmarkProgress = useRef(new Animated.Value(width >= 360 ? 1 : 0)).current;
   const lastScrollY = useRef(0);
   const [searchExpanded, setSearchExpanded] = useState(false);
+  const [searchOpened, setSearchOpened] = useState(false);
   const [brandCondensed, setBrandCondensed] = useState(false);
   const [focusRequest, setFocusRequest] = useState(0);
   const categoriesQuery = useQuery({ queryKey: catalogKeys.categories, queryFn: productService.fetchCategories });
@@ -129,7 +131,10 @@ export const Home: React.FC = () => {
   const openNotifications = () => navigation.getParent<any>()?.navigate('Profile', { screen: 'Notifications' });
   const animateSearch = useCallback((expanded: boolean) => {
     searchProgress.stopAnimation();
-    if (expanded) setSearchExpanded(true);
+    if (expanded) {
+      setSearchOpened(true);
+      setSearchExpanded(true);
+    }
     if (reduceMotion) {
       searchProgress.setValue(expanded ? 1 : 0);
       if (expanded) requestAnimationFrame(() => setFocusRequest(value => value + 1));
@@ -246,7 +251,9 @@ export const Home: React.FC = () => {
               aria-hidden={!searchExpanded}
               style={[styles.inlineSearch, { opacity: searchProgress, transform: [{ translateX: searchFieldOffset }] }]}
             >
-              <Search presentation="inline" focusRequest={focusRequest} onDismiss={closeSearch} onOpenProduct={openSearchProduct} onOpenSeller={openSearchSeller} />
+              {searchOpened ? <React.Suspense fallback={null}>
+                <InlineSearch presentation="inline" focusRequest={focusRequest} onDismiss={closeSearch} onOpenProduct={openSearchProduct} onOpenSeller={openSearchSeller} />
+              </React.Suspense> : null}
             </Animated.View>
           </View>
           <View style={styles.headerActions}>

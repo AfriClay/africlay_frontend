@@ -30,7 +30,7 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({ label, imageUri, ima
     <Pressable style={({ pressed }) => [styles.root, isExpanded && styles.desktopRoot, pressed && styles.pressed]} onPress={onPress} accessibilityRole="button" accessibilityLabel={`Browse ${label}`}>
       <View style={[styles.visual, isExpanded && styles.desktopVisual, imageLoading && styles.loadingVisual]}>
         {imageUri && imageUri !== failedUri
-          ? <Image source={{ uri: imageUri }} alt={`Browse ${label}`} style={StyleSheet.absoluteFill} contentFit="cover" cachePolicy="memory-disk" onError={() => setFailedUri(imageUri)} />
+          ? <Image source={{ uri: imageUri }} alt={label} accessibilityLabel={label} style={StyleSheet.absoluteFill} contentFit="cover" cachePolicy="memory-disk" onError={() => setFailedUri(imageUri)} />
           : !imageLoading && <Text style={styles.fallbackInitial}>{label.charAt(0)}</Text>}
       </View>
       <Text style={styles.label}>{label}</Text>

@@ -49,7 +49,7 @@ export const PromotionalCarousel = ({ products, loading, onProductPress }: Promo
           }}>
           {products.map(product => (
             <View key={product.id} style={{ width, paddingHorizontal: theme.spacing.xs }}>
-              <Pressable accessibilityRole="button" accessibilityLabel={`View ${product.name}, ${formatCurrency(product.price, product.currency)}${priceUnitSuffix(product.priceUnit)}`}
+              <Pressable accessibilityRole="button" accessibilityLabel={`View product: ${product.name}, ${formatCurrency(product.price, product.currency)}${priceUnitSuffix(product.priceUnit)}`}
                 onPress={() => onProductPress(product.id)}
                 style={({ pressed }) => [styles.card, { minHeight: isExpanded ? Math.min(360, Math.max(300, width / 4.5)) : 232 }, pressed && styles.pressed]}>
                 <View style={[styles.copy, isExpanded && styles.expandedCopy]}>
@@ -62,7 +62,7 @@ export const PromotionalCarousel = ({ products, loading, onProductPress }: Promo
                 </View>
                 <View style={styles.imageArea}>
                   {product.images[0] && !failedImages[product.id] ? (
-                    <Image source={{ uri: product.images[0] }} alt={product.imageRecords?.[0]?.altText || product.name} style={StyleSheet.absoluteFill} contentFit="contain" cachePolicy="memory-disk" transition={reducedMotion ? 0 : 180}
+                    <Image source={{ uri: product.images[0] }} alt={product.imageRecords?.[0]?.altText || product.name} accessibilityLabel={product.imageRecords?.[0]?.altText || product.name} style={StyleSheet.absoluteFill} contentFit="contain" cachePolicy="memory-disk" transition={reducedMotion ? 0 : 180}
                       onError={() => setFailedImages(current => ({ ...current, [product.id]: true }))} />
                   ) : <ImageOff size={36} strokeWidth={1.5} color={theme.colors.primary.DEFAULT} />}
                 </View>

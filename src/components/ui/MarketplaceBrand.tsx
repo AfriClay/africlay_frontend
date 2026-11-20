@@ -28,6 +28,7 @@ export const MarketplaceBrand = ({
         style={[styles.logo, compact && styles.compactLogo]}
         contentFit="contain"
         accessible={false}
+        alt=""
       />
     </View>
     {showName ? (

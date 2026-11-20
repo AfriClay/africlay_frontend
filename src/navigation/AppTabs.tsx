@@ -68,7 +68,7 @@ const AppTabsNavigator = ({ onOpenHome, onOpenCategories, onOpenOrders, onOpenPr
   const earningsLabel = wallet ? formatCurrency(wallet.earningsAvailableBalance, wallet.currency) : wallets.isError ? 'Unavailable' : '...';
 
   const TabBar = useCallback(({ state, navigation }: BottomTabBarProps) => (
-    <View style={[styles.tabBar, { height: 72 + insets.bottom, paddingBottom: insets.bottom }]}>
+    <View accessibilityRole="tablist" style={[styles.tabBar, { height: 72 + insets.bottom, paddingBottom: insets.bottom }]}>
       {compactItems.filter(item => item.name !== 'Sell' || canSell).map(item => {
         const activeTab = state.routes[state.index]?.name;
         const homeScreen = nestedRouteName(state.routes.find(route => route.name === 'Home'), 'HomeFeed');
