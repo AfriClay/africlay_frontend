@@ -24,7 +24,7 @@ const publicImage = record => {
 const jsonLd = value => JSON.stringify(value).replace(/</g, '\\u003c').replace(/>/g, '\\u003e').replace(/&/g, '\\u0026');
 
 function renderHtml(shell, page) {
-  const title = `${page.title} | AfriClay Market`;
+  const title = page.path === '/' ? `AfriClay Market | ${page.title}` : `${page.title} | AfriClay Market`;
   const url = `${SITE}${page.path}`;
   const description = summary(page.description || 'Discover products and services from sellers on AfriClay Market.');
   const image = page.image && /^https:\/\//i.test(page.image) ? page.image : undefined;
@@ -49,7 +49,8 @@ function renderHtml(shell, page) {
       `<li><a href="${escapeHtml(link.path)}" style="color:#185f18">${escapeHtml(link.label)}</a></li>`).join('');
     return links ? `<section><h2>${escapeHtml(group.title)}</h2><ul>${links}</ul></section>` : '';
   }).join('');
-  const body = `<main style="box-sizing:border-box;overflow:auto;max-width:900px;width:100%;height:100%;padding:32px;margin:0 auto;font-family:system-ui,sans-serif;color:#0d0d0d;background:#f8f5ef"><a href="/" style="color:#185f18">AfriClay Market</a><h1>${escapeHtml(page.title)}</h1>${image ? `<img src="${escapeHtml(image)}" alt="${escapeHtml(page.imageAlt || page.title)}" style="max-width:320px;max-height:280px;object-fit:contain" />` : ''}<p>${escapeHtml(description)}</p>${page.price ? `<p>${escapeHtml(page.price)}</p>` : ''}${linkGroups}</main>`;
+  const heading = page.path === '/' ? `AfriClay Market — ${page.title}` : page.title;
+  const body = `<main style="box-sizing:border-box;overflow:auto;max-width:900px;width:100%;height:100%;padding:32px;margin:0 auto;font-family:system-ui,sans-serif;color:#0d0d0d;background:#f8f5ef"><a href="/" style="color:#185f18">AfriClay Market</a><h1>${escapeHtml(heading)}</h1>${image ? `<img src="${escapeHtml(image)}" alt="${escapeHtml(page.imageAlt || page.title)}" style="max-width:320px;max-height:280px;object-fit:contain" />` : ''}<p>${escapeHtml(description)}</p>${page.price ? `<p>${escapeHtml(page.price)}</p>` : ''}${linkGroups}</main>`;
   return shell.replace(/<title>[^<]*<\/title>/, meta).replace('<div id="root"></div>', `<div id="root">${body}</div>`);
 }
 

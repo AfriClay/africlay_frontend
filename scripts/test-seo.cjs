@@ -26,6 +26,15 @@ test('route HTML has canonical metadata and escapes untrusted catalog text', () 
   assert.doesNotMatch(html, /<img src=x onerror=/);
 });
 
+test('homepage names AfriClay Market in its title and primary heading', () => {
+  const shell = '<html><head><title>AfriClay</title></head><body><div id="root"></div></body></html>';
+  const home = collectPages({})[0];
+  const html = renderHtml(shell, home);
+  assert.match(html, /<title>AfriClay Market \| Shop products and services in Kenya<\/title>/);
+  assert.match(html, /<h1>AfriClay Market — Shop products and services in Kenya<\/h1>/);
+  assert.match(html, /<link rel="canonical" href="https:\/\/www\.africlaymarket\.com\/"/);
+});
+
 test('out-of-stock product data is not represented as in stock', () => {
   const [,,,, product] = collectPages({ products: [{ slug: 'empty-item', name: 'Empty Item', status: 'published', price: '25.00', currency: 'KES', stock_quantity: 0, images: [] }] });
   assert.equal(product.schema.offers.availability, 'https://schema.org/OutOfStock');

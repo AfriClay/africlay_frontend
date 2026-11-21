@@ -10,7 +10,7 @@ export const usePageSeo = ({ title, description, path, image, schema }: PageSeo)
   const structuredData = schema ? JSON.stringify(schema).replace(/</g, '\\u003c').replace(/>/g, '\\u003e').replace(/&/g, '\\u0026') : '';
   useEffect(() => {
     if (Platform.OS !== 'web' || !focused || typeof document === 'undefined') return;
-    const fullTitle = `${title} | AfriClay Market`;
+    const fullTitle = path === '/' ? `AfriClay Market | ${title}` : `${title} | AfriClay Market`;
     const cleanDescription = description.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 165);
     const canonical = `${site}${path}`;
     const setMeta = (attribute: 'name' | 'property', key: string, value?: string) => {
